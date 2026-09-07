@@ -1,26 +1,98 @@
 <template>
   <main>
-    <section class="page grid min-h-[70vh] place-items-center text-center">
-      <div class="max-w-3xl">
-        <UBadge label="Визуальные AI-автоматизации" variant="soft" size="lg" />
-        <h1 class="mt-6 text-5xl font-bold tracking-tight md:text-7xl">Соберите AI-цепочку.<br><span class="text-primary">Без кода.</span></h1>
-        <p class="mx-auto mt-6 max-w-2xl text-lg muted">Поиск в интернете, обработка через Qwen и DeepSeek, доставка результата в Telegram — на одном наглядном canvas.</p>
-        <div class="mt-8 flex justify-center gap-3">
-          <UButton to="/auth" size="xl" label="Начать бесплатно" trailing-icon="i-lucide-arrow-right" />
-          <UButton to="/pricing" size="xl" label="Тарифы" color="neutral" variant="outline" />
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div class="reveal">
+          <p class="eyebrow">Автоматизация без разработки</p>
+          <h1>Рутина работает. <span>Вы — решаете.</span></h1>
+          <p class="hero-copy">
+            Соберите цепочку из поиска, анализа и отправки результата.
+            Yakun выполнит её по кнопке или расписанию — без кода, серверов и ручного контроля.
+          </p>
+          <div class="hero-actions">
+            <UButton to="/auth" size="xl" label="Собрать первую цепочку" trailing-icon="i-lucide-arrow-right" />
+            <UButton to="/#how" size="xl" label="Посмотреть, как работает" color="neutral" variant="outline" />
+          </div>
+          <div class="trust-row">
+            <span><UIcon name="i-lucide-check-circle-2" /> Бесплатный старт</span>
+            <span><UIcon name="i-lucide-check-circle-2" /> Расписание на любом тарифе</span>
+            <span><UIcon name="i-lucide-check-circle-2" /> Цена известна до запуска</span>
+          </div>
+        </div>
+
+        <div class="workflow-demo reveal" style="animation-delay: 140ms">
+          <div class="demo-toolbar">
+            <div>
+              <p class="m-0 text-sm font-extrabold">Мониторинг конкурентов</p>
+              <p class="m-0 mt-1 text-xs muted">Каждый будний день, 09:00</p>
+            </div>
+            <div class="demo-dots"><i /><i /><i /></div>
+          </div>
+          <div class="demo-node">
+            <div class="demo-node-head"><span class="demo-icon"><UIcon name="i-lucide-search" /></span>Найти свежие новости</div>
+            <div class="demo-text" /><div class="demo-text short" />
+          </div>
+          <div class="demo-node">
+            <div class="demo-node-head"><span class="demo-icon"><UIcon name="i-lucide-sparkles" /></span>Выделить главное</div>
+            <div class="demo-text" /><div class="demo-text short" />
+          </div>
+          <div class="demo-node">
+            <div class="demo-node-head"><span class="demo-icon"><UIcon name="i-lucide-send" /></span>Прислать в Telegram</div>
+            <div class="demo-text short" />
+          </div>
+          <div class="demo-price"><UIcon name="i-lucide-coins" class="mr-1" />255 токенов / запуск</div>
         </div>
       </div>
     </section>
-    <section id="features" class="page grid-cards">
-      <UCard v-for="item in [
-        { icon: 'i-lucide-mouse-pointer-2', title: 'Визуальный редактор', text: 'Соединяйте готовые узлы перетаскиванием.' },
-        { icon: 'i-lucide-search', title: 'Актуальный поиск', text: 'Qwen ищет источники и сохраняет ссылки.' },
-        { icon: 'i-lucide-send', title: 'Доставка в Telegram', text: 'Результат приходит туда, где вы уже работаете.' }
-      ]" :key="item.title">
-        <UIcon :name="item.icon" class="size-8 text-primary" />
-        <h2 class="mt-4 text-xl font-semibold">{{ item.title }}</h2>
-        <p class="mt-2 muted">{{ item.text }}</p>
-      </UCard>
+
+    <section class="section alt">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">Что можно автоматизировать</p>
+          <h2>От запроса до готового результата — в одной цепочке</h2>
+          <p>Настройте один раз. Дальше Yakun сам найдёт данные, обработает их по вашим правилам и доставит туда, где вы уже работаете.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-number">01 / ПОИСК</span>
+            <h3>Следите за важным, а не за вкладками</h3>
+            <p>Новости рынка, упоминания бренда, цены конкурентов и любые изменения в сети — автоматически.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-number">02 / ОБРАБОТКА</span>
+            <h3>Получайте выводы, а не сырой текст</h3>
+            <p>Краткое резюме, сравнение, классификация или отчёт в нужном формате — по вашему заданию.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-number">03 / ДОСТАВКА</span>
+            <h3>Результат приходит сам</h3>
+            <p>Отчёт появится в Telegram сразу после выполнения. Никаких проверок статуса и ручных копирований.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">Три простых шага</p>
+          <h2>Первая автоматизация — за несколько минут</h2>
+        </div>
+        <div class="steps">
+          <article class="step"><b>01</b><h3>Добавьте действия</h3><p>Перетащите на поле поиск, обработку и отправку сообщения.</p></article>
+          <article class="step"><b>02</b><h3>Опишите результат</h3><p>Напишите обычными словами, что найти и что сделать с найденным.</p></article>
+          <article class="step"><b>03</b><h3>Запустите или назначьте время</h3><p>Yakun покажет цену заранее и выполнит цепочку по кнопке или расписанию.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section !pt-0">
+      <div class="shell">
+        <div class="cta-band">
+          <h2>Освободите время от повторяющихся задач</h2>
+          <UButton to="/auth" size="xl" color="neutral" label="Начать бесплатно" trailing-icon="i-lucide-arrow-up-right" />
+        </div>
+      </div>
     </section>
   </main>
 </template>

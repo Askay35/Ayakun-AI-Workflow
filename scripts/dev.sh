@@ -20,9 +20,31 @@ require_docker() {
   docker compose version >/dev/null || { echo "Нужен Docker Compose"; exit 1; }
 }
 
+check_docker_urls() {
+  local db_url redis_url broker
+  db_url="$(grep -E '^DB_URL=' .env | tail -1 | cut -d= -f2- || true)"
+  redis_url="$(grep -E '^REDIS_URL=' .env | tail -1 | cut -d= -f2- || true)"
+  broker="$(grep -E '^CELERY_BROKER_URL=' .env | tail -1 | cut -d= -f2- || true)"
+
+  if [[ -z "$db_url" || "$db_url" == *"@localhost"* ]]; then
+    echo "DB_URL должен указывать на хост postgres (не localhost), например:"
+    echo "  DB_URL=postgresql+asyncpg://USER:PASS@postgres:5432/yakun"
+    exit 1
+  fi
+  if [[ -z "$redis_url" || "$redis_url" == *"@localhost"* ]]; then
+    echo "REDIS_URL должен указывать на хост redis (не localhost)."
+    exit 1
+  fi
+  if [[ -z "$broker" || "$broker" == *"@localhost"* ]]; then
+    echo "CELERY_BROKER_URL должен указывать на rabbitmq, например:"
+    echo "  CELERY_BROKER_URL=amqp://USER:PASS@rabbitmq:5672/yakun"
+    exit 1
+  fi
+}
+
 wait_ready() {
   echo "Ждём postgres/redis/rabbitmq..."
-  "${COMPOSE[@]}" up -d postgres redis rabbitmq
+  "${COMPOSE[@]}" up -d --remove-orphans postgres redis rabbitmq
   "${COMPOSE[@]}" up -d --wait postgres redis rabbitmq
 }
 
@@ -34,10 +56,13 @@ migrate() {
 up() {
   require_docker
   require_env
+  check_docker_urls
   wait_ready
   migrate
   echo "Поднимаем backend, worker, beat, frontend..."
-  "${COMPOSE[@]}" up -d --build backend worker beat frontend
+  "${COMPOSE[@]}" up -d --build --remove-orphans backend worker beat frontend
+  # shellcheck disable=SC1091
+  set -a; source .env; set +a
   echo
   echo "Готово:"
   echo "  сайт:  http://localhost:${FRONTEND_PORT:-3000}"
@@ -69,6 +94,7 @@ case "$ACTION" in
   migrate)
     require_docker
     require_env
+    check_docker_urls
     wait_ready
     migrate
     ;;

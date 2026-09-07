@@ -62,12 +62,13 @@ export const useApi = () => {
       position: node.position,
       label: node.data.label,
       ...(node.type === 'web_search'
-        ? { query: node.data.query || '', model: node.data.model || undefined }
+        ? { query: node.data.query || '' }
         : node.type === 'prompt'
           ? {
               prompt: node.data.prompt || '',
-              model: node.data.model || undefined,
-              provider: node.data.model?.startsWith('deepseek') ? 'deepseek' : 'qwen'
+              provider: 'deepseek',
+              complexity: node.data.complexity || 'simple_text',
+              model: node.data.complexity === 'complex_text' ? 'deepseek-v4-pro' : 'deepseek-v4-flash'
             }
           : {
               chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined,
@@ -81,6 +82,7 @@ export const useApi = () => {
     const graph = workflow.draft_graph || workflow.graph || { nodes: [], edges: [] }
     return {
       ...workflow,
+      estimated_run_cost: Number(workflow.estimated_run_cost || 0),
       draft_graph: {
         nodes: graph.nodes.map((node: any, index: number) => node.data ? node : ({
           id: node.id,
@@ -91,6 +93,7 @@ export const useApi = () => {
             query: node.query,
             prompt: node.prompt,
             model: node.model,
+            complexity: node.complexity || (String(node.model || '').includes('pro') ? 'complex_text' : 'simple_text'),
             chat_id: node.chat_id ? String(node.chat_id) : undefined,
             text: node.text
           }
@@ -129,8 +132,13 @@ export const useApi = () => {
       get: async (id: string) => normalizeWorkflow(await request<Workflow>(`/workflows/${id}`)),
       create: async (body: Pick<Workflow, 'name' | 'description'>) =>
         normalizeWorkflow(await request<Workflow>('/workflows', { method: 'POST', body })),
-      save: (id: string, graph: Workflow['draft_graph']) => request<Workflow>(`/workflows/${id}`, {
-        method: 'PATCH', body: { graph: serializeGraph(graph) }
+      save: (
+        id: string,
+        graph: Workflow['draft_graph'],
+        extras: { schedule_cron?: string | null; schedule_timezone?: string } = {}
+      ) => request<Workflow>(`/workflows/${id}`, {
+        method: 'PATCH',
+        body: { graph: serializeGraph(graph), ...extras }
       }).then(normalizeWorkflow),
       validate: (id: string) => request<ValidationResult>(`/workflows/${id}/validate`, { method: 'POST' }),
       publish: (id: string) => request<Workflow>(`/workflows/${id}/publish`, { method: 'POST' }).then(normalizeWorkflow),

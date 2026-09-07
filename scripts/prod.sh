@@ -60,6 +60,8 @@ wait_ready() {
 }
 
 migrate() {
+  echo "Собираем image для миграций..."
+  "${COMPOSE[@]}" build migrate
   echo "Применяем миграции..."
   "${COMPOSE[@]}" --profile migrate run --rm migrate
 }
@@ -71,7 +73,7 @@ up() {
   wait_ready
   migrate
   echo "Собираем и поднимаем production-стек..."
-  "${COMPOSE[@]}" up -d --build backend worker beat frontend proxy
+  "${COMPOSE[@]}" up -d --build --remove-orphans backend worker beat frontend proxy
   echo
   echo "Готово. Снаружи — nginx на портах ${HTTP_PORT:-80}/${HTTPS_PORT:-443}."
   echo "  статус: $0 status"

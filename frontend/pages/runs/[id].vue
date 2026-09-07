@@ -9,6 +9,9 @@ const { data: run, refresh } = await useAsyncData(`run-${id}`, () => api.runs.ge
 let stream: AbortController | undefined
 let poll: ReturnType<typeof setInterval> | undefined
 const done = (value?: WorkflowRun | null) => ['succeeded', 'failed', 'cancelled'].includes(value?.status || '')
+const statusLabel = (status?: string) => ({
+  queued: 'В очереди', running: 'Выполняется', succeeded: 'Готово', failed: 'Ошибка', cancelled: 'Отменён', pending: 'Ожидает'
+} as Record<string, string>)[status || ''] || status || '—'
 const formatOutput = (output?: Record<string, any>) => {
   if (!output) return ''
   return output.text || output.answer || JSON.stringify(output, null, 2)
@@ -59,19 +62,19 @@ const cancel = async () => { run.value = await api.runs.cancel(id) }
 <template>
   <div class="page">
     <div class="page-head">
-      <div><UButton to="/runs" label="К запускам" icon="i-lucide-arrow-left" variant="link" class="px-0" /><h1 class="text-3xl font-bold">{{ run?.workflow_name || 'Запуск' }}</h1><p class="muted">{{ id }}</p></div>
-      <div class="flex items-center gap-2"><UBadge :label="run?.status" size="lg" variant="soft" /><UButton v-if="run && !done(run)" label="Отменить" color="error" variant="outline" @click="cancel" /></div>
+      <div><UButton to="/runs" label="Назад к истории" icon="i-lucide-arrow-left" color="neutral" variant="ghost" class="mb-3 px-0" /><p class="eyebrow">Результат выполнения</p><h1 class="page-title">{{ run?.workflow_name || 'Запуск цепочки' }}</h1><p class="text-sm muted">ID {{ id }}</p></div>
+      <div class="flex items-center gap-2"><UBadge :label="statusLabel(run?.status)" size="lg" variant="soft" /><UButton v-if="run && !done(run)" label="Остановить" color="error" variant="outline" @click="cancel" /></div>
     </div>
-    <div class="grid gap-4 lg:grid-cols-[1fr_280px]">
+    <div class="grid gap-5 lg:grid-cols-[1fr_300px]">
       <div class="space-y-3">
-        <UCard v-for="node in run?.node_runs" :key="node.id">
-          <div class="flex justify-between"><h2 class="font-semibold">Узел {{ node.node_id }}</h2><UBadge :label="node.status" variant="soft" /></div>
-          <p v-if="node.output" class="mt-3 whitespace-pre-wrap text-sm">{{ formatOutput(node.output) }}</p>
-          <p v-if="node.error" class="mt-3 text-sm text-error">{{ node.error }}</p>
+        <div v-for="(node, index) in run?.node_runs" :key="node.id" class="panel p-5">
+          <div class="flex justify-between"><div class="flex items-center gap-3"><span class="grid size-10 place-items-center rounded-xl bg-[#efedff] text-sm font-extrabold text-[#6758ee]">{{ Number(index) + 1 }}</span><div><p class="mb-0 text-xs font-bold uppercase tracking-wider muted">Шаг цепочки</p><h2 class="mb-0 font-bold">{{ node.node_id }}</h2></div></div><UBadge :label="statusLabel(node.status)" variant="soft" /></div>
+          <pre v-if="node.output" class="mt-4 overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(node.output) }}</pre>
+          <p v-if="node.error" class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-error">{{ node.error }}</p>
           <div v-if="node.citations?.length" class="mt-3 border-t border-default pt-3"><p class="text-xs font-semibold uppercase muted">Источники</p><a v-for="citation in node.citations" :key="citation.url" :href="citation.url" target="_blank" class="mt-1 block text-sm text-primary hover:underline">{{ citation.title }}</a></div>
-        </UCard>
+        </div>
       </div>
-      <UCard><p class="muted">Начало</p><p>{{ run && new Date(run.created_at).toLocaleString('ru') }}</p><p class="mt-4 muted">Стоимость</p><p class="text-2xl font-bold">{{ run?.cost?.toLocaleString() || 0 }} токенов</p><p class="mt-4 text-xs muted">Обновления идут через SSE; при недоступности используется polling.</p></UCard>
+      <aside class="panel h-fit p-5"><p class="eyebrow">Сводка</p><p class="mb-1 text-sm muted">Запущено</p><p class="font-bold">{{ run && new Date(run.created_at).toLocaleString('ru') }}</p><div class="my-5 border-t border-[var(--line)]" /><p class="mb-1 text-sm muted">Списано</p><p class="mb-0 text-3xl font-extrabold">{{ run?.cost?.toLocaleString() || 0 }}</p><p class="text-sm muted">токенов</p><p class="mt-5 mb-0 text-xs leading-5 muted">Страница обновляется автоматически, пока цепочка выполняется.</p></aside>
     </div>
   </div>
 </template>

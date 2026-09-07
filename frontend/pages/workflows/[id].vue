@@ -12,31 +12,48 @@ if (!workflow.value) throw createError({ statusCode: 404, statusMessage: 'Цеп
 
 const nodes = ref<WorkflowNode[]>(structuredClone(workflow.value.draft_graph?.nodes || []))
 const edges = ref<WorkflowEdge[]>(structuredClone(workflow.value.draft_graph?.edges || []))
+const scheduleEnabled = ref(Boolean(workflow.value.schedule_cron))
+const schedulePreset = ref(workflow.value.schedule_cron || '0 9 * * *')
 const selectedId = ref<string>()
 const selected = computed(() => nodes.value.find(node => node.id === selectedId.value))
 const validationErrors = ref<string[]>([])
 const saveState = ref<'saved' | 'saving' | 'dirty'>('saved')
+const estimatedCost = ref(Number(workflow.value.estimated_run_cost || 0))
 const { addEdges, screenToFlowCoordinate } = useVueFlow()
 let saveTimer: ReturnType<typeof setTimeout>
 
 const palette: Array<{ type: NodeKind; label: string; icon: string }> = [
   { type: 'web_search', label: 'Поиск в сети', icon: 'i-lucide-search' },
-  { type: 'prompt', label: 'AI-промпт', icon: 'i-lucide-sparkles' },
+  { type: 'prompt', label: 'Обработка', icon: 'i-lucide-sparkles' },
   { type: 'telegram_send', label: 'Telegram', icon: 'i-lucide-send' }
 ]
-const models = ['qwen-turbo', 'qwen-plus', 'deepseek-chat']
+const schedulePresets = [
+  { label: 'Каждый день в 9:00', value: '0 9 * * *' },
+  { label: 'Каждый час', value: '0 * * * *' },
+  { label: 'Пн–Пт в 10:00', value: '0 10 * * 1-5' },
+  { label: 'Раз в неделю (пн 9:00)', value: '0 9 * * 1' }
+]
+const qualityModes = [
+  { label: 'Быстрый', value: 'simple_text' },
+  { label: 'Точный', value: 'complex_text' }
+]
 
 const save = async () => {
   saveState.value = 'saving'
   try {
-    await api.workflows.save(id, { nodes: nodes.value, edges: edges.value })
+    const saved = await api.workflows.save(id, { nodes: nodes.value, edges: edges.value }, {
+      schedule_cron: scheduleEnabled.value ? schedulePreset.value : null,
+      schedule_timezone: 'UTC'
+    })
+    workflow.value = saved
+    estimatedCost.value = Number(saved.estimated_run_cost || 0)
     saveState.value = 'saved'
   } catch {
     saveState.value = 'dirty'
     toast.add({ title: 'Черновик не сохранён', color: 'error' })
   }
 }
-watch([nodes, edges], () => {
+watch([nodes, edges, scheduleEnabled, schedulePreset], () => {
   saveState.value = 'dirty'
   clearTimeout(saveTimer)
   saveTimer = setTimeout(save, 900)
@@ -54,7 +71,11 @@ const onDrop = (event: DragEvent) => {
   const item = palette.find(entry => entry.type === type)!
   const node: WorkflowNode = {
     id: crypto.randomUUID(), type, position,
-    data: { label: item.label, model: type === 'prompt' ? models[0] : undefined }
+    data: {
+      label: item.label,
+      complexity: type === 'prompt' ? 'simple_text' : undefined,
+      text: type === 'telegram_send' ? 'Результат: {{ nodes }}' : undefined
+    }
   }
   nodes.value.push(node)
   selectedId.value = node.id
@@ -82,12 +103,49 @@ const run = async () => {
 
 <template>
   <div class="flex h-screen min-w-0 flex-col">
-    <header class="flex items-center justify-between border-b border-default bg-white px-4 py-3">
-      <div class="flex items-center gap-3"><UButton to="/workflows" icon="i-lucide-arrow-left" color="neutral" variant="ghost" /><div><h1 class="font-semibold">{{ workflow?.name }}</h1><p class="text-xs muted">{{ saveState === 'saving' ? 'Сохраняем…' : saveState === 'saved' ? 'Сохранено' : 'Есть изменения' }}</p></div></div>
-      <div class="flex gap-2"><UButton label="Проверить" color="neutral" variant="outline" @click="validateClick" /><UButton label="Опубликовать" color="neutral" @click="publish" /><UButton label="Запустить" icon="i-lucide-play" @click="run" /></div>
+    <header class="flex min-h-[76px] items-center justify-between border-b border-default bg-white/90 px-5 py-3 backdrop-blur">
+      <div class="flex items-center gap-3">
+        <UButton to="/workflows" icon="i-lucide-arrow-left" color="neutral" variant="ghost" />
+        <div>
+          <h1 class="mb-0 font-extrabold">{{ workflow?.name }}</h1>
+          <p class="mb-0 text-xs muted">{{ saveState === 'saving' ? 'Сохраняем изменения…' : saveState === 'saved' ? 'Все изменения сохранены' : 'Есть несохранённые изменения' }}</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="cost-pill"><UIcon name="i-lucide-coins" />{{ Math.round(estimatedCost).toLocaleString('ru') }} ток. / запуск</span>
+        <UButton label="Проверить" icon="i-lucide-circle-check" color="neutral" variant="ghost" @click="validateClick" />
+        <UButton label="Сохранить версию" color="neutral" variant="outline" @click="publish" />
+        <UButton label="Запустить сейчас" icon="i-lucide-play" @click="run" />
+      </div>
     </header>
-    <div class="grid min-h-0 flex-1 grid-cols-[190px_minmax(0,1fr)_280px]">
-      <aside class="border-r border-default bg-white p-3"><p class="mb-3 text-xs font-semibold uppercase muted">Узлы</p><div v-for="item in palette" :key="item.type" draggable="true" class="mb-2 cursor-grab rounded-lg border border-default p-3 text-sm" @dragstart="onDragStart($event, item.type)"><UIcon :name="item.icon" class="mr-2" />{{ item.label }}</div></aside>
+    <div class="grid min-h-0 flex-1 grid-cols-[190px_minmax(0,1fr)_300px]">
+      <aside class="border-r border-default bg-white/90 p-3">
+        <p class="mb-1 text-xs font-extrabold uppercase tracking-wider muted">Действия</p>
+        <p class="mb-4 text-[11px] leading-4 muted">Перетащите нужный блок на поле</p>
+        <div
+          v-for="item in palette"
+          :key="item.type"
+          draggable="true"
+          class="mb-2 flex cursor-grab items-center rounded-xl border border-default bg-white p-3 text-sm font-bold transition hover:border-violet-300 hover:shadow-sm"
+          @dragstart="onDragStart($event, item.type)"
+        >
+          <span class="mr-2 grid size-8 place-items-center rounded-lg bg-[#efedff] text-[#6758ee]"><UIcon :name="item.icon" /></span>{{ item.label }}
+        </div>
+        <div class="mt-6 space-y-3 rounded-xl border border-default p-3">
+          <div class="flex items-center justify-between gap-2">
+            <p class="mb-0 text-sm font-extrabold">Автозапуск</p>
+            <USwitch v-model="scheduleEnabled" />
+          </div>
+          <p class="mb-0 text-xs leading-5 muted">Yakun запустит цепочку сам. Вы платите только за выполненные запуски.</p>
+          <USelect
+            v-if="scheduleEnabled"
+            v-model="schedulePreset"
+            :items="schedulePresets"
+            value-key="value"
+            class="w-full"
+          />
+        </div>
+      </aside>
       <div class="flow-canvas" @dragover.prevent @drop="onDrop">
         <VueFlow v-model:nodes="nodes" v-model:edges="edges" fit-view-on-init @connect="onConnect" @node-click="selectedId = $event.node.id" @pane-click="selectedId = undefined">
           <template #node-web_search="{ data, selected: active }"><WorkflowNodeCard :data="data" :selected="active" /></template>
@@ -95,18 +153,45 @@ const run = async () => {
           <template #node-telegram_send="{ data, selected: active }"><WorkflowNodeCard :data="data" :selected="active" /></template>
         </VueFlow>
       </div>
-      <aside class="overflow-y-auto border-l border-default bg-white p-4">
+      <aside class="overflow-y-auto border-l border-default bg-white/90 p-4">
         <template v-if="selected">
-          <div class="flex justify-between"><h2 class="font-semibold">Настройки узла</h2><UButton icon="i-lucide-trash-2" color="error" variant="ghost" @click="nodes = nodes.filter(n => n.id !== selectedId); edges = edges.filter(e => e.source !== selectedId && e.target !== selectedId)" /></div>
+          <div class="flex justify-between">
+            <div><p class="mb-1 text-xs font-bold uppercase tracking-wider muted">Выбранное действие</p><h2 class="mb-0 font-extrabold">Настройки</h2></div>
+            <UButton icon="i-lucide-trash-2" color="error" variant="ghost" @click="nodes = nodes.filter(n => n.id !== selectedId); edges = edges.filter(e => e.source !== selectedId && e.target !== selectedId)" />
+          </div>
           <div class="mt-4 space-y-4">
-            <UFormField label="Название"><UInput v-model="selected.data.label" class="w-full" /></UFormField>
-            <UFormField v-if="selected.type === 'web_search'" label="Поисковый запрос"><UTextarea v-model="selected.data.query" class="w-full" placeholder="Можно использовать {{ input }}" /></UFormField>
-            <template v-if="selected.type === 'prompt'"><UFormField label="Модель"><USelect v-model="selected.data.model" :items="models" class="w-full" /></UFormField><UFormField label="Промпт"><UTextarea v-model="selected.data.prompt" :rows="7" class="w-full" placeholder="Обработай: {{ input }}" /></UFormField></template>
-            <template v-if="selected.type === 'telegram_send'"><UFormField label="Chat ID (необязательно)"><UInput v-model="selected.data.chat_id" class="w-full" placeholder="Связанный аккаунт" /></UFormField><UFormField label="Текст сообщения"><UTextarea v-model="selected.data.text" :rows="5" class="w-full" placeholder="Результат: {{ nodes.node_id.text }}" /></UFormField></template>
+            <UFormField label="Название блока"><UInput v-model="selected.data.label" class="w-full" /></UFormField>
+            <UFormField v-if="selected.type === 'web_search'" label="Что нужно найти">
+              <UTextarea v-model="selected.data.query" :rows="6" class="w-full" placeholder="Например: найди главные новости рынка за последние сутки" />
+            </UFormField>
+            <template v-if="selected.type === 'prompt'">
+              <UFormField label="Глубина обработки">
+                <USelect v-model="selected.data.complexity" :items="qualityModes" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField label="Что сделать с результатом">
+                <UTextarea v-model="selected.data.prompt" :rows="7" class="w-full" placeholder="Например: выдели 5 главных фактов и сделай краткий вывод" />
+              </UFormField>
+            </template>
+            <template v-if="selected.type === 'telegram_send'">
+              <UFormField label="Получатель"><UInput v-model="selected.data.chat_id" class="w-full" placeholder="Оставьте пустым для своего аккаунта" /></UFormField>
+              <UFormField label="Шаблон сообщения"><UTextarea v-model="selected.data.text" :rows="5" class="w-full" placeholder="Ваш новый отчёт готов: {{ nodes.node_id.text }}" /></UFormField>
+            </template>
           </div>
         </template>
-        <div v-else><h2 class="font-semibold">Инспектор</h2><p class="mt-2 text-sm muted">Выберите узел, чтобы настроить его.</p></div>
-        <div v-if="validationErrors.length" class="mt-6"><h3 class="font-semibold text-warning">Ошибки</h3><ul class="mt-2 list-disc pl-5 text-sm"><li v-for="error in validationErrors" :key="error">{{ error }}</li></ul></div>
+        <div v-else>
+          <p class="mb-1 text-xs font-bold uppercase tracking-wider muted">Параметры</p>
+          <h2 class="font-extrabold">Выберите действие</h2>
+          <p class="mt-2 text-sm leading-6 muted">Нажмите на блок на поле, чтобы настроить, что именно он должен сделать.</p>
+          <div class="mt-6 panel !p-4">
+            <p class="eyebrow">Цена запуска</p>
+            <p class="mb-0 text-3xl font-extrabold">{{ Math.round(estimatedCost).toLocaleString('ru') }}</p>
+            <p class="mb-0 mt-1 text-sm muted">токенов за выполнение всей цепочки</p>
+          </div>
+        </div>
+        <div v-if="validationErrors.length" class="mt-6">
+          <h3 class="font-semibold text-warning">Ошибки</h3>
+          <ul class="mt-2 list-disc pl-5 text-sm"><li v-for="error in validationErrors" :key="error">{{ error }}</li></ul>
+        </div>
       </aside>
     </div>
   </div>

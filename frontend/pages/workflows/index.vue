@@ -4,7 +4,7 @@ const api = useApi()
 const toast = useToast()
 const name = ref('')
 const creating = ref(false)
-const { data: workflows, refresh, pending } = await useAsyncData('workflows', () => api.workflows.list())
+const { data: workflows, pending } = await useAsyncData('workflows', () => api.workflows.list())
 
 const create = async () => {
   if (!name.value.trim()) return
@@ -16,22 +16,44 @@ const create = async () => {
     toast.add({ title: 'Не удалось создать цепочку', description: error?.data?.detail, color: 'error' })
   } finally { creating.value = false }
 }
+
+const formatCost = (value?: number) => `${Math.round(Number(value || 0)).toLocaleString('ru')} ток.`
 </script>
 
 <template>
   <div class="page">
-    <div class="page-head"><div><h1 class="text-3xl font-bold">Цепочки</h1><p class="muted">Черновики и опубликованные автоматизации.</p></div></div>
-    <UCard class="mb-5">
-      <div class="flex gap-2"><UInput v-model="name" placeholder="Название новой цепочки" class="flex-1" @keyup.enter="create" /><UButton label="Создать" icon="i-lucide-plus" :loading="creating" @click="create" /></div>
-    </UCard>
-    <div v-if="pending" class="grid-cards"><USkeleton v-for="i in 3" :key="i" class="h-36" /></div>
-    <div v-else-if="workflows?.length" class="grid-cards">
-      <UCard v-for="workflow in workflows" :key="workflow.id">
-        <div class="flex items-start justify-between"><UIcon name="i-lucide-workflow" class="size-8 text-primary" /><UBadge :label="workflow.status === 'published' ? 'Опубликована' : 'Черновик'" variant="soft" /></div>
-        <h2 class="mt-4 text-lg font-semibold">{{ workflow.name }}</h2><p class="mt-1 text-sm muted">Изменена {{ new Date(workflow.updated_at).toLocaleString('ru') }}</p>
-        <UButton :to="`/workflows/${workflow.id}`" label="Открыть редактор" variant="link" class="mt-3 px-0" />
-      </UCard>
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">Мои автоматизации</p>
+        <h1 class="page-title">Цепочки</h1>
+        <p class="muted">Всё, что Yakun делает за вас — вручную или по расписанию.</p>
+      </div>
     </div>
-    <UCard v-else class="text-center"><p class="muted">Создайте первую цепочку выше.</p></UCard>
+    <div class="panel mb-6 p-4">
+      <div class="flex flex-col gap-3 sm:flex-row">
+        <UInput v-model="name" placeholder="Например: утренний обзор новостей" size="lg" icon="i-lucide-wand-sparkles" class="flex-1" @keyup.enter="create" />
+        <UButton label="Создать цепочку" size="lg" icon="i-lucide-plus" :loading="creating" @click="create" />
+      </div>
+    </div>
+    <div v-if="pending" class="grid-cards"><div v-for="i in 3" :key="i" class="panel h-52 animate-pulse bg-white/50" /></div>
+    <div v-else-if="workflows?.length" class="grid-cards">
+      <NuxtLink v-for="workflow in workflows" :key="workflow.id" :to="`/workflows/${workflow.id}`" class="panel workflow-card">
+        <div class="flex items-start justify-between gap-3">
+          <span class="grid size-11 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]"><UIcon name="i-lucide-workflow" class="size-5" /></span>
+          <span class="cost-pill"><UIcon name="i-lucide-coins" />{{ formatCost(workflow.estimated_run_cost) }} / запуск</span>
+        </div>
+        <h2 class="mb-2 mt-5 text-xl font-extrabold">{{ workflow.name }}</h2>
+        <p class="mb-5 text-sm muted">{{ workflow.schedule_cron ? 'Запускается автоматически' : 'Запуск вручную' }}</p>
+        <div class="workflow-card-footer">
+          <div class="flex items-center gap-2"><span class="status-dot" :class="{ online: workflow.status === 'published' }" /><span class="text-xs font-bold">{{ workflow.status === 'published' ? 'Активна' : 'Черновик' }}</span></div>
+          <span class="text-xs muted">Изменена {{ new Date(workflow.updated_at).toLocaleDateString('ru') }}</span>
+        </div>
+      </NuxtLink>
+    </div>
+    <div v-else class="panel py-16 text-center">
+      <span class="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]"><UIcon name="i-lucide-workflow" class="size-7" /></span>
+      <h2 class="mb-2 text-xl font-extrabold">Пока здесь пусто</h2>
+      <p class="mx-auto mb-0 max-w-md muted">Придумайте название выше — и мы откроем редактор вашей первой автоматизации.</p>
+    </div>
   </div>
 </template>

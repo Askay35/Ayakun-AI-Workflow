@@ -6,6 +6,11 @@ const [{ data: summary }, { data: plans }] = await Promise.all([
   useAsyncData('billing', () => api.billing.summary()),
   useAsyncData('billing-plans', () => api.billing.plans())
 ])
+const orderedPlans = computed(() => {
+  const rank = { free: 0, standard: 1, pro: 2 } as Record<string, number>
+  return [...(plans.value || [])].sort((a, b) => (rank[a.code] ?? 9) - (rank[b.code] ?? 9))
+})
+const planName = (code?: string, fallback?: string) => ({ free: 'Старт', standard: 'Стандарт', pro: 'Про' } as Record<string, string>)[code || ''] || fallback || 'Старт'
 const checkout = async (planId: number) => {
   try {
     const { confirmation_url } = await api.billing.checkout(planId)
@@ -18,14 +23,52 @@ const checkout = async (planId: number) => {
 
 <template>
   <div class="page">
-    <div class="page-head"><div><h1 class="text-3xl font-bold">Биллинг</h1><p class="muted">Тариф, внутренние токены и операции.</p></div></div>
-    <div class="grid-cards">
-      <UCard><p class="muted">Текущий тариф</p><p class="mt-2 text-2xl font-bold">{{ summary?.plan?.name || 'Free' }}</p></UCard>
-      <UCard><p class="muted">Баланс</p><p class="mt-2 text-2xl font-bold">{{ summary?.balance.toLocaleString() }} токенов</p></UCard>
-      <UCard><p class="muted">Использовано за месяц</p><p class="mt-2 text-2xl font-bold">{{ summary?.usage_this_month.toLocaleString() }}</p></UCard>
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">Баланс и подписка</p>
+        <h1 class="page-title">Управление тарифом</h1>
+        <p class="muted">Пополняйте запас запусков, когда это действительно нужно.</p>
+      </div>
     </div>
-    <h2 class="mb-3 mt-8 text-xl font-semibold">Тарифы</h2>
-    <div class="grid-cards"><UCard v-for="plan in plans" :key="plan.id"><div class="flex justify-between"><h3 class="text-lg font-semibold">{{ plan.name }}</h3><span>{{ Number(plan.price).toLocaleString() }} ₽</span></div><p class="my-3 muted">{{ Number(plan.limits.included_tokens || 0).toLocaleString() }} токенов</p><UButton label="Выбрать и оплатить" block :disabled="plan.id === summary?.plan?.id || plan.code === 'free'" @click="checkout(plan.id)" /></UCard></div>
-    <UCard class="mt-8"><template #header><h2 class="font-semibold">Операции</h2></template><div class="divide-y divide-default"><div v-for="entry in summary?.ledger" :key="entry.id" class="flex justify-between py-3"><div><p>{{ entry.description }}</p><p class="text-xs muted">{{ new Date(entry.created_at).toLocaleString('ru') }}</p></div><strong :class="entry.amount > 0 ? 'text-success' : ''">{{ entry.amount > 0 ? '+' : '' }}{{ entry.amount.toLocaleString() }}</strong></div></div></UCard>
+    <div class="grid-cards">
+      <div class="panel metric-card" style="--card-accent:#bdb6ff"><p class="mb-0 text-sm font-bold muted">Ваш тариф</p><p class="metric-value">{{ planName(summary?.plan?.code, summary?.plan?.name) }}</p><p class="mb-0 mt-1 text-xs muted">все функции доступны</p></div>
+      <div class="panel metric-card" style="--card-accent:#c9f169"><p class="mb-0 text-sm font-bold muted">На балансе</p><p class="metric-value">{{ summary?.balance.toLocaleString('ru') }}</p><p class="mb-0 mt-1 text-xs muted">токенов для запусков</p></div>
+      <div class="panel metric-card" style="--card-accent:#ffb681"><p class="mb-0 text-sm font-bold muted">Потрачено за месяц</p><p class="metric-value">{{ summary?.usage_this_month.toLocaleString('ru') }}</p><p class="mb-0 mt-1 text-xs muted">токенов</p></div>
+    </div>
+    <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold">Выберите запас токенов</h2><p class="mb-0 muted">Количество цепочек и расписаний не зависит от тарифа.</p></div>
+    <div class="grid-cards">
+      <div v-for="plan in orderedPlans" :key="plan.id" class="panel flex flex-col p-6" :class="{ 'border-violet-500': plan.code === 'standard' }">
+        <div class="flex justify-between gap-3">
+          <h3 class="text-xl font-extrabold">{{ planName(plan.code, plan.name) }}</h3>
+          <span class="font-extrabold">{{ Number(plan.price).toLocaleString('ru') }} ₽</span>
+        </div>
+        <p class="my-5 text-3xl font-extrabold">{{ Number(plan.limits.included_tokens || 0).toLocaleString('ru') }} <span class="text-sm font-medium muted">токенов</span></p>
+        <ul class="mb-6 space-y-2 text-sm">
+          <li class="flex gap-2"><UIcon name="i-lucide-check" class="text-[#6758ee]" />Любое число цепочек</li>
+          <li class="flex gap-2"><UIcon name="i-lucide-check" class="text-[#6758ee]" />Запуски по расписанию</li>
+        </ul>
+        <UButton
+          :label="plan.id === summary?.plan?.id ? 'Текущий тариф' : plan.code === 'free' ? 'Бесплатный тариф' : 'Перейти на тариф'"
+          block
+          size="lg"
+          class="mt-auto"
+          :disabled="plan.id === summary?.plan?.id || plan.code === 'free'"
+          @click="checkout(plan.id)"
+        />
+      </div>
+    </div>
+    <div class="panel mt-8 p-6">
+      <h2 class="mb-1 text-xl font-extrabold">История баланса</h2>
+      <p class="mb-4 text-sm muted">Пополнения и списания за выполненные цепочки.</p>
+      <div class="mt-3 divide-y divide-default">
+        <div v-for="entry in summary?.ledger" :key="entry.id" class="flex justify-between py-3">
+          <div>
+            <p>{{ entry.description }}</p>
+            <p class="text-xs muted">{{ new Date(entry.created_at).toLocaleString('ru') }}</p>
+          </div>
+          <strong :class="entry.amount > 0 ? 'text-[#4b3dcc]' : ''">{{ entry.amount > 0 ? '+' : '' }}{{ entry.amount.toLocaleString('ru') }}</strong>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

@@ -3,6 +3,7 @@ const api = useApi()
 const auth = useAuth()
 const toast = useToast()
 const mode = ref<'login' | 'register'>('login')
+const telegramStep = ref<'button' | 'code'>('button')
 const form = reactive({ name: '', email: '', password: '', telegramCode: '' })
 const loading = ref(false)
 
@@ -18,7 +19,11 @@ const finish = async (action: () => Promise<any>) => {
 
 const emailAuth = () => finish(() => api.auth.email(form.email, form.password, mode.value, form.name))
 const telegramAuth = () => finish(() => api.auth.telegram(form.telegramCode))
-const toggleMode = () => { mode.value = mode.value === 'login' ? 'register' : 'login' }
+const toggleMode = (value?: 'login' | 'register') => {
+  mode.value = value || (mode.value === 'login' ? 'register' : 'login')
+  telegramStep.value = 'button'
+  form.telegramCode = ''
+}
 const googleAuth = async () => {
   const bytes = crypto.getRandomValues(new Uint8Array(64))
   const verifier = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -33,34 +38,115 @@ const googleAuth = async () => {
 </script>
 
 <template>
-  <main class="page grid min-h-[75vh] place-items-center">
-    <UCard class="w-full max-w-md">
-      <template #header>
-        <h1 class="text-2xl font-bold">{{ mode === 'login' ? 'Вход в Yakun' : 'Создать аккаунт' }}</h1>
-        <p class="mt-1 muted">Выберите удобный способ.</p>
-      </template>
-      <div class="space-y-3">
-        <UButton label="Продолжить с Google" icon="i-simple-icons-google" color="neutral" variant="outline" block @click="googleAuth" />
-        <USeparator label="или" />
-        <UFormField v-if="mode === 'register'" label="Имя"><UInput v-model="form.name" autocomplete="name" class="w-full" /></UFormField>
-        <UFormField label="Email"><UInput v-model="form.email" type="email" placeholder="you@example.com" class="w-full" /></UFormField>
-        <UFormField label="Пароль"><UInput v-model="form.password" type="password" class="w-full" /></UFormField>
-        <UButton :label="mode === 'login' ? 'Войти по email' : 'Зарегистрироваться'" block :loading="loading" @click="emailAuth" />
-        <USeparator label="Telegram" />
-        <div class="flex gap-2">
-          <UInput v-model="form.telegramCode" placeholder="Одноразовый код" class="flex-1" />
-          <UButton label="Войти" color="neutral" @click="telegramAuth" />
+  <main class="shell auth-page">
+    <section class="auth-visual reveal">
+      <p class="eyebrow">Один аккаунт — все автоматизации</p>
+      <h1>Войдите и продолжайте с того же места</h1>
+      <p class="max-w-xl text-lg leading-8 muted">
+        Ваши цепочки, расписания и результаты надёжно сохраняются в личном кабинете.
+      </p>
+      <div class="auth-points">
+        <div v-for="item in ['Результаты приходят прямо в Telegram', 'Стоимость известна до запуска', 'Расписание доступно на любом тарифе']" :key="item" class="auth-point">
+          <span class="auth-point-icon"><UIcon name="i-lucide-check" /></span>
+          {{ item }}
         </div>
       </div>
-      <template #footer>
-        <UButton
-          :label="mode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'"
-          variant="link"
-          color="neutral"
-          block
-          @click="toggleMode"
-        />
+    </section>
+
+    <section class="auth-card reveal" style="animation-delay: 100ms">
+      <div class="auth-tabs">
+        <button class="auth-tab" :class="{ active: mode === 'login' }" @click="toggleMode('login')">Вход</button>
+        <button class="auth-tab" :class="{ active: mode === 'register' }" @click="toggleMode('register')">Регистрация</button>
+      </div>
+
+      <h1 class="auth-title">{{ mode === 'login' ? 'Добро пожаловать' : 'Создайте аккаунт' }}</h1>
+      <p class="auth-subtitle">
+        {{ mode === 'login' ? 'Выберите удобный способ входа.' : 'Начните бесплатно — платёжные данные не нужны.' }}
+      </p>
+
+      <template v-if="telegramStep === 'button'">
+        <div class="auth-providers">
+          <button class="auth-provider" type="button" @click="googleAuth">
+            <UIcon name="i-simple-icons-google" class="size-5" />
+            Google
+          </button>
+          <a
+            href="https://t.me/aiyakun_bot?start=logincode"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="auth-provider telegram"
+            @click="telegramStep = 'code'"
+          >
+            <UIcon name="i-simple-icons-telegram" class="size-5" />
+            Telegram
+            <UIcon name="i-lucide-external-link" class="size-3.5 opacity-60" />
+          </a>
+        </div>
+
+        <div class="auth-divider">или через email</div>
+        <div class="space-y-4">
+          <UFormField v-if="mode === 'register'" label="Ваше имя">
+            <UInput v-model="form.name" icon="i-lucide-user" autocomplete="name" placeholder="Как к вам обращаться" size="xl" class="w-full" />
+          </UFormField>
+          <UFormField label="Email">
+            <UInput v-model="form.email" icon="i-lucide-mail" type="email" autocomplete="email" placeholder="name@example.com" size="xl" class="w-full" />
+          </UFormField>
+          <UFormField label="Пароль">
+            <UInput
+              v-model="form.password"
+              icon="i-lucide-lock"
+              type="password"
+              :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
+              placeholder="Не менее 8 символов"
+              size="xl"
+              class="w-full"
+              @keyup.enter="emailAuth"
+            />
+          </UFormField>
+          <button class="site-button large w-full" type="button" :disabled="loading" @click="emailAuth">
+            {{ loading ? 'Подождите…' : mode === 'login' ? 'Войти в кабинет' : 'Создать аккаунт' }}
+            <UIcon v-if="!loading" name="i-lucide-arrow-right" />
+          </button>
+        </div>
       </template>
-    </UCard>
+
+      <template v-else>
+        <div class="telegram-code-box">
+          <div class="telegram-code-head">
+            <div>
+              <p class="font-extrabold text-[#167dac]">Код отправлен в Telegram</p>
+              <p class="muted">Откройте бота, нажмите «Старт» и скопируйте полученный код сюда.</p>
+            </div>
+            <UIcon name="i-simple-icons-telegram" class="mt-1 size-7 shrink-0 text-[#229ed9]" />
+          </div>
+          <UInput
+            v-model="form.telegramCode"
+            icon="i-lucide-key-round"
+            placeholder="Код из Telegram"
+            autocomplete="one-time-code"
+            size="xl"
+            class="w-full tracking-[0.18em] uppercase"
+            @keyup.enter="telegramAuth"
+          />
+          <button class="site-button telegram large mt-3 w-full" type="button" :disabled="loading || !form.telegramCode.trim()" @click="telegramAuth">
+            {{ loading ? 'Проверяем код…' : 'Войти по коду' }}
+          </button>
+          <div class="mt-4 flex items-center justify-between">
+            <button class="text-button" type="button" @click="telegramStep = 'button'">Другой способ входа</button>
+            <a href="https://t.me/aiyakun_bot?start=logincode" target="_blank" rel="noopener noreferrer" class="text-button">
+              Получить новый код
+            </a>
+          </div>
+        </div>
+        <p class="mb-0 mt-4 text-center text-xs leading-5 muted">
+          Код одноразовый и действует ограниченное время.
+        </p>
+      </template>
+
+      <p v-if="telegramStep === 'button'" class="mb-0 mt-6 text-center text-xs leading-5 muted">
+        Продолжая, вы соглашаетесь с
+        <NuxtLink to="/terms" class="legal-link">условиями использования сервиса</NuxtLink>.
+      </p>
+    </section>
   </main>
 </template>

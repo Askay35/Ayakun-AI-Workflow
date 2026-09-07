@@ -24,14 +24,15 @@ const connectGoogle = async () => {
 
 <template>
   <div class="page max-w-3xl">
-    <div class="page-head"><div><h1 class="text-3xl font-bold">Настройки</h1><p class="muted">Профиль и внешние подключения.</p></div></div>
-    <div class="mb-5 flex gap-2"><UButton label="Профиль" :variant="tab === 'profile' ? 'solid' : 'ghost'" @click="showProfile" /><UButton label="Интеграции" :variant="tab === 'integrations' ? 'solid' : 'ghost'" @click="showIntegrations" /></div>
-    <UCard v-if="tab === 'profile'">
-      <div class="space-y-4"><UFormField label="Имя"><UInput v-model="name" class="w-full" /></UFormField><UFormField label="Email"><UInput :model-value="auth.user.value?.email" disabled class="w-full" /></UFormField><UButton label="Сохранить" @click="saveProfile" /></div>
-    </UCard>
+    <div class="page-head"><div><p class="eyebrow">Аккаунт</p><h1 class="page-title">Настройки</h1><p class="muted">Личные данные и сервисы для доставки результатов.</p></div></div>
+    <div class="mb-6 inline-flex rounded-xl bg-white p-1 shadow-sm"><UButton label="Профиль" :variant="tab === 'profile' ? 'soft' : 'ghost'" @click="showProfile" /><UButton label="Интеграции" :variant="tab === 'integrations' ? 'soft' : 'ghost'" @click="showIntegrations" /></div>
+    <div v-if="tab === 'profile'" class="panel p-6">
+      <div class="mb-6 flex items-center gap-4"><span class="grid size-14 place-items-center rounded-2xl bg-[#efedff] text-xl font-extrabold text-[#6758ee]">{{ (name || auth.user.value?.email || 'A').slice(0, 1).toUpperCase() }}</span><div><h2 class="mb-1 text-xl font-extrabold">Личные данные</h2><p class="mb-0 text-sm muted">Используются только внутри вашего кабинета.</p></div></div>
+      <div class="space-y-4"><UFormField label="Имя"><UInput v-model="name" size="lg" class="w-full" /></UFormField><UFormField label="Email"><UInput :model-value="auth.user.value?.email" size="lg" disabled class="w-full" /></UFormField><UButton label="Сохранить изменения" size="lg" @click="saveProfile" /></div>
+    </div>
     <div v-else class="space-y-3">
-      <UCard><div class="flex items-center justify-between"><div class="flex items-center gap-3"><UIcon name="i-simple-icons-telegram" class="size-7 text-primary" /><div><h2 class="font-semibold">Telegram</h2><p class="text-sm muted">Доставка результатов цепочек</p></div></div><UBadge v-if="linked('telegram')" label="Подключён" color="success" variant="soft" /><UButton v-else to="/auth" label="Подключить кодом" variant="outline" /></div></UCard>
-      <UCard><div class="flex items-center justify-between"><div class="flex items-center gap-3"><UIcon name="i-simple-icons-google" class="size-7" /><div><h2 class="font-semibold">Google</h2><p class="text-sm muted">Дополнительный способ входа</p></div></div><UBadge v-if="linked('google')" label="Подключён" color="success" variant="soft" /><UButton v-else label="Подключить" variant="outline" @click="connectGoogle" /></div></UCard>
+      <div class="panel p-5"><div class="flex items-center justify-between gap-4"><div class="flex items-center gap-4"><span class="grid size-12 place-items-center rounded-2xl bg-[#e8f5ff] text-[#229ed9]"><UIcon name="i-simple-icons-telegram" class="size-6" /></span><div><h2 class="mb-1 font-extrabold">Telegram</h2><p class="mb-0 text-sm muted">Получайте готовые отчёты сразу после запуска.</p></div></div><UBadge v-if="linked('telegram')" label="Подключён" color="success" variant="soft" /><UButton v-else to="/auth" label="Подключить" variant="outline" /></div></div>
+      <div class="panel p-5"><div class="flex items-center justify-between gap-4"><div class="flex items-center gap-4"><span class="grid size-12 place-items-center rounded-2xl bg-[#f3f3f3]"><UIcon name="i-simple-icons-google" class="size-6" /></span><div><h2 class="mb-1 font-extrabold">Google</h2><p class="mb-0 text-sm muted">Быстрый и безопасный способ входа.</p></div></div><UBadge v-if="linked('google')" label="Подключён" color="success" variant="soft" /><UButton v-else label="Подключить" variant="outline" @click="connectGoogle" /></div></div>
     </div>
   </div>
 </template>

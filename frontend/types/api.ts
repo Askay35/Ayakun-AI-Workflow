@@ -35,6 +35,7 @@ export interface WorkflowNode {
     prompt?: string
     text?: string
     model?: string
+    complexity?: 'simple_text' | 'complex_text'
     chat_id?: string
     status?: RunStatus
     output?: string
@@ -54,6 +55,10 @@ export interface Workflow {
   status: 'draft' | 'published' | 'archived'
   updated_at: string
   version?: number
+  schedule_cron?: string | null
+  schedule_timezone?: string
+  next_run_at?: string | null
+  estimated_run_cost?: number
   draft_graph: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }
 }
 
