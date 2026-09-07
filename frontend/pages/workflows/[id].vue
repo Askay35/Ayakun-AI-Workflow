@@ -98,7 +98,7 @@ const publish = async () => {
       toast.add({ title: 'Цепочка опубликована', color: 'success' })
     } catch (error: any) {
       console.error(error)
-      toast.add({ title: error.message, color: 'error' })
+      toast.add({ title: 'Ошибка публикации цепочки: ' + error.message, color: 'error' })
     }
   }
 }

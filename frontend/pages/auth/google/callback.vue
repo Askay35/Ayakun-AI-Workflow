@@ -27,7 +27,7 @@ onMounted(async () => {
     <div>
       <UIcon :name="error ? 'i-lucide-circle-alert' : 'i-lucide-loader-circle'" class="size-10" :class="{ 'animate-spin': !error }" />
       <h1 class="mt-3 text-xl font-semibold">{{ error || 'Завершаем вход…' }}</h1>
-      <UButton v-if="error" to="/auth" label="Вернуться" class="mt-4" />
+      <UButton v-if="error" to="/login" label="Вернуться" class="mt-4" />
     </div>
   </main>
 </template>

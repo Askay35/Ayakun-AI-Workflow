@@ -121,7 +121,7 @@ useSeoMeta({
       </div>
 
       <div class="legal-actions">
-        <NuxtLink to="/auth" class="site-button">Вернуться ко входу</NuxtLink>
+        <NuxtLink to="/login" class="site-button">Вернуться ко входу</NuxtLink>
         <NuxtLink to="/" class="site-button secondary">На главную</NuxtLink>
       </div>
     </div>

@@ -140,6 +140,7 @@ services:
       target: dependencies
     image: yakun-frontend:${IMAGE_TAG:-dev}
     environment:
+      NUXT_API_BASE: ${NUXT_API_BASE:-http://backend:8000/api/v1}
       NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-http://localhost:8000/api/v1}
       HOST: 0.0.0.0
       PORT: 3000

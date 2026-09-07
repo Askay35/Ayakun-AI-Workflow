@@ -10,7 +10,7 @@
             Yakun выполнит её по кнопке или расписанию — без кода, серверов и ручного контроля.
           </p>
           <div class="hero-actions">
-            <UButton to="/auth" size="xl" label="Собрать первую цепочку" trailing-icon="i-lucide-arrow-right" />
+            <UButton to="/login" size="xl" label="Собрать первую цепочку" trailing-icon="i-lucide-arrow-right" />
             <UButton to="/#how" size="xl" label="Посмотреть, как работает" class="text-white!" color="neutral" variant="outline" />
           </div>
           <div class="trust-row">
@@ -90,7 +90,7 @@
       <div class="shell">
         <div class="cta-band">
           <h2>Освободите время от повторяющихся задач</h2>
-          <UButton to="/auth" size="xl" color="neutral" label="Начать бесплатно" trailing-icon="i-lucide-arrow-up-right" />
+          <UButton to="/login" size="xl" color="neutral" label="Начать бесплатно" trailing-icon="i-lucide-arrow-up-right" />
         </div>
       </div>
     </section>

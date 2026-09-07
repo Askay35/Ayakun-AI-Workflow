@@ -4,9 +4,15 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
   css: ['~/assets/css/main.css', '@vue-flow/core/dist/style.css', '@vue-flow/core/dist/theme-default.css'],
   runtimeConfig: {
+    // Server-only (NUXT_API_BASE) — docker internal hostname
+    apiBase: '',
     public: {
+      // Browser (NUXT_PUBLIC_API_BASE)
       apiBase: 'http://localhost:8000/api/v1'
     }
+  },
+  routeRules: {
+    '/auth': { redirect: '/login' }
   },
   app: {
     head: {

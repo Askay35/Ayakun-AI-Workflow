@@ -9,21 +9,27 @@ export const useAuth = () => {
     api.accessToken.value = tokens.access_token
     api.refreshToken.value = tokens.refresh_token
     user.value = tokens.user
-    console.log('user', user.value)
     await nextTick()
+  }
+
+  const clearSession = () => {
+    api.accessToken.value = null
+    api.refreshToken.value = null
+    user.value = null
   }
 
   const load = async () => {
     if (!api.accessToken.value && !api.refreshToken.value) return null
     pending.value = true
     try {
-      console.log('user 2', user.value)
-
       user.value = await api.auth.me()
-      console.log('user 3', user.value)
       return user.value
-    } catch {
-      user.value = null
+    } catch (error: any) {
+      const status = error?.statusCode || error?.status
+      // Only drop the session on confirmed auth failure, not SSR/network blips
+      if (status === 401 || status === 403) {
+        clearSession()
+      }
       return null
     } finally {
       pending.value = false
@@ -32,12 +38,10 @@ export const useAuth = () => {
 
   const logout = async () => {
     try { await api.auth.logout() } finally {
-      api.accessToken.value = null
-      api.refreshToken.value = null
-      user.value = null
-      await navigateTo('/auth')
+      clearSession()
+      await navigateTo('/login')
     }
   }
 
-  return { user, pending, accept, load, logout, isAuthenticated: computed(() => Boolean(user.value)) }
+  return { user, pending, accept, load, logout, clearSession, isAuthenticated: computed(() => Boolean(user.value)) }
 }

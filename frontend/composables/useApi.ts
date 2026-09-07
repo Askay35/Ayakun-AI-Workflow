@@ -6,7 +6,11 @@ let refreshRequest: Promise<string | null> | null = null
 
 export const useApi = () => {
   const config = useRuntimeConfig()
-  const cookieOpts = { path: '/', sameSite: 'lax' as const, maxAge: 60 * 60 * 24 * 30 }
+  const apiBase = computed(() => {
+    if (import.meta.server && config.apiBase) return String(config.apiBase)
+    return String(config.public.apiBase)
+  })
+  const cookieOpts = { path: '/', sameSite: 'lax' as const, maxAge: 60 * 60 * 24 * 30, watch: true as const }
   const accessToken = useCookie<string | null>('yakun_access', cookieOpts)
   const refreshToken = useCookie<string | null>('yakun_refresh', cookieOpts)
 
@@ -18,7 +22,7 @@ export const useApi = () => {
   const refresh = async () => {
     if (!refreshToken.value) return null
     refreshRequest ??= $fetch<AuthTokens | ApiEnvelope<AuthTokens>>('/auth/refresh', {
-      baseURL: config.public.apiBase,
+      baseURL: apiBase.value,
       method: 'POST',
       body: { refresh_token: refreshToken.value }
     }).then((response) => {
@@ -26,9 +30,12 @@ export const useApi = () => {
       accessToken.value = tokens.access_token
       refreshToken.value = tokens.refresh_token
       return tokens.access_token
-    }).catch(() => {
-      accessToken.value = null
-      refreshToken.value = null
+    }).catch((error: any) => {
+      const status = error?.statusCode || error?.status
+      if (status === 401 || status === 403) {
+        accessToken.value = null
+        refreshToken.value = null
+      }
       return null
     }).finally(() => { refreshRequest = null })
     return refreshRequest
@@ -38,7 +45,7 @@ export const useApi = () => {
     try {
       return unwrap(await $fetch<T | ApiEnvelope<T>>(path, {
         ...options,
-        baseURL: config.public.apiBase,
+        baseURL: apiBase.value,
         headers: { ...options.headers, ...(accessToken.value ? { Authorization: `Bearer ${accessToken.value}` } : {}) }
       }))
     } catch (error: any) {
@@ -47,7 +54,7 @@ export const useApi = () => {
         if (token) {
           return unwrap(await $fetch<T | ApiEnvelope<T>>(path, {
             ...options,
-            baseURL: config.public.apiBase,
+            baseURL: apiBase.value,
             headers: { ...options.headers, Authorization: `Bearer ${token}` }
           }))
         }

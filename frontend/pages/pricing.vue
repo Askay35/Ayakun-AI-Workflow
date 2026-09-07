@@ -66,7 +66,7 @@ const featuresFor = (plan: Plan) => {
               </li>
             </ul>
             <UButton
-              to="/auth"
+              to="/login"
               :label="meta(plan).action"
               block
               size="lg"

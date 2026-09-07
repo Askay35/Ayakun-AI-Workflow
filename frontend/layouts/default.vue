@@ -14,12 +14,12 @@ const auth = useAuth()
           <NuxtLink to="/#how" class="nav-link nav-hide">Как работает</NuxtLink>
           <NuxtLink to="/pricing" class="nav-link nav-hide">Тарифы</NuxtLink>
           <NuxtLink
-            :to="auth.user.value ? '/dashboard' : '/auth'"
+            :to="auth.user.value ? '/dashboard' : '/login'"
             class="site-button secondary login-link"
           >
             {{ auth.user.value ? 'Кабинет' : 'Войти' }}
           </NuxtLink>
-          <NuxtLink :to="auth.user.value ? '/workflows' : '/auth'" class="site-button">
+          <NuxtLink :to="auth.user.value ? '/workflows' : '/login'" class="site-button">
             {{ auth.user.value ? 'Мои цепочки' : 'Начать бесплатно' }}
             <UIcon name="i-lucide-arrow-up-right" />
           </NuxtLink>
