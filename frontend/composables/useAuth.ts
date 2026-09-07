@@ -5,17 +5,22 @@ export const useAuth = () => {
   const user = useState<User | null>('auth-user', () => null)
   const pending = useState('auth-pending', () => false)
 
-  const accept = (tokens: AuthTokens) => {
+  const accept = async (tokens: AuthTokens) => {
     api.accessToken.value = tokens.access_token
     api.refreshToken.value = tokens.refresh_token
     user.value = tokens.user
+    console.log('user', user.value)
+    await nextTick()
   }
 
   const load = async () => {
     if (!api.accessToken.value && !api.refreshToken.value) return null
     pending.value = true
     try {
+      console.log('user 2', user.value)
+
       user.value = await api.auth.me()
+      console.log('user 3', user.value)
       return user.value
     } catch {
       user.value = null

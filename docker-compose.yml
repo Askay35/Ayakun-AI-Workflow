@@ -31,9 +31,14 @@ x-backend: &backend
     DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
     DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
     DEEPSEEK_COMPLEX_MODEL: ${DEEPSEEK_COMPLEX_MODEL:-deepseek-v4-pro}
+    DEEPSEEK_SEARCH_MODEL: ${DEEPSEEK_SEARCH_MODEL:-deepseek-v4-flash}
+    SEARCH_LLM_PROVIDER: ${SEARCH_LLM_PROVIDER:-deepseek}
+    SEARCH_LLM_MODEL: ${SEARCH_LLM_MODEL:-deepseek-v4-flash}
     SIMPLE_LLM_PROVIDER: ${SIMPLE_LLM_PROVIDER:-deepseek}
+    SIMPLE_LLM_MODEL: ${SIMPLE_LLM_MODEL:-deepseek-v4-flash}
     COMPLEX_LLM_PROVIDER: ${COMPLEX_LLM_PROVIDER:-deepseek}
-    ALLOWED_LLM_MODELS: ${ALLOWED_LLM_MODELS:-deepseek-v4-flash,deepseek-v4-pro}
+    COMPLEX_LLM_MODEL: ${COMPLEX_LLM_MODEL:-deepseek-v4-pro}
+    ALLOWED_LLM_MODELS: ${ALLOWED_LLM_MODELS:-deepseek-v4-flash,deepseek-v4-pro,qwen-turbo,qwen-plus}
     YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-}
     YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-}
     YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-http://localhost:3000/billing}

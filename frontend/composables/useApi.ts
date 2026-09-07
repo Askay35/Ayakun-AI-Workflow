@@ -6,8 +6,9 @@ let refreshRequest: Promise<string | null> | null = null
 
 export const useApi = () => {
   const config = useRuntimeConfig()
-  const accessToken = useCookie<string | null>('yakun_access', { sameSite: 'lax' })
-  const refreshToken = useCookie<string | null>('yakun_refresh', { sameSite: 'lax' })
+  const cookieOpts = { path: '/', sameSite: 'lax' as const, maxAge: 60 * 60 * 24 * 30 }
+  const accessToken = useCookie<string | null>('yakun_access', cookieOpts)
+  const refreshToken = useCookie<string | null>('yakun_refresh', cookieOpts)
 
   const unwrap = <T>(value: T | ApiEnvelope<T>): T =>
     typeof value === 'object' && value !== null && 'success' in value
@@ -41,7 +42,7 @@ export const useApi = () => {
         headers: { ...options.headers, ...(accessToken.value ? { Authorization: `Bearer ${accessToken.value}` } : {}) }
       }))
     } catch (error: any) {
-      if (error?.status === 401 && refreshToken.value) {
+      if ((error?.statusCode === 401 || error?.status === 401) && refreshToken.value) {
         const token = await refresh()
         if (token) {
           return unwrap(await $fetch<T | ApiEnvelope<T>>(path, {
@@ -66,13 +67,10 @@ export const useApi = () => {
         : node.type === 'prompt'
           ? {
               prompt: node.data.prompt || '',
-              provider: 'deepseek',
-              complexity: node.data.complexity || 'simple_text',
-              model: node.data.complexity === 'complex_text' ? 'deepseek-v4-pro' : 'deepseek-v4-flash'
+              complexity: node.data.complexity || 'simple_text'
             }
           : {
-              chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined,
-              text: node.data.text || '{{ nodes }}'
+              chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined
             })
     })),
     edges: graph.edges.map(({ source, target }) => ({ source, target }))
@@ -94,8 +92,7 @@ export const useApi = () => {
             prompt: node.prompt,
             model: node.model,
             complexity: node.complexity || (String(node.model || '').includes('pro') ? 'complex_text' : 'simple_text'),
-            chat_id: node.chat_id ? String(node.chat_id) : undefined,
-            text: node.text
+            chat_id: node.chat_id ? String(node.chat_id) : undefined
           }
         })),
         edges: graph.edges.map((edge: any) => ({
@@ -141,7 +138,7 @@ export const useApi = () => {
         body: { graph: serializeGraph(graph), ...extras }
       }).then(normalizeWorkflow),
       validate: (id: string) => request<ValidationResult>(`/workflows/${id}/validate`, { method: 'POST' }),
-      publish: (id: string) => request<Workflow>(`/workflows/${id}/publish`, { method: 'POST' }).then(normalizeWorkflow),
+      publish: (id: string) => request<Workflow>(`/workflows/${id}/publish`, { method: 'POST' }).then(normalizeWorkflow).catch((error: any) => { throw new Error(error.message) }),
       run: (id: string) => request<WorkflowRun>(`/workflows/${id}/runs`, { method: 'POST', body: { input: {} } })
     },
     runs: {

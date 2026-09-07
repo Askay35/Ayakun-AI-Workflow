@@ -10,7 +10,7 @@ const loading = ref(false)
 const finish = async (action: () => Promise<any>) => {
   loading.value = true
   try {
-    auth.accept(await action())
+    await auth.accept(await action())
     await navigateTo('/dashboard')
   } catch (error: any) {
     toast.add({ title: 'Не удалось войти', description: error?.data?.detail || 'Проверьте данные и повторите.', color: 'error' })

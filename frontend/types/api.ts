@@ -33,7 +33,6 @@ export interface WorkflowNode {
     label: string
     query?: string
     prompt?: string
-    text?: string
     model?: string
     complexity?: 'simple_text' | 'complex_text'
     chat_id?: string

@@ -11,7 +11,7 @@
           </p>
           <div class="hero-actions">
             <UButton to="/auth" size="xl" label="Собрать первую цепочку" trailing-icon="i-lucide-arrow-right" />
-            <UButton to="/#how" size="xl" label="Посмотреть, как работает" color="neutral" variant="outline" />
+            <UButton to="/#how" size="xl" label="Посмотреть, как работает" class="text-white!" color="neutral" variant="outline" />
           </div>
           <div class="trust-row">
             <span><UIcon name="i-lucide-check-circle-2" /> Бесплатный старт</span>

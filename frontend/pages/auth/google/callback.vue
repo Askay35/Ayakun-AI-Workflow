@@ -12,7 +12,7 @@ onMounted(async () => {
     const verifier = sessionStorage.getItem('yakun_google_verifier') || ''
     const redirectUri = sessionStorage.getItem('yakun_google_redirect_uri') || `${location.origin}/auth/google/callback`
     if (!verifier) throw new Error('PKCE verifier не найден')
-    auth.accept(await api.auth.googleCallback(code, state, verifier, redirectUri))
+    await auth.accept(await api.auth.googleCallback(code, state, verifier, redirectUri))
     sessionStorage.removeItem('yakun_google_verifier')
     sessionStorage.removeItem('yakun_google_redirect_uri')
     await navigateTo('/dashboard')

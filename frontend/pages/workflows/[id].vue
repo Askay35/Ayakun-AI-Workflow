@@ -2,16 +2,20 @@
 import { MarkerType, VueFlow, useVueFlow, type Connection } from '@vue-flow/core'
 import type { NodeKind, WorkflowEdge, WorkflowNode } from '~/types/api'
 
-definePageMeta({ layout: 'app', middleware: 'auth' })
+definePageMeta({ layout: 'app', middleware: 'auth', ssr: false })
 const route = useRoute()
 const api = useApi()
 const toast = useToast()
 const id = String(route.params.id)
-const { data: workflow } = await useAsyncData(`workflow-${id}`, () => api.workflows.get(id))
-if (!workflow.value) throw createError({ statusCode: 404, statusMessage: 'Цепочка не найдена' })
+const flowId = `workflow-${id}`
 
-const nodes = ref<WorkflowNode[]>(structuredClone(workflow.value.draft_graph?.nodes || []))
-const edges = ref<WorkflowEdge[]>(structuredClone(workflow.value.draft_graph?.edges || []))
+const { data: workflow, error: workflowError } = await useAsyncData(`workflow-${id}`, () => api.workflows.get(id))
+if (workflowError.value || !workflow.value) {
+  throw createError({ statusCode: 404, statusMessage: 'Цепочка не найдена', fatal: false })
+}
+
+const nodes = ref<WorkflowNode[]>(structuredClone(toRaw(workflow.value.draft_graph?.nodes || [])))
+const edges = ref<WorkflowEdge[]>(structuredClone(toRaw(workflow.value.draft_graph?.edges || [])))
 const scheduleEnabled = ref(Boolean(workflow.value.schedule_cron))
 const schedulePreset = ref(workflow.value.schedule_cron || '0 9 * * *')
 const selectedId = ref<string>()
@@ -19,8 +23,8 @@ const selected = computed(() => nodes.value.find(node => node.id === selectedId.
 const validationErrors = ref<string[]>([])
 const saveState = ref<'saved' | 'saving' | 'dirty'>('saved')
 const estimatedCost = ref(Number(workflow.value.estimated_run_cost || 0))
-const { addEdges, screenToFlowCoordinate } = useVueFlow()
-let saveTimer: ReturnType<typeof setTimeout>
+const { addEdges, screenToFlowCoordinate } = useVueFlow({ id: flowId })
+let saveTimer: ReturnType<typeof setTimeout> | undefined
 
 const palette: Array<{ type: NodeKind; label: string; icon: string }> = [
   { type: 'web_search', label: 'Поиск в сети', icon: 'i-lucide-search' },
@@ -73,8 +77,7 @@ const onDrop = (event: DragEvent) => {
     id: crypto.randomUUID(), type, position,
     data: {
       label: item.label,
-      complexity: type === 'prompt' ? 'simple_text' : undefined,
-      text: type === 'telegram_send' ? 'Результат: {{ nodes }}' : undefined
+      complexity: type === 'prompt' ? 'simple_text' : undefined
     }
   }
   nodes.value.push(node)
@@ -90,8 +93,13 @@ const validateClick = async () => { await validate() }
 const publish = async () => {
   await save()
   if (await validate()) {
-    workflow.value = await api.workflows.publish(id)
-    toast.add({ title: 'Цепочка опубликована', color: 'success' })
+    try {
+      workflow.value = await api.workflows.publish(id)
+      toast.add({ title: 'Цепочка опубликована', color: 'success' })
+    } catch (error: any) {
+      console.error(error)
+      toast.add({ title: error.message, color: 'error' })
+    }
   }
 }
 const run = async () => {
@@ -102,8 +110,8 @@ const run = async () => {
 </script>
 
 <template>
-  <div class="flex h-screen min-w-0 flex-col">
-    <header class="flex min-h-[76px] items-center justify-between border-b border-default bg-white/90 px-5 py-3 backdrop-blur">
+  <div class="flex h-[100dvh] min-w-0 flex-col overflow-hidden bg-[#f8f7f4]">
+    <header class="flex min-h-[76px] shrink-0 items-center justify-between border-b border-default bg-white/90 px-5 py-3 backdrop-blur">
       <div class="flex items-center gap-3">
         <UButton to="/workflows" icon="i-lucide-arrow-left" color="neutral" variant="ghost" />
         <div>
@@ -119,7 +127,7 @@ const run = async () => {
       </div>
     </header>
     <div class="grid min-h-0 flex-1 grid-cols-[190px_minmax(0,1fr)_300px]">
-      <aside class="border-r border-default bg-white/90 p-3">
+      <aside class="overflow-y-auto border-r border-default bg-white/90 p-3">
         <p class="mb-1 text-xs font-extrabold uppercase tracking-wider muted">Действия</p>
         <p class="mb-4 text-[11px] leading-4 muted">Перетащите нужный блок на поле</p>
         <div
@@ -146,12 +154,25 @@ const run = async () => {
           />
         </div>
       </aside>
-      <div class="flow-canvas" @dragover.prevent @drop="onDrop">
-        <VueFlow v-model:nodes="nodes" v-model:edges="edges" fit-view-on-init @connect="onConnect" @node-click="selectedId = $event.node.id" @pane-click="selectedId = undefined">
-          <template #node-web_search="{ data, selected: active }"><WorkflowNodeCard :data="data" :selected="active" /></template>
-          <template #node-prompt="{ data, selected: active }"><WorkflowNodeCard :data="data" :selected="active" /></template>
-          <template #node-telegram_send="{ data, selected: active }"><WorkflowNodeCard :data="data" :selected="active" /></template>
-        </VueFlow>
+      <div class="flow-canvas min-h-0" @dragover.prevent @drop="onDrop">
+        <ClientOnly>
+          <VueFlow
+            :id="flowId"
+            v-model:nodes="nodes"
+            v-model:edges="edges"
+            fit-view-on-init
+            @connect="onConnect"
+            @node-click="selectedId = $event.node.id"
+            @pane-click="selectedId = undefined"
+          >
+            <template #node-web_search="{ data, selected: active }"><WorkflowNodeCard :data="data" :selected="active" /></template>
+            <template #node-prompt="{ data, selected: active }"><WorkflowNodeCard :data="data" :selected="active" /></template>
+            <template #node-telegram_send="{ data, selected: active }"><WorkflowNodeCard :data="data" :selected="active" /></template>
+          </VueFlow>
+          <template #fallback>
+            <div class="grid h-full place-items-center text-sm muted">Загрузка редактора…</div>
+          </template>
+        </ClientOnly>
       </div>
       <aside class="overflow-y-auto border-l border-default bg-white/90 p-4">
         <template v-if="selected">
@@ -171,10 +192,11 @@ const run = async () => {
               <UFormField label="Что сделать с результатом">
                 <UTextarea v-model="selected.data.prompt" :rows="7" class="w-full" placeholder="Например: выдели 5 главных фактов и сделай краткий вывод" />
               </UFormField>
+              <p class="text-sm leading-5 muted">К инструкции автоматически добавится текст предыдущего блока.</p>
             </template>
             <template v-if="selected.type === 'telegram_send'">
               <UFormField label="Получатель"><UInput v-model="selected.data.chat_id" class="w-full" placeholder="Оставьте пустым для своего аккаунта" /></UFormField>
-              <UFormField label="Шаблон сообщения"><UTextarea v-model="selected.data.text" :rows="5" class="w-full" placeholder="Ваш новый отчёт готов: {{ nodes.node_id.text }}" /></UFormField>
+              <p class="text-sm leading-5 muted">Отправит в Telegram текст, который сформировал предыдущий блок (поиск или обработка). Шаблон не нужен — просто соедините блоки стрелкой.</p>
             </template>
           </div>
         </template>
@@ -190,7 +212,7 @@ const run = async () => {
         </div>
         <div v-if="validationErrors.length" class="mt-6">
           <h3 class="font-semibold text-warning">Ошибки</h3>
-          <ul class="mt-2 list-disc pl-5 text-sm"><li v-for="error in validationErrors" :key="error">{{ error }}</li></ul>
+          <ul class="mt-2 list-disc pl-5 text-sm"><li v-for="err in validationErrors" :key="err">{{ err }}</li></ul>
         </div>
       </aside>
     </div>
