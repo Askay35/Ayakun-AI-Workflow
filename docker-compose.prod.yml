@@ -1,0 +1,79 @@
+services:
+  backend:
+    environment:
+      ENVIRONMENT: production
+    command: ["uv", "run", "--no-sync", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
+    ports: !reset []
+    volumes: !reset []
+    restart: unless-stopped
+
+  worker:
+    environment:
+      ENVIRONMENT: production
+    volumes: !reset []
+    restart: unless-stopped
+
+  beat:
+    environment:
+      ENVIRONMENT: production
+    volumes: !reset
+      - celery-beat-data:/var/lib/celery
+    restart: unless-stopped
+
+  migrate:
+    environment:
+      ENVIRONMENT: production
+    volumes: !reset []
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runtime
+      args:
+        NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-/api/v1}
+    environment:
+      NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-/api/v1}
+      HOST: 0.0.0.0
+      PORT: 3000
+    command: ["node", ".output/server/index.mjs"]
+    ports: !reset []
+    volumes: !reset []
+    restart: unless-stopped
+
+  postgres:
+    ports: !reset []
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+
+  rabbitmq:
+    ports: !reset []
+    restart: unless-stopped
+
+  proxy:
+    image: nginx:1.27-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${TLS_CERT_PATH:-./deploy/certs/fullchain.pem}:/etc/nginx/tls/fullchain.pem:ro
+      - ${TLS_KEY_PATH:-./deploy/certs/privkey.pem}:/etc/nginx/tls/privkey.pem:ro
+    networks:
+      - app
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+

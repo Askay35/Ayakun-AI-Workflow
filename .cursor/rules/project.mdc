@@ -1,0 +1,114 @@
+# Project Rules
+
+## Stack
+
+- Python 3.13+
+- FastAPI
+- Pydantic v2
+- SQLAlchemy 2.x async
+- PostgreSQL
+- Alembic
+- Redis
+- RabbitMQ
+- Celery
+- pytest
+- uv
+- Docker Compose
+
+## Architecture
+
+- Prefer simple, explicit solutions over unnecessary abstractions.
+- Make the smallest change that fully solves the task.
+- Reuse existing project conventions.
+- Do not refactor unrelated code.
+- Do not introduce abstractions, dependencies, patterns, or layers without a concrete need.
+
+### Application flow
+
+    Router -> Service -> Repository -> Database
+
+- Repository is optional.
+- If no need in repository use:
+
+    Router -> Service -> SQLAlchemy
+
+- Services use constructor injection.
+- Use FastAPI `Depends()` to compose dependencies.
+
+## API
+
+- Use versioned routers with `/api/v1`.
+- Register prefixes through `include_router()`.
+- Use Pydantic schemas for API input/output.
+- Use appropriate HTTP status codes.
+- Keep API contracts explicit.
+
+## Database
+
+- Use SQLAlchemy 2.x typed declarative models.
+- Use `AsyncSession`.
+- Use async SQLAlchemy APIs.
+- Database sessions are provided through FastAPI dependencies.
+- Keep transaction boundaries at the service/application level.
+- Use Alembic for all schema changes.
+
+## Async
+
+- Use async-compatible I/O in async request paths.
+- Use `httpx.AsyncClient` for async HTTP.
+- Use `redis.asyncio` for Redis.
+- Reuse long-lived clients.
+- Use FastAPI lifespan for long-lived resource lifecycle. (examples in code - redis, httpx already made like that)
+
+## Authentication
+
+- JWT authentication is handled through FastAPI dependencies.
+- Always explicitly specify allowed JWT algorithms.
+- Use timezone-aware UTC datetimes.
+- Keep authentication and authorization separate.
+- Permissions use explicit names such as:
+
+    users.read
+    users.create
+    users.update
+    users.delete
+
+## Messaging
+
+- RabbitMQ is the messaging infrastructure.
+- Celery is used for background jobs.
+- Redis is used primarily for caching, temporary state, rate limiting, and similar infrastructure needs.
+- External webhooks should return quickly; long-running work should be processed asynchronously.
+
+## Configuration
+
+- Use `pydantic-settings`.
+- Configuration and secrets come from environment variables.
+- Never hardcode credentials, secrets, tokens, or private keys.
+
+## Quality
+
+- Use modern Python type hints.
+- Prefer composition over inheritance.
+- Avoid unnecessary `Any`.
+- Keep functions and classes focused.
+- Do not duplicate logic.
+- Do not add comments that only restate the code.
+- Never invent project structure or APIs; inspect the codebase when necessary.
+
+## Priority
+
+When several valid solutions exist, prefer:
+
+1. Correctness
+2. Security
+3. Simplicity
+4. Maintainability
+5. Performance
+
+Prefer the smallest correct implementation.
+minimal diff.
+don't add tests if i didn't ask.
+---
+alwaysApply: true
+---

@@ -1,0 +1,44 @@
+:root {
+  --yakun-ink: #102a2b;
+}
+
+html, body, #__nuxt {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--yakun-ink);
+  background: #f7faf9;
+}
+
+.page {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.muted {
+  color: #64748b;
+}
+
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.flow-canvas {
+  height: calc(100vh - 190px);
+  min-height: 560px;
+  background: radial-gradient(#d6e2df 1px, transparent 1px);
+  background-size: 20px 20px;
+}
