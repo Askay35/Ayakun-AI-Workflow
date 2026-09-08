@@ -7,6 +7,7 @@ export interface ApiEnvelope<T> {
   success: boolean
   data: T
   message?: string
+  error?: { code?: string; message?: string }
 }
 
 export interface User {

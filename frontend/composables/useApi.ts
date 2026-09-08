@@ -4,6 +4,18 @@ import type {
 
 let refreshRequest: Promise<string | null> | null = null
 
+export const apiErrorMessage = (error: unknown, fallback = 'Что-то пошло не так') => {
+  const data = (error as any)?.data
+  const message = data?.error?.message ?? data?.message ?? data?.detail
+  if (typeof message === 'string' && message.trim()) return message
+  if (Array.isArray(message)) {
+    return message.map((item) => (typeof item === 'string' ? item : item?.msg || JSON.stringify(item))).join(', ')
+  }
+  const status = (error as any)?.statusCode || (error as any)?.status
+  if (status) return `Ошибка ${status}`
+  return (error as any)?.message || fallback
+}
+
 export const useApi = () => {
   const config = useRuntimeConfig()
   const apiBase = computed(() => {
@@ -145,7 +157,7 @@ export const useApi = () => {
         body: { graph: serializeGraph(graph), ...extras }
       }).then(normalizeWorkflow),
       validate: (id: string) => request<ValidationResult>(`/workflows/${id}/validate`, { method: 'POST' }),
-      publish: (id: string) => request<Workflow>(`/workflows/${id}/publish`, { method: 'POST' }).then(normalizeWorkflow).catch((error: any) => { throw new Error(error.message) }),
+      publish: (id: string) => request<Workflow>(`/workflows/${id}/publish`, { method: 'POST' }).then(normalizeWorkflow),
       run: (id: string) => request<WorkflowRun>(`/workflows/${id}/runs`, { method: 'POST', body: { input: {} } })
     },
     runs: {

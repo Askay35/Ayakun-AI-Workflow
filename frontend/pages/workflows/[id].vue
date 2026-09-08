@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { MarkerType, VueFlow, useVueFlow, type Connection } from '@vue-flow/core'
+import { apiErrorMessage } from '~/composables/useApi'
 import type { NodeKind, WorkflowEdge, WorkflowNode } from '~/types/api'
 
 definePageMeta({ layout: 'app', middleware: 'auth', ssr: false })
@@ -92,14 +93,16 @@ const validate = async () => {
 const validateClick = async () => { await validate() }
 const publish = async () => {
   await save()
-  if (await validate()) {
-    try {
-      workflow.value = await api.workflows.publish(id)
-      toast.add({ title: 'Цепочка опубликована', color: 'success' })
-    } catch (error: any) {
-      console.error(error)
-      toast.add({ title: 'Ошибка публикации цепочки: ' + error.message, color: 'error' })
-    }
+  if (!(await validate())) return
+  try {
+    workflow.value = await api.workflows.publish(id)
+    toast.add({ title: 'Цепочка опубликована', color: 'success' })
+  } catch (error) {
+    toast.add({
+      title: 'Не удалось опубликовать',
+      description: apiErrorMessage(error),
+      color: 'error'
+    })
   }
 }
 const run = async () => {

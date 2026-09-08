@@ -32,7 +32,7 @@ x-backend: &backend
     DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
     DEEPSEEK_COMPLEX_MODEL: ${DEEPSEEK_COMPLEX_MODEL:-deepseek-v4-pro}
     DEEPSEEK_SEARCH_MODEL: ${DEEPSEEK_SEARCH_MODEL:-deepseek-v4-flash}
-    SEARCH_LLM_PROVIDER: ${SEARCH_LLM_PROVIDER:-deepseek}
+    WEB_SEARCH_LLM_PROVIDER: ${WEB_SEARCH_LLM_PROVIDER:-serper}
     SEARCH_LLM_MODEL: ${SEARCH_LLM_MODEL:-deepseek-v4-flash}
     SIMPLE_LLM_PROVIDER: ${SIMPLE_LLM_PROVIDER:-deepseek}
     SIMPLE_LLM_MODEL: ${SIMPLE_LLM_MODEL:-deepseek-v4-flash}
@@ -55,6 +55,8 @@ x-backend: &backend
     CELERY_APP: ${CELERY_APP:-execution.celery_app:celery_app}
     CELERY_BROKER_URL: ${CELERY_BROKER_URL}
     CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+    SERPER_KEY: ${SERPER_KEY:-}
+    LANGSEARCH_KEY: ${LANGSEARCH_KEY:-}
   networks:
     - app
 
