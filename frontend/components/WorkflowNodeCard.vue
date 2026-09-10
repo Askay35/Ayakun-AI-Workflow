@@ -1,29 +1,49 @@
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
-import type { WorkflowNode } from '~/types/api'
-const props = defineProps<{ data: WorkflowNode['data']; selected?: boolean }>()
-const icon = computed(() => {
-  if (props.data.status === 'running') return 'i-lucide-loader-circle'
-  const label = props.data.label.toLowerCase()
-  if (label.includes('поиск')) return 'i-lucide-search'
-  if (label.includes('telegram')) return 'i-lucide-send'
-  return 'i-lucide-sparkles'
+import type { NodeKind, WorkflowNode } from '~/types/api'
+import { NODE_META } from '~/utils/workflow-graph'
+
+const props = defineProps<{
+  kind: NodeKind
+  data: WorkflowNode['data']
+  selected?: boolean
+}>()
+
+const meta = computed(() => NODE_META[props.kind])
+const preview = computed(() => {
+  if (props.kind === 'web_search') return props.data.query?.trim() || 'Запрос ещё не задан'
+  if (props.kind === 'prompt') return props.data.prompt?.trim() || 'Инструкция ещё не задана'
+  return props.data.chat_id ? `Чат ${props.data.chat_id}` : 'В ваш Telegram'
 })
 </script>
 
 <template>
-  <div class="node-card" :class="{ active: selected }">
-    <Handle type="target" :position="Position.Left" />
-    <div class="flex items-center gap-2">
-      <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-[#efedff] text-[#6758ee]">
-        <UIcon :name="icon" :class="{ 'animate-spin': data.status === 'running' }" />
-      </span>
-      <div class="min-w-0">
-        <strong class="block truncate">{{ data.label }}</strong>
-        <span class="text-[10px] font-bold uppercase tracking-wider muted">{{ data.status || 'Готов к настройке' }}</span>
+  <div class="n8n-node" :class="[`is-${kind}`, { active: selected }]">
+    <Handle
+      id="in"
+      type="target"
+      :position="Position.Left"
+      class="n8n-handle n8n-handle-in"
+    />
+    <div class="n8n-node-bar" :style="{ background: meta.accent }" />
+    <div class="n8n-node-body">
+      <div class="n8n-node-head">
+        <span class="n8n-node-icon" :style="{ background: `${meta.accent}22`, color: meta.accent }">
+          <UIcon :name="meta.icon" class="size-4" />
+        </span>
+        <div class="min-w-0">
+          <strong class="n8n-node-title">{{ data.label || meta.label }}</strong>
+          <span class="n8n-node-type">{{ meta.caption }}</span>
+        </div>
       </div>
+      <p class="n8n-node-preview">{{ preview }}</p>
     </div>
-    <p v-if="data.output" class="mt-2 max-w-52 truncate text-xs muted">{{ data.output }}</p>
-    <Handle type="source" :position="Position.Right" />
+    <Handle
+      v-if="kind !== 'telegram_send'"
+      id="out"
+      type="source"
+      :position="Position.Right"
+      :class="['n8n-handle', 'n8n-handle-out']"
+    />
   </div>
 </template>

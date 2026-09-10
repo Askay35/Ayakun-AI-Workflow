@@ -30,22 +30,19 @@ export interface WorkflowNode {
   id: Id
   type: NodeKind
   position: { x: number; y: number }
+  parents: Id[]
+  children: Id[]
   data: {
     label: string
     query?: string
     prompt?: string
+    instructions?: string
     model?: string
     complexity?: 'simple_text' | 'complex_text'
     chat_id?: string
     status?: RunStatus
     output?: string
   }
-}
-
-export interface WorkflowEdge {
-  id: Id
-  source: Id
-  target: Id
 }
 
 export interface Workflow {
@@ -59,7 +56,7 @@ export interface Workflow {
   schedule_timezone?: string
   next_run_at?: string | null
   estimated_run_cost?: number
-  draft_graph: { nodes: WorkflowNode[]; edges: WorkflowEdge[] }
+  draft_graph: { nodes: WorkflowNode[] }
 }
 
 export interface ValidationResult {

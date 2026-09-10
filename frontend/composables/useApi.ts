@@ -1,5 +1,5 @@
 import type {
-  ApiEnvelope, AuthTokens, BillingSummary, Plan, User, ValidationResult, Workflow, WorkflowRun
+  ApiEnvelope, AuthTokens, BillingSummary, Plan, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
 } from '~/types/api'
 
 let refreshRequest: Promise<string | null> | null = null
@@ -79,6 +79,8 @@ export const useApi = () => {
     nodes: graph.nodes.map((node) => ({
       id: node.id,
       type: node.type,
+      parents: node.parents || [],
+      children: node.children || [],
       position: node.position,
       label: node.data.label,
       ...(node.type === 'web_search'
@@ -86,39 +88,52 @@ export const useApi = () => {
         : node.type === 'prompt'
           ? {
               prompt: node.data.prompt || '',
+              instructions: node.data.instructions || '',
               complexity: node.data.complexity || 'simple_text'
             }
           : {
               chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined
             })
-    })),
-    edges: graph.edges.map(({ source, target }) => ({ source, target }))
+    }))
   })
 
   const normalizeWorkflow = (workflow: any): Workflow => {
-    const graph = workflow.draft_graph || workflow.graph || { nodes: [], edges: [] }
+    const graph = workflow.draft_graph || workflow.graph || { nodes: [] }
+    const nodes = (graph.nodes || []).map((node: any, index: number) => {
+      if (node.data) {
+        return {
+          ...node,
+          parents: [...(node.parents || node.data.parents || [])],
+          children: [...(node.children || node.data.children || [])]
+        }
+      }
+      return {
+        id: node.id,
+        type: node.type,
+        parents: [...(node.parents || [])],
+        children: [...(node.children || [])],
+        position: node.position || { x: 80 + index * 280, y: 160 },
+        data: {
+          label: node.label || node.type,
+          query: node.query,
+          prompt: node.prompt,
+          instructions: node.instructions,
+          model: node.model,
+          complexity: node.complexity || (String(node.model || '').includes('pro') ? 'complex_text' : 'simple_text'),
+          chat_id: node.chat_id ? String(node.chat_id) : undefined
+        }
+      }
+    })
+    for (const edge of graph.edges || []) {
+      const source = nodes.find((node: WorkflowNode) => node.id === edge.source)
+      const target = nodes.find((node: WorkflowNode) => node.id === edge.target)
+      if (source && edge.target && !source.children.includes(edge.target)) source.children.push(edge.target)
+      if (target && edge.source && !target.parents.includes(edge.source)) target.parents.push(edge.source)
+    }
     return {
       ...workflow,
       estimated_run_cost: Number(workflow.estimated_run_cost || 0),
-      draft_graph: {
-        nodes: graph.nodes.map((node: any, index: number) => node.data ? node : ({
-          id: node.id,
-          type: node.type,
-          position: node.position || { x: 80 + index * 260, y: 120 },
-          data: {
-            label: node.label || node.type,
-            query: node.query,
-            prompt: node.prompt,
-            model: node.model,
-            complexity: node.complexity || (String(node.model || '').includes('pro') ? 'complex_text' : 'simple_text'),
-            chat_id: node.chat_id ? String(node.chat_id) : undefined
-          }
-        })),
-        edges: graph.edges.map((edge: any) => ({
-          ...edge,
-          id: edge.id || `${edge.source}-${edge.target}`
-        }))
-      }
+      draft_graph: { nodes }
     }
   }
 

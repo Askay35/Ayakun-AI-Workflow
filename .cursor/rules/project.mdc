@@ -16,7 +16,7 @@
 - Docker Compose
 
 ## Architecture
-
+- Следуй принципам SOLID, DRY
 - Prefer simple, explicit solutions over unnecessary abstractions.
 - Make the smallest change that fully solves the task.
 - Reuse existing project conventions.
