@@ -29,13 +29,12 @@ x-backend: &backend
     QWEN_COMPLEX_MODEL: ${QWEN_COMPLEX_MODEL:-qwen-plus}
     DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
     DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
-    DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
+    DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
     DEEPSEEK_COMPLEX_MODEL: ${DEEPSEEK_COMPLEX_MODEL:-deepseek-v4-pro}
-    DEEPSEEK_SEARCH_MODEL: ${DEEPSEEK_SEARCH_MODEL:-deepseek-v4-flash}
+    DEEPSEEK_SIMPLE_MODEL: ${DEEPSEEK_SIMPLE_MODEL:-deepseek-flash}
     WEB_SEARCH_LLM_PROVIDER: ${WEB_SEARCH_LLM_PROVIDER:-serper}
-    SEARCH_LLM_MODEL: ${SEARCH_LLM_MODEL:-deepseek-v4-flash}
     SIMPLE_LLM_PROVIDER: ${SIMPLE_LLM_PROVIDER:-deepseek}
-    SIMPLE_LLM_MODEL: ${SIMPLE_LLM_MODEL:-deepseek-v4-flash}
+    SIMPLE_LLM_MODEL: ${SIMPLE_LLM_MODEL:-deepseek-flash}
     COMPLEX_LLM_PROVIDER: ${COMPLEX_LLM_PROVIDER:-deepseek}
     COMPLEX_LLM_MODEL: ${COMPLEX_LLM_MODEL:-deepseek-v4-pro}
     ALLOWED_LLM_MODELS: ${ALLOWED_LLM_MODELS:-deepseek-v4-flash,deepseek-v4-pro,qwen-turbo,qwen-plus}
