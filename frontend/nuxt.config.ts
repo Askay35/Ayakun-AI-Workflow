@@ -16,7 +16,6 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      title: 'Yakun',
       meta: [{ name: 'description', content: 'Визуальные AI-цепочки: поиск, обработка и доставка без кода.' }],
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

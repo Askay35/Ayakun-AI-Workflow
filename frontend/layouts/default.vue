@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const auth = useAuth()
+useAppTitle()
 </script>
 
 <template>

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { statusColor, statusLabel } from '~/utils/run-status'
+
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const api = useApi()
 const auth = useAuth()
@@ -29,7 +31,7 @@ const [{ data: workflows }, { data: runs }, { data: billing }] = await Promise.a
       <div v-if="runs?.length" class="divide-y divide-default">
         <NuxtLink v-for="run in runs.slice(0, 5)" :key="run.id" :to="`/runs/${run.id}`" class="flex items-center justify-between py-4">
           <div class="flex items-center gap-3"><span class="grid size-10 place-items-center rounded-xl bg-[#efedff] text-[#6758ee]"><UIcon name="i-lucide-play" /></span><div><p class="mb-0 font-bold">{{ run.workflow_name || 'Запуск цепочки' }}</p><p class="mb-0 mt-1 text-xs muted">{{ new Date(run.created_at).toLocaleString('ru') }}</p></div></div>
-          <UBadge :label="run.status" variant="soft" />
+          <UBadge :color="statusColor(run.status)" variant="soft">{{ statusLabel(run.status) }}</UBadge>
         </NuxtLink>
       </div>
       <div v-else class="py-12 text-center"><span class="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]"><UIcon name="i-lucide-zap" class="size-6" /></span><h3 class="mb-2 font-bold">Здесь появятся результаты</h3><p class="mb-5 muted">Соберите и запустите первую цепочку.</p><UButton to="/workflows" label="Перейти к цепочкам" /></div>

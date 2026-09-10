@@ -166,7 +166,11 @@ export const useApi = () => {
       save: (
         id: string,
         graph: Workflow['draft_graph'],
-        extras: { schedule_cron?: string | null; schedule_timezone?: string } = {}
+        extras: {
+          schedule?: { time: string; weekdays: number[] } | null
+          schedule_cron?: string | null
+          schedule_timezone?: string
+        } = {}
       ) => request<Workflow>(`/workflows/${id}`, {
         method: 'PATCH',
         body: { graph: serializeGraph(graph), ...extras }

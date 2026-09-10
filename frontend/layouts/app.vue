@@ -1,13 +1,9 @@
 <script setup lang="ts">
+import { APP_NAV_ITEMS } from '~/utils/app-nav'
+
 const route = useRoute()
 const auth = useAuth()
-const items = [
-  { label: 'Обзор', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
-  { label: 'Цепочки', icon: 'i-lucide-workflow', to: '/workflows' },
-  { label: 'Запуски', icon: 'i-lucide-activity', to: '/runs' },
-  { label: 'Биллинг', icon: 'i-lucide-wallet', to: '/billing' },
-  { label: 'Профиль', icon: 'i-lucide-user', to: '/profile' }
-]
+useAppTitle()
 </script>
 
 <template>
@@ -16,9 +12,11 @@ const items = [
       <NuxtLink to="/dashboard" class="brand app-logo">Yakun</NuxtLink>
       <nav class="app-nav">
         <UButton
-          v-for="item in items"
+          v-for="item in APP_NAV_ITEMS"
           :key="item.to"
-          v-bind="item"
+          :to="item.to"
+          :icon="item.icon"
+          :label="item.label"
           block
           class="justify-start text-white"
           :variant="route.path.startsWith(item.to) ? 'soft' : 'ghost'"

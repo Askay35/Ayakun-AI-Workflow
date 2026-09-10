@@ -1,6 +1,6 @@
 <script setup lang="ts">
 useSeoMeta({
-  title: 'Пользовательское соглашение — Yakun',
+  title: 'Условия',
   description: 'Условия использования сервиса Yakun'
 })
 </script>

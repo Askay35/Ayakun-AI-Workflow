@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { WorkflowRun } from '~/types/api'
+import { statusColor, statusLabel } from '~/utils/run-status'
+
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const route = useRoute()
 const api = useApi()
 const config = useRuntimeConfig()
 const id = String(route.params.id)
 const { data: run, refresh } = await useAsyncData(`run-${id}`, () => api.runs.get(id))
+useAppTitle(computed(() => run.value?.workflow_name || 'Запуск'))
 let stream: AbortController | undefined
 let poll: ReturnType<typeof setInterval> | undefined
 const done = (value?: WorkflowRun | null) => ['succeeded', 'failed', 'cancelled'].includes(value?.status || '')
-const statusLabel = (status?: string) => ({
-  queued: 'В очереди', running: 'Выполняется', succeeded: 'Готово', failed: 'Ошибка', cancelled: 'Отменён', pending: 'Ожидает'
-} as Record<string, string>)[status || ''] || status || '—'
 const formatOutput = (output?: Record<string, any>) => {
   if (!output) return ''
   return output.text || output.answer || JSON.stringify(output, null, 2)
@@ -63,12 +63,12 @@ const cancel = async () => { run.value = await api.runs.cancel(id) }
   <div class="page">
     <div class="page-head">
       <div><UButton to="/runs" label="Назад к истории" icon="i-lucide-arrow-left" color="neutral" variant="ghost" class="mb-3 px-0" /><p class="eyebrow">Результат выполнения</p><h1 class="page-title">{{ run?.workflow_name || 'Запуск цепочки' }}</h1><p class="text-sm muted">ID {{ id }}</p></div>
-      <div class="flex items-center gap-2"><UBadge :label="statusLabel(run?.status)" size="lg" variant="soft" /><UButton v-if="run && !done(run)" label="Остановить" color="error" variant="outline" @click="cancel" /></div>
+      <div class="flex items-center gap-2"><UBadge :color="statusColor(run?.status)" size="lg" variant="soft">{{ statusLabel(run?.status) }}</UBadge><UButton v-if="run && !done(run)" label="Остановить" color="error" variant="outline" @click="cancel" /></div>
     </div>
     <div class="grid gap-5 lg:grid-cols-[1fr_300px]">
       <div class="space-y-3">
         <div v-for="(node, index) in run?.node_runs" :key="node.id" class="panel p-5">
-          <div class="flex justify-between"><div class="flex items-center gap-3"><span class="grid size-10 place-items-center rounded-xl bg-[#efedff] text-sm font-extrabold text-[#6758ee]">{{ Number(index) + 1 }}</span><div><p class="mb-0 text-xs font-bold uppercase tracking-wider muted">Шаг цепочки</p><h2 class="mb-0 font-bold">{{ node.node_id }}</h2></div></div><UBadge :label="statusLabel(node.status)" variant="soft" /></div>
+          <div class="flex justify-between"><div class="flex items-center gap-3"><span class="grid size-10 place-items-center rounded-xl bg-[#efedff] text-sm font-extrabold text-[#6758ee]">{{ Number(index) + 1 }}</span><div><p class="mb-0 text-xs font-bold uppercase tracking-wider muted">Шаг цепочки</p><h2 class="mb-0 font-bold">{{ node.node_id }}</h2></div></div><UBadge :color="statusColor(node.status)" variant="soft">{{ statusLabel(node.status) }}</UBadge></div>
           <pre v-if="node.output" class="mt-4 overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(node.output) }}</pre>
           <p v-if="node.error" class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-error">{{ node.error }}</p>
           <div v-if="node.citations?.length" class="mt-3 border-t border-default pt-3"><p class="text-xs font-semibold uppercase muted">Источники</p><a v-for="citation in node.citations" :key="citation.url" :href="citation.url" target="_blank" class="mt-1 block text-sm text-primary hover:underline">{{ citation.title }}</a></div>

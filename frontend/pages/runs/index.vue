@@ -1,11 +1,9 @@
 <script setup lang="ts">
+import { statusColor, statusLabel } from '~/utils/run-status'
+
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const api = useApi()
 const { data: runs, pending, refresh } = await useAsyncData('runs', () => api.runs.list())
-const statusColor = (status: string) => status === 'succeeded' ? 'success' : status === 'failed' ? 'error' : status === 'running' ? 'info' : 'neutral'
-const statusLabel = (status: string) => ({
-  queued: 'В очереди', running: 'Выполняется', succeeded: 'Готово', failed: 'Ошибка', cancelled: 'Отменён'
-} as Record<string, string>)[status] || status
 </script>
 
 <template>
@@ -19,7 +17,7 @@ const statusLabel = (status: string) => ({
       <div v-else-if="runs?.length" class="divide-y divide-default">
         <NuxtLink v-for="run in runs" :key="run.id" :to="`/runs/${run.id}`" class="grid items-center gap-4 py-4 transition hover:translate-x-1 sm:grid-cols-[1fr_140px_180px_24px]">
           <div class="flex items-center gap-3"><span class="grid size-11 shrink-0 place-items-center rounded-xl bg-[#efedff] text-[#6758ee]"><UIcon name="i-lucide-play" /></span><div><p class="mb-0 font-bold">{{ run.workflow_name || 'Запуск цепочки' }}</p><p class="mb-0 mt-1 text-xs muted">ID {{ run.id.slice(0, 8) }}</p></div></div>
-          <UBadge :label="statusLabel(run.status)" :color="statusColor(run.status) as any" variant="soft" class="w-fit" />
+          <UBadge :color="statusColor(run.status)" variant="soft" class="w-fit">{{ statusLabel(run.status) }}</UBadge>
           <span class="text-sm muted">{{ new Date(run.created_at).toLocaleString('ru') }}</span>
           <UIcon name="i-lucide-chevron-right" class="muted" />
         </NuxtLink>

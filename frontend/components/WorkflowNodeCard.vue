@@ -4,6 +4,7 @@ import type { NodeKind, WorkflowNode } from '~/types/api'
 import { NODE_META } from '~/utils/workflow-graph'
 
 const props = defineProps<{
+  nodeId: string
   kind: NodeKind
   data: WorkflowNode['data']
   selected?: boolean
@@ -20,12 +21,12 @@ const preview = computed(() => {
 <template>
   <div class="n8n-node" :class="[`is-${kind}`, { active: selected }]">
     <Handle
-      id="in"
+      :id="`${nodeId}-in`"
       type="target"
       :position="Position.Left"
       class="n8n-handle n8n-handle-in"
     />
-    <div class="n8n-node-bar" :style="{ background: meta.accent }" />
+    <div class="top-node-bar" :style="{ background: meta.accent }" />
     <div class="n8n-node-body">
       <div class="n8n-node-head">
         <span class="n8n-node-icon" :style="{ background: `${meta.accent}22`, color: meta.accent }">
@@ -39,11 +40,10 @@ const preview = computed(() => {
       <p class="n8n-node-preview">{{ preview }}</p>
     </div>
     <Handle
-      v-if="kind !== 'telegram_send'"
-      id="out"
+      :id="`${nodeId}-out`"
       type="source"
       :position="Position.Right"
-      :class="['n8n-handle', 'n8n-handle-out']"
+      class="n8n-handle n8n-handle-out"
     />
   </div>
 </template>

@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import { MarkerType, VueFlow, useVueFlow, type Connection, type EdgeChange, type NodeChange } from '@vue-flow/core'
+import { ConnectionMode, MarkerType, VueFlow, useVueFlow, type Connection, type Edge, type EdgeChange } from '@vue-flow/core'
 import { apiErrorMessage } from '~/composables/useApi'
 import type { NodeKind, WorkflowNode } from '~/types/api'
 import {
   NODE_META,
+  addLink,
+  applyLinks,
   canConnect,
-  flowEdgesFromNodes,
-  linkNodes,
+  dropNodeLinks,
+  flowEdgesFromLinks,
+  linksFromNodes,
   parseEdgeId,
-  removeNode,
-  unlinkNodes
+  removeLink,
+  resolveNodeId,
+  type GraphLink
 } from '~/utils/workflow-graph'
 
-definePageMeta({ layout: 'app', middleware: 'auth', ssr: false })
+definePageMeta({ layout: 'editor', middleware: 'auth', ssr: false })
 const route = useRoute()
 const api = useApi()
 const toast = useToast()
@@ -29,59 +33,117 @@ const nodes = ref<WorkflowNode[]>(structuredClone(toRaw(workflow.value.draft_gra
   parents: node.parents || [],
   children: node.children || []
 })))
+const links = ref<GraphLink[]>(linksFromNodes(nodes.value))
+const edges = ref<Edge[]>(flowEdgesFromLinks(links.value))
 const scheduleEnabled = ref(Boolean(workflow.value.schedule_cron))
-const schedulePreset = ref(workflow.value.schedule_cron || '0 9 * * *')
+const parseSchedule = (cron?: string | null) => {
+  const [minute = '0', hour = '9', , , rawDays = '*'] = (cron || '').split(/\s+/)
+  const weekdays = rawDays === '*'
+    ? [1, 2, 3, 4, 5, 6, 7]
+    : rawDays.split(',').map(Number).map(day => day === 0 ? 7 : day).filter(day => day >= 1 && day <= 7)
+  return {
+    time: `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`,
+    weekdays: weekdays.length ? weekdays : [1, 2, 3, 4, 5, 6, 7]
+  }
+}
+const initialSchedule = parseSchedule(workflow.value.schedule_cron)
+const scheduleTime = ref(initialSchedule.time)
+const scheduleDays = ref(initialSchedule.weekdays)
+const scheduleTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+const scheduleValid = computed(() => (
+  !scheduleEnabled.value
+  || (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(scheduleTime.value) && scheduleDays.value.length > 0)
+))
 const selectedId = ref<string>()
+const selectedEdgeId = ref<string>()
 const selected = computed(() => nodes.value.find(node => node.id === selectedId.value))
 const validationErrors = ref<string[]>([])
 const saveState = ref<'saved' | 'saving' | 'dirty'>('saved')
 const estimatedCost = ref(Number(workflow.value.estimated_run_cost || 0))
-const { screenToFlowCoordinate, zoomIn, zoomOut, fitView } = useVueFlow({ id: flowId })
+useAppTitle(computed(() => workflow.value?.name || 'Редактор'))
+const {
+  screenToFlowCoordinate,
+  zoomIn,
+  zoomOut,
+  fitView
+} = useVueFlow({ id: flowId })
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 
 const palette = (Object.keys(NODE_META) as NodeKind[]).map(type => ({ type, ...NODE_META[type] }))
-const schedulePresets = [
-  { label: 'Каждый день в 9:00', value: '0 9 * * *' },
-  { label: 'Каждый час', value: '0 * * * *' },
-  { label: 'Пн–Пт в 10:00', value: '0 10 * * 1-5' },
-  { label: 'Раз в неделю (пн 9:00)', value: '0 9 * * 1' }
+const weekdayOptions = [
+  { label: 'Пн', value: 1 },
+  { label: 'Вт', value: 2 },
+  { label: 'Ср', value: 3 },
+  { label: 'Чт', value: 4 },
+  { label: 'Пт', value: 5 },
+  { label: 'Сб', value: 6 },
+  { label: 'Вс', value: 7 }
 ]
 const qualityModes = [
   { label: 'Быстрый', value: 'simple_text' },
   { label: 'Точный', value: 'complex_text' }
 ]
-const edges = computed(() => flowEdgesFromNodes(nodes.value))
 const defaultEdgeOptions = {
   type: 'default',
   markerEnd: MarkerType.ArrowClosed,
   style: { stroke: '#8b82e8', strokeWidth: 2 },
+  interactionWidth: 28,
   animated: false
 }
+const toggleScheduleDay = (day: number) => {
+  scheduleDays.value = scheduleDays.value.includes(day)
+    ? scheduleDays.value.filter(value => value !== day)
+    : [...scheduleDays.value, day].sort((a, b) => a - b)
+}
+
+const graphForSave = () => ({ nodes: applyLinks(nodes.value, links.value) })
 
 const save = async () => {
+  if (!scheduleValid.value) {
+    saveState.value = 'dirty'
+    return false
+  }
   saveState.value = 'saving'
   try {
-    const saved = await api.workflows.save(id, { nodes: nodes.value }, {
-      schedule_cron: scheduleEnabled.value ? schedulePreset.value : null,
-      schedule_timezone: 'UTC'
+    const saved = await api.workflows.save(id, graphForSave(), {
+      schedule: scheduleEnabled.value
+        ? { time: scheduleTime.value, weekdays: scheduleDays.value }
+        : null,
+      schedule_timezone: scheduleTimezone
     })
     workflow.value = saved
     estimatedCost.value = Number(saved.estimated_run_cost || 0)
     saveState.value = 'saved'
+    return true
   } catch {
     saveState.value = 'dirty'
     toast.add({ title: 'Черновик не сохранён', color: 'error' })
+    return false
   }
 }
 const hydrated = ref(false)
-watch([nodes, scheduleEnabled, schedulePreset], () => {
+watch([nodes, links, scheduleEnabled, scheduleTime, scheduleDays], () => {
   if (!hydrated.value) return
   saveState.value = 'dirty'
   clearTimeout(saveTimer)
   saveTimer = setTimeout(save, 900)
 }, { deep: true })
-onMounted(() => { hydrated.value = true })
-onBeforeUnmount(() => clearTimeout(saveTimer))
+onBeforeUnmount(() => {
+  clearTimeout(saveTimer)
+  window.removeEventListener('keydown', onEditorKey)
+})
+const onEditorKey = (event: KeyboardEvent) => {
+  if (event.key !== 'Delete' && event.key !== 'Backspace') return
+  const tag = (event.target as HTMLElement | null)?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+  if (!selectedEdgeId.value) return
+  event.preventDefault()
+  unlinkSelectedEdge()
+}
+onMounted(() => {
+  hydrated.value = true
+  window.addEventListener('keydown', onEditorKey)
+})
 
 const addNode = (type: NodeKind, position: { x: number; y: number }) => {
   const item = NODE_META[type]
@@ -96,40 +158,54 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       complexity: type === 'prompt' ? 'simple_text' : undefined
     }
   }
-  nodes.value.push(node)
+  nodes.value = [...nodes.value, node]
   selectedId.value = node.id
+  selectedEdgeId.value = undefined
 }
+const connectionEnds = (connection: Connection) => ({
+  source: resolveNodeId(nodes.value, connection.source),
+  target: resolveNodeId(nodes.value, connection.target)
+})
 const onConnect = (connection: Connection) => {
-  if (!connection.source || !connection.target) return
-  const source = nodes.value.find(node => node.id === connection.source)
-  const target = nodes.value.find(node => node.id === connection.target)
+  const { source, target } = connectionEnds(connection)
   if (!source || !target) return
-  if (!canConnect(source, target)) {
+  if (!canConnect(nodes.value, links.value, source, target)) {
     toast.add({
-      title: target.type === 'telegram_send' ? 'Telegram принимает только одну входящую связь' : 'Так соединить нельзя',
+      title: nodes.value.find(node => node.id === target)?.type === 'telegram_send'
+        ? 'Telegram принимает только одну входящую связь'
+        : 'Так соединить нельзя',
       color: 'warning'
     })
     return
   }
-  nodes.value = linkNodes(nodes.value, connection.source, connection.target)
+  links.value = addLink(links.value, source, target)
+  edges.value = [...edges.value, {
+    ...defaultEdgeOptions,
+    id: `${source}-->${target}`,
+    source,
+    target,
+    sourceHandle: `${source}-out`,
+    targetHandle: `${target}-in`
+  }]
 }
-const isValidConnection = (connection: Connection) => {
-  const source = nodes.value.find(node => node.id === connection.source)
-  const target = nodes.value.find(node => node.id === connection.target)
-  return Boolean(source && target && canConnect(source, target))
+const unlinkSelectedEdge = () => {
+  const edgeId = selectedEdgeId.value
+  if (!edgeId) return
+  const { source, target } = parseEdgeId(edgeId)
+  if (!source || !target) return
+  const next = removeLink(links.value, source, target)
+  if (next.length === links.value.length) return
+  selectedEdgeId.value = undefined
+  edges.value = edges.value.filter(edge => edge.id !== edgeId)
+  links.value = next
 }
 const onEdgesChange = (changes: EdgeChange[]) => {
   for (const change of changes) {
-    if (change.type !== 'remove') continue
-    const { source, target } = parseEdgeId(change.id)
-    if (source && target) nodes.value = unlinkNodes(nodes.value, source, target)
+    if (change.type !== 'select') continue
+    selectedEdgeId.value = change.selected
+      ? change.id
+      : (selectedEdgeId.value === change.id ? undefined : selectedEdgeId.value)
   }
-}
-const onNodesChange = (changes: NodeChange[]) => {
-  const removed = changes.filter(change => change.type === 'remove').map(change => change.id)
-  if (!removed.length) return
-  for (const nodeId of removed) nodes.value = removeNode(nodes.value, nodeId)
-  if (selectedId.value && removed.includes(selectedId.value)) selectedId.value = undefined
 }
 const onDragStart = (event: DragEvent, type: NodeKind) => {
   event.dataTransfer?.setData('application/yakun-node', type)
@@ -145,11 +221,23 @@ const addFromPalette = (type: NodeKind) => {
   addNode(type, { x: origin.x + nodes.value.length * 24, y: origin.y + nodes.value.length * 16 })
 }
 const deleteSelected = () => {
+  if (selectedEdgeId.value) {
+    unlinkSelectedEdge()
+    return
+  }
   if (!selectedId.value) return
-  nodes.value = removeNode(nodes.value, selectedId.value)
+  const nodeId = selectedId.value
+  links.value = dropNodeLinks(links.value, nodeId)
+  edges.value = edges.value.filter(edge => edge.source !== nodeId && edge.target !== nodeId)
+  nodes.value = nodes.value.filter(node => node.id !== nodeId)
   selectedId.value = undefined
 }
 const validate = async () => {
+  if (!(await save())) {
+    validationErrors.value = ['Укажите время и выберите хотя бы один день автозапуска']
+    toast.add({ title: 'Проверьте автозапуск', color: 'warning' })
+    return false
+  }
   const result = await api.workflows.validate(id)
   validationErrors.value = result.errors
   toast.add({ title: result.valid ? 'Цепочка готова' : 'Есть ошибки', color: result.valid ? 'success' : 'warning' })
@@ -159,7 +247,6 @@ const checkGraph = async () => {
   await validate()
 }
 const publish = async () => {
-  await save()
   if (!(await validate())) return
   try {
     workflow.value = await api.workflows.publish(id)
@@ -173,7 +260,10 @@ const publish = async () => {
   }
 }
 const run = async () => {
-  await save()
+  if (!(await save())) {
+    toast.add({ title: 'Проверьте настройки автозапуска', color: 'warning' })
+    return
+  }
   const result = await api.workflows.run(id)
   await navigateTo(`/runs/${result.id}`)
 }
@@ -225,13 +315,28 @@ const run = async () => {
             <USwitch v-model="scheduleEnabled" />
           </div>
           <p class="mb-0 text-[11px] leading-5 text-white/40">Цепочка стартует сама. Списание только за фактический запуск.</p>
-          <USelect
-            v-if="scheduleEnabled"
-            v-model="schedulePreset"
-            :items="schedulePresets"
-            value-key="value"
-            class="w-full"
-          />
+          <template v-if="scheduleEnabled">
+            <UFormField label="Время">
+              <UInput v-model="scheduleTime" type="time" class="w-full" />
+            </UFormField>
+            <div>
+              <p class="mb-2 text-[11px] font-bold text-white/60">Дни недели</p>
+              <div class="grid grid-cols-4 gap-1.5">
+                <button
+                  v-for="day in weekdayOptions"
+                  :key="day.value"
+                  type="button"
+                  class="schedule-day"
+                  :class="{ 'is-active': scheduleDays.includes(day.value) }"
+                  @click="toggleScheduleDay(day.value)"
+                >
+                  {{ day.label }}
+                </button>
+              </div>
+              <p v-if="!scheduleValid" class="mb-0 mt-2 text-[11px] text-red-300">Укажите время и выберите хотя бы один день</p>
+            </div>
+            <p class="mb-0 text-[10px] text-white/35">Часовой пояс: {{ scheduleTimezone }}</p>
+          </template>
         </div>
       </aside>
       <div class="editor-canvas" @dragover.prevent @drop="onDrop">
@@ -239,30 +344,32 @@ const run = async () => {
           <VueFlow
             :id="flowId"
             v-model:nodes="nodes"
-            :edges="edges"
+            v-model:edges="edges"
             :default-edge-options="defaultEdgeOptions"
-            :is-valid-connection="isValidConnection"
+            :connection-mode="ConnectionMode.Strict"
             :snap-to-grid="true"
             :snap-grid="[16, 16]"
             :min-zoom="0.35"
             :max-zoom="1.8"
+            :edges-focusable="true"
+            :elements-selectable="true"
+            :delete-key-code="null"
             fit-view-on-init
             class="editor-flow"
             @connect="onConnect"
             @edges-change="onEdgesChange"
-            @nodes-change="onNodesChange"
-            @node-click="selectedId = $event.node.id"
-            @pane-click="selectedId = undefined"
-            @edge-click="selectedId = undefined"
+            @node-click="selectedId = $event.node.id; selectedEdgeId = undefined"
+            @pane-click="selectedId = undefined; selectedEdgeId = undefined"
+            @edge-click="selectedEdgeId = $event.edge.id; selectedId = undefined"
           >
-            <template #node-web_search="{ data, selected: active }">
-              <WorkflowNodeCard kind="web_search" :data="data" :selected="active" />
+            <template #node-web_search="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="web_search" :data="data" :selected="active" />
             </template>
-            <template #node-prompt="{ data, selected: active }">
-              <WorkflowNodeCard kind="prompt" :data="data" :selected="active" />
+            <template #node-prompt="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="prompt" :data="data" :selected="active" />
             </template>
-            <template #node-telegram_send="{ data, selected: active }">
-              <WorkflowNodeCard kind="telegram_send" :data="data" :selected="active" />
+            <template #node-telegram_send="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="telegram_send" :data="data" :selected="active" />
             </template>
           </VueFlow>
           <template #fallback>
@@ -283,7 +390,13 @@ const run = async () => {
         </div>
       </div>
       <aside class="editor-pane editor-pane-right">
-        <template v-if="selected">
+        <template v-if="selectedEdgeId">
+          <p class="editor-kicker">Связь</p>
+          <h2 class="mb-2 text-lg font-extrabold text-white">Стрелка</h2>
+          <p class="text-sm leading-6 text-white/45">Delete или кнопка ниже убирает связь. Узлы остаются на холсте.</p>
+          <UButton class="mt-4" label="Удалить связь" icon="i-lucide-unlink" color="error" variant="soft" @click="unlinkSelectedEdge" />
+        </template>
+        <template v-else-if="selected">
           <div class="flex items-start justify-between gap-3">
             <div>
               <p class="editor-kicker">Узел</p>
@@ -311,7 +424,7 @@ const run = async () => {
               <UFormField label="Получатель">
                 <UInput v-model="selected.data.chat_id" class="w-full" placeholder="Пусто — ваш аккаунт" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Только одна входящая связь, исходящих нет. Уходит текст родителя.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Исходящие можно вести дальше, но текст детям не передаётся.</p>
             </template>
           </div>
         </template>
