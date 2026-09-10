@@ -100,3 +100,26 @@ export interface BillingSummary {
   usage_this_month: number
   ledger: Array<{ id: Id; created_at: string; amount: number; description: string }>
 }
+
+export interface PricingRate {
+  id: number
+  provider: string
+  model: string
+  input_cache_hit_credits_per_1k: number
+  input_cache_miss_credits_per_1k: number
+  output_credits_per_1k: number
+  search_credits: number
+  provider_costs: Record<string, number>
+  active: boolean
+}
+
+export interface AdminConfig {
+  pricing: PricingRate[]
+  plans: Plan[]
+  settings: Array<{ key: string; value: string | number | boolean; description: string }>
+  economics: {
+    gross_margin: number
+    provider_cost_usd_per_credit: number
+    customer_price_usd_per_credit: number
+  }
+}

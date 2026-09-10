@@ -24,7 +24,7 @@ const [{ data: workflows }, { data: runs }, { data: billing }] = await Promise.a
     <div class="grid-cards">
       <div class="panel metric-card" style="--card-accent:#c9f169"><p class="mb-0 text-sm font-bold muted">Цепочки</p><p class="metric-value">{{ workflows?.length || 0 }}</p><p class="mb-0 mt-1 text-xs muted">без ограничений</p></div>
       <div class="panel metric-card" style="--card-accent:#ffb681"><p class="mb-0 text-sm font-bold muted">Всего запусков</p><p class="metric-value">{{ runs?.length || 0 }}</p><p class="mb-0 mt-1 text-xs muted">за всё время</p></div>
-      <div class="panel metric-card" style="--card-accent:#bdb6ff"><p class="mb-0 text-sm font-bold muted">Доступно</p><p class="metric-value">{{ billing?.balance?.toLocaleString('ru') || '—' }}</p><p class="mb-0 mt-1 text-xs muted">токенов на балансе</p></div>
+      <div class="panel metric-card" style="--card-accent:#bdb6ff"><p class="mb-0 text-sm font-bold muted">Доступно</p><p class="metric-value">{{ billing?.balance?.toLocaleString('ru') || '—' }}</p><p class="mb-0 mt-1 text-xs muted">credits на балансе</p></div>
     </div>
     <div class="panel mt-6 p-6">
       <div class="mb-3 flex items-center justify-between"><div><h2 class="mb-1 text-xl font-extrabold">Последние запуски</h2><p class="mb-0 text-sm muted">Что выполнялось недавно</p></div><UButton to="/runs" label="Вся история" trailing-icon="i-lucide-arrow-right" color="neutral" variant="ghost" /></div>

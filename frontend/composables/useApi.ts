@@ -1,5 +1,6 @@
 import type {
-  ApiEnvelope, AuthTokens, BillingSummary, Plan, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
+  AdminConfig, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
+  User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
 } from '~/types/api'
 
 let refreshRequest: Promise<string | null> | null = null
@@ -74,6 +75,16 @@ export const useApi = () => {
       throw error
     }
   }
+
+  const adminRequest = async <T>(
+    path: string,
+    credentials: string,
+    options: Parameters<typeof $fetch<T>>[1] = {}
+  ) => unwrap(await $fetch<T | ApiEnvelope<T>>(path, {
+    ...options,
+    baseURL: apiBase.value,
+    headers: { ...options.headers, Authorization: `Basic ${credentials}` }
+  }))
 
   const serializeGraph = (graph: Workflow['draft_graph']) => ({
     nodes: graph.nodes.map((node) => ({
@@ -220,6 +231,41 @@ export const useApi = () => {
       },
       checkout: (planId: number) => request<{ confirmation_url: string | null }>('/billing/subscription/checkout', {
         method: 'POST', body: { plan_id: planId, idempotency_key: crypto.randomUUID() }
+      })
+    },
+    admin: {
+      config: (credentials: string) => adminRequest<AdminConfig>('/admin/config', credentials),
+      updatePricing: (credentials: string, rate: PricingRate) =>
+        adminRequest<PricingRate>(`/admin/pricing/${rate.id}`, credentials, {
+          method: 'PUT',
+          body: {
+            input_cache_hit_credits_per_1k: Number(rate.input_cache_hit_credits_per_1k),
+            input_cache_miss_credits_per_1k: Number(rate.input_cache_miss_credits_per_1k),
+            output_credits_per_1k: Number(rate.output_credits_per_1k),
+            search_credits: Number(rate.search_credits),
+            active: rate.active,
+            request_id: crypto.randomUUID()
+          }
+        }),
+      updatePlan: (credentials: string, plan: Plan) =>
+        adminRequest<Plan>(`/admin/plans/${plan.id}`, credentials, {
+          method: 'PUT',
+          body: {
+            name: plan.name,
+            price: Number(plan.price),
+            currency: plan.currency,
+            included_credits: Number(plan.limits.included_credits || 0),
+            run_cap_credits: Number(plan.limits.run_cap_credits || 0),
+            parallel_runs: Number(plan.limits.parallel_runs || 1),
+            request_id: crypto.randomUUID()
+          }
+        }),
+      updateSetting: (
+        credentials: string,
+        setting: { key: string; value: string | number | boolean; description: string }
+      ) => adminRequest<typeof setting>(`/admin/settings/${setting.key}`, credentials, {
+        method: 'PUT',
+        body: { value: setting.value, request_id: crypto.randomUUID() }
       })
     }
   }

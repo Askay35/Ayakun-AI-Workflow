@@ -282,7 +282,7 @@ const run = async () => {
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <span class="editor-cost"><UIcon name="i-lucide-coins" />{{ Math.round(estimatedCost).toLocaleString('ru') }} ток.</span>
+        <span class="editor-cost"><UIcon name="i-lucide-coins" />≈ {{ estimatedCost.toLocaleString('ru', { maximumFractionDigits: 2 }) }} credits</span>
         <UButton label="Проверить" icon="i-lucide-circle-check" color="neutral" variant="ghost" class="text-white/80" @click="checkGraph" />
         <UButton label="Опубликовать" color="neutral" variant="outline" class="border-white/15 bg-white/5 text-white" @click="publish" />
         <UButton label="Запустить" icon="i-lucide-play" @click="run" />
@@ -434,8 +434,8 @@ const run = async () => {
           <p class="text-sm leading-6 text-white/45">Кликните узел, чтобы настроить его. Соединяйте выход (справа) со входом (слева).</p>
           <div class="editor-cost-card">
             <p class="mb-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/35">Оценка запуска</p>
-            <p class="mb-0 text-3xl font-extrabold text-white">{{ Math.round(estimatedCost).toLocaleString('ru') }}</p>
-            <p class="mb-0 mt-1 text-xs text-white/40">токенов за всю цепочку</p>
+            <p class="mb-0 text-3xl font-extrabold text-white">≈ {{ estimatedCost.toLocaleString('ru', { maximumFractionDigits: 2 }) }}</p>
+            <p class="mb-0 mt-1 text-xs text-white/40">credits; спишется по фактическому usage</p>
           </div>
         </div>
         <div v-if="validationErrors.length" class="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">

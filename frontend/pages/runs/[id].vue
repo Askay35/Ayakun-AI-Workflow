@@ -74,7 +74,7 @@ const cancel = async () => { run.value = await api.runs.cancel(id) }
           <div v-if="node.citations?.length" class="mt-3 border-t border-default pt-3"><p class="text-xs font-semibold uppercase muted">Источники</p><a v-for="citation in node.citations" :key="citation.url" :href="citation.url" target="_blank" class="mt-1 block text-sm text-primary hover:underline">{{ citation.title }}</a></div>
         </div>
       </div>
-      <aside class="panel h-fit p-5"><p class="eyebrow">Сводка</p><p class="mb-1 text-sm muted">Запущено</p><p class="font-bold">{{ run && new Date(run.created_at).toLocaleString('ru') }}</p><div class="my-5 border-t border-[var(--line)]" /><p class="mb-1 text-sm muted">Списано</p><p class="mb-0 text-3xl font-extrabold">{{ run?.cost?.toLocaleString() || 0 }}</p><p class="text-sm muted">токенов</p><p class="mt-5 mb-0 text-xs leading-5 muted">Страница обновляется автоматически, пока цепочка выполняется.</p></aside>
+      <aside class="panel h-fit p-5"><p class="eyebrow">Сводка</p><p class="mb-1 text-sm muted">Запущено</p><p class="font-bold">{{ run && new Date(run.created_at).toLocaleString('ru') }}</p><div class="my-5 border-t border-[var(--line)]" /><p class="mb-1 text-sm muted">Списано</p><p class="mb-0 text-3xl font-extrabold">{{ run?.cost?.toLocaleString() || 0 }}</p><p class="text-sm muted">credits</p><p class="mt-5 mb-0 text-xs leading-5 muted">Списание рассчитано по фактическому usage провайдеров.</p></aside>
     </div>
   </div>
 </template>

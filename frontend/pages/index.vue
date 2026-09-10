@@ -40,7 +40,7 @@
             <div class="demo-node-head"><span class="demo-icon"><UIcon name="i-lucide-send" /></span>Прислать в Telegram</div>
             <div class="demo-text short" />
           </div>
-          <div class="demo-price"><UIcon name="i-lucide-coins" class="mr-1" />255 токенов / запуск</div>
+          <div class="demo-price"><UIcon name="i-lucide-coins" class="mr-1" />≈ 2 credits / запуск</div>
         </div>
       </div>
     </section>

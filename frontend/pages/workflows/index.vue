@@ -17,7 +17,7 @@ const create = async () => {
   } finally { creating.value = false }
 }
 
-const formatCost = (value?: number) => `${Math.round(Number(value || 0)).toLocaleString('ru')} ток.`
+const formatCost = (value?: number) => `${Number(value || 0).toLocaleString('ru', { maximumFractionDigits: 2 })} credits`
 </script>
 
 <template>
