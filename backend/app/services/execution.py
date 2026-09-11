@@ -1,0 +1,183 @@
+"""Исполнители узлов workflow: поиск, обработка, Telegram.
+
+Вызываются из worker через NodeRegistry.
+Вывод родительских узлов берётся из node.parents и context["nodes"].
+"""
+
+from collections.abc import Awaitable, Callable
+from decimal import Decimal
+
+import httpx
+
+from core.config import settings
+from schemas.workflow import Node, NodeType, PromptNode, TelegramSendNode, WebSearchNode
+from services.providers import (
+    ModelRouter,
+    SearchResult,
+    TelegramNotificationProvider,
+    WebSearchRouter,
+)
+from services.pricing import PricingService, maximum_output_tokens
+from utils.deepseek_tokenizer import count_prompt_tokens
+
+Executor = Callable[[object, dict], Awaitable[object]]
+BudgetProvider = Callable[[], Awaitable[Decimal]]
+TELEGRAM_TEXT_LIMIT = 4096
+
+
+def node_type_value(value: object) -> str:
+    """Каноническое значение типа узла: 'web_search', не 'NodeType.WEB_SEARCH'."""
+    if isinstance(value, NodeType):
+        return value.value
+    raw = getattr(value, "value", value)
+    text = str(raw or "")
+    if text.startswith("NodeType."):
+        member = NodeType.__members__.get(text.split(".", 1)[1])
+        if member is not None:
+            return member.value
+    return text
+
+
+def output_text(output: object) -> str:
+    if output is None:
+        return ""
+    if isinstance(output, str):
+        return output
+    if hasattr(output, "text") and isinstance(output.text, str):
+        return output.text
+    if isinstance(output, dict):
+        for key in ("text", "answer", "content"):
+            value = output.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+        return ""
+    if isinstance(output, list):
+        chunks: list[str] = []
+        for item in output:
+            data = item.model_dump() if hasattr(item, "model_dump") else item
+            if isinstance(data, dict):
+                title = data.get("title") or ""
+                snippet = data.get("snippet") or ""
+                url = data.get("url") or ""
+                item_date = data.get("date") or ""
+                chunk = "\n".join(part for part in (title, snippet, url, item_date) if part)
+                if chunk:
+                    chunks.append(chunk)
+            elif isinstance(data, str) and data.strip():
+                chunks.append(data)
+        return "\n\n".join(chunks)
+    return str(output)
+
+
+def parent_records(node: Node, context: dict) -> list[dict]:
+    nodes = context.get("nodes") or {}
+    records: list[dict] = []
+    for parent_id in node.parents:
+        record = nodes.get(parent_id)
+        if isinstance(record, dict):
+            records.append(record)
+    return records
+
+
+def parent_output_texts(node: Node, context: dict) -> list[str]:
+    """Текст только напрямую связанных родителей (`node.parents`), не всего графа."""
+    allowed = {item.value for item in NodeType.with_output()}
+    texts: list[str] = []
+    for record in parent_records(node, context):
+        if node_type_value(record.get("type")) not in allowed:
+            continue
+        text = output_text(record.get("output")).strip()
+        if text:
+            texts.append(text)
+    return texts
+
+
+class NodeRegistry:
+    """type узла → async executor(node, context) -> output."""
+
+    def __init__(self):
+        self._executors: dict[str, Executor] = {}
+
+    def register(self, node_type: str, executor: Executor) -> None:
+        self._executors[node_type] = executor
+
+    async def execute(self, node: object, context: dict) -> object:
+        executor = self._executors.get(getattr(node, "type"))
+        if not executor:
+            raise ValueError(f"Нет executor для {getattr(node, 'type')}")
+        return await executor(node, context)
+
+
+class DefaultExecutors:
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        pricing: PricingService,
+        available_budget: BudgetProvider,
+    ):
+        self.model_router = ModelRouter()
+        self.search_router = WebSearchRouter(client)
+        self.notifications = TelegramNotificationProvider(client)
+        self.pricing = pricing
+        self.available_budget = available_budget
+        self.client = client
+
+    async def web_search(self, node: WebSearchNode, context: dict) -> list[SearchResult]:
+        price = await self.pricing.get("serper", "search")
+        if await self.available_budget() < price.search:
+            raise ValueError("Недостаточно credits для поискового запроса")
+        provider = self.search_router.select()
+        results = await provider.search(node.query, node.period)
+        return results
+
+    async def prompt(self, node: PromptNode, context: dict) -> dict:
+        provider, default_model = self.model_router.select(
+            node.provider,
+            operation=node.complexity,
+        )
+        setting_key = "complex_llm_model" if node.complexity == "complex_text" else "simple_llm_model"
+        model = node.model or await self.pricing.setting(setting_key, default_model)
+        input_data = parent_output_texts(node, context) or None
+        input_tokens = count_prompt_tokens(
+            node.prompt,
+            instructions=node.instructions or None,
+            input_data=input_data,
+        )
+        price = await self.pricing.get("deepseek", model)
+        configured_max = int(await self.pricing.setting(
+            "llm_max_output_tokens", settings.llm_max_output_tokens
+        ))
+        max_tokens = min(
+            maximum_output_tokens(price, await self.available_budget(), input_tokens),
+            configured_max,
+        )
+        if max_tokens < 1:
+            raise ValueError("Недостаточно credits даже для входных токенов LLM-запроса")
+        result = await provider.prompt(
+            node.prompt,
+            instructions=node.instructions or None,
+            input_data=input_data,
+            model=model,
+            max_tokens=max_tokens,
+        )
+        return result.model_dump(mode="json")
+
+    async def telegram_send(self, node: TelegramSendNode, context: dict) -> dict:
+        chat_id = node.chat_id or context.get("input", {}).get("chat_id")
+        texts = parent_output_texts(node, context)
+        message = texts[0] if texts else ""
+        if not message:
+            return {"sent": False, "text": ""}
+        if not chat_id:
+            raise ValueError("telegram_send требует chat_id")
+        if len(message) > TELEGRAM_TEXT_LIMIT:
+            message = message[: TELEGRAM_TEXT_LIMIT - 1] + "…"
+        await self.notifications.send(str(chat_id), message)
+        return {"sent": True, "text": message}
+
+    def registry(self) -> NodeRegistry:
+        registry = NodeRegistry()
+        registry.register(NodeType.WEB_SEARCH, self.web_search)
+        registry.register(NodeType.PROMPT, self.prompt)
+        registry.register(NodeType.TELEGRAM_SEND, self.telegram_send)
+        return registry
