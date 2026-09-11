@@ -1,4 +1,7 @@
 export default defineNuxtRouteMiddleware(async () => {
+  // Tokens live in localStorage — only available on the client.
+  if (import.meta.server) return
+
   const auth = useAuth()
   const api = useApi()
 
@@ -9,9 +12,6 @@ export default defineNuxtRouteMiddleware(async () => {
 
   await auth.load()
   if (auth.user.value) return
-
-  // Tokens exist but SSR couldn't reach the API — let the client retry instead of logging out
-  if (import.meta.server && (api.accessToken.value || api.refreshToken.value)) return
 
   return navigateTo('/login')
 })

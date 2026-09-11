@@ -3,10 +3,10 @@ import type { Plan } from '~/types/api'
 
 const api = useApi()
 const fallback: Plan[] = [
-  { id: 1, code: 'free', name: 'Free', price: 0, currency: 'USD', limits: { included_credits: 500 } },
-  { id: 2, code: 'starter', name: 'Starter', price: 9, currency: 'USD', limits: { included_credits: 5000 } },
-  { id: 3, code: 'pro', name: 'Pro', price: 19, currency: 'USD', limits: { included_credits: 15000 } },
-  { id: 4, code: 'max', name: 'Max', price: 49, currency: 'USD', limits: { included_credits: 50000 } }
+  { id: 1, code: 'free', name: 'Free', price: 0, currency: 'RUB', limits: { included_credits: 500 } },
+  { id: 2, code: 'starter', name: 'Starter', price: 990, currency: 'RUB', limits: { included_credits: 5000 } },
+  { id: 3, code: 'pro', name: 'Pro', price: 1990, currency: 'RUB', limits: { included_credits: 15000 } },
+  { id: 4, code: 'max', name: 'Max', price: 3990, currency: 'RUB', limits: { included_credits: 50000 } }
 ]
 const { data: plans } = await useAsyncData('public-plans', () => api.billing.plans().catch(() => fallback))
 const ordered = computed(() => {
@@ -58,7 +58,7 @@ const featuresFor = (plan: Plan) => {
             <p class="min-h-12 text-sm leading-6 muted">{{ meta(plan).pitch }}</p>
             <div class="my-7 flex items-end gap-2">
               <strong class="text-5xl font-extrabold">{{ Number(plan.price) ? Number(plan.price).toLocaleString('ru') : '0' }}</strong>
-              <span class="mb-1 muted">${{ Number(plan.price) ? ' / месяц' : '' }}</span>
+              <span class="mb-1 muted">{{ Number(plan.price) ? '₽ / месяц' : '₽' }}</span>
             </div>
             <ul class="mb-8 space-y-3">
               <li v-for="feature in featuresFor(plan)" :key="feature" class="flex gap-3 text-sm">

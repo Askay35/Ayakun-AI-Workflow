@@ -3,7 +3,7 @@ import { statusColor, statusLabel } from '~/utils/run-status'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const api = useApi()
-const { data: runs, pending, refresh } = await useAsyncData('runs', () => api.runs.list())
+const { data: runs, pending, refresh } = await useAuthAsyncData('runs', () => api.runs.list())
 </script>
 
 <template>

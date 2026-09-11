@@ -23,9 +23,8 @@ export const useApi = () => {
     if (import.meta.server && config.apiBase) return String(config.apiBase)
     return String(config.public.apiBase)
   })
-  const cookieOpts = { path: '/', sameSite: 'lax' as const, maxAge: 60 * 60 * 24 * 30, watch: true as const }
-  const accessToken = useCookie<string | null>('ayakun_access', cookieOpts)
-  const refreshToken = useCookie<string | null>('ayakun_refresh', cookieOpts)
+  const accessToken = useState<string | null>('ayakun_access', () => null)
+  const refreshToken = useState<string | null>('ayakun_refresh', () => null)
 
   const unwrap = <T>(value: T | ApiEnvelope<T>): T =>
     typeof value === 'object' && value !== null && 'success' in value
@@ -95,7 +94,10 @@ export const useApi = () => {
       position: node.position,
       label: node.data.label,
       ...(node.type === 'web_search'
-        ? { query: node.data.query || '' }
+        ? {
+            query: node.data.query || '',
+            period: node.data.period || null
+          }
         : node.type === 'prompt'
           ? {
               prompt: node.data.prompt || '',
@@ -127,6 +129,7 @@ export const useApi = () => {
         data: {
           label: node.label || node.type,
           query: node.query,
+          period: node.period || undefined,
           prompt: node.prompt,
           instructions: node.instructions,
           model: node.model,
@@ -188,7 +191,8 @@ export const useApi = () => {
       }).then(normalizeWorkflow),
       validate: (id: string) => request<ValidationResult>(`/workflows/${id}/validate`, { method: 'POST' }),
       publish: (id: string) => request<Workflow>(`/workflows/${id}/publish`, { method: 'POST' }).then(normalizeWorkflow),
-      run: (id: string) => request<WorkflowRun>(`/workflows/${id}/runs`, { method: 'POST', body: { input: {} } })
+      run: (id: string) => request<WorkflowRun>(`/workflows/${id}/runs`, { method: 'POST', body: { input: {} } }),
+      delete: (id: string) => request<void>(`/workflows/${id}`, { method: 'DELETE' })
     },
     runs: {
       list: () => request<WorkflowRun[]>('/workflows/runs'),
@@ -201,7 +205,12 @@ export const useApi = () => {
           ...run,
           node_runs: (nodes || []).map(node => ({
             ...node,
-            citations: node.output?.citations
+            // web_search отдаёт список результатов, остальные узлы — объект с citations.
+            citations: Array.isArray(node.output)
+              ? node.output
+                  .filter((item: any) => item?.url)
+                  .map((item: any) => ({ title: item.title || item.url, url: item.url }))
+              : (node.output as any)?.citations
           }))
         } as WorkflowRun
       },
@@ -239,9 +248,6 @@ export const useApi = () => {
         adminRequest<PricingRate>(`/admin/pricing/${rate.id}`, credentials, {
           method: 'PUT',
           body: {
-            input_cache_hit_credits_per_1k: Number(rate.input_cache_hit_credits_per_1k),
-            input_cache_miss_credits_per_1k: Number(rate.input_cache_miss_credits_per_1k),
-            output_credits_per_1k: Number(rate.output_credits_per_1k),
             search_credits: Number(rate.search_credits),
             active: rate.active,
             request_id: crypto.randomUUID()
@@ -256,7 +262,6 @@ export const useApi = () => {
             currency: plan.currency,
             included_credits: Number(plan.limits.included_credits || 0),
             run_cap_credits: Number(plan.limits.run_cap_credits || 0),
-            parallel_runs: Number(plan.limits.parallel_runs || 1),
             request_id: crypto.randomUUID()
           }
         }),

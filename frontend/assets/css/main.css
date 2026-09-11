@@ -34,6 +34,13 @@ h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3, .display { letter-spacing: -0.04em; }
 a { color: inherit; text-decoration: none; }
 
+@media (hover: hover) {
+  a.hover\:bg-elevated:hover {
+    background-color: var(--ui-bg-elevated);
+    color: #fff !important;
+  }
+}
+
 .shell {
   width: min(1240px, calc(100% - 40px));
   margin-inline: auto;
@@ -341,6 +348,65 @@ a { color: inherit; text-decoration: none; }
 .auth-card .w-full,
 .panel .w-full {
   width: 100%;
+}
+
+.admin-page {
+  min-height: 100vh;
+  padding: 48px 0 80px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(103, 88, 238, 0.1), transparent 28rem),
+    radial-gradient(circle at 92% 8%, rgba(201, 241, 105, 0.18), transparent 22rem),
+    var(--paper);
+}
+.admin-shell { max-width: 1080px; }
+.admin-login {
+  max-width: 420px;
+  margin: 12vh auto 0;
+  padding: 34px;
+}
+.admin-section-title {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.admin-card { padding: 22px; }
+.admin-card-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.admin-card-meta {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.run-progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ece9ff;
+}
+.run-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--violet), #a79eff);
+  transition: width .4s ease;
+}
+.run-step-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 13px;
+}
+.run-step-active {
+  border-color: rgba(103, 88, 238, .35);
+  box-shadow: 0 16px 40px rgba(103, 88, 238, .12);
 }
 
 .hero {

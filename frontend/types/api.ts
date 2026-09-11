@@ -2,6 +2,7 @@ export type Id = string
 export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 export type NodeRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 export type NodeKind = 'web_search' | 'prompt' | 'telegram_send'
+export type SearchPeriod = 'h' | 'd' | 'w' | 'm' | 'y'
 
 export interface ApiEnvelope<T> {
   success: boolean
@@ -35,6 +36,7 @@ export interface WorkflowNode {
   data: {
     label: string
     query?: string
+    period?: SearchPeriod
     prompt?: string
     instructions?: string
     model?: string
@@ -65,13 +67,16 @@ export interface ValidationResult {
 }
 
 export interface NodeRun {
-  id: Id
   node_id: Id
+  node_type: NodeKind
+  label?: string | null
   status: NodeRunStatus
-  output?: Record<string, any>
+  attempt?: number
+  output?: Record<string, any> | any[]
   citations?: Array<{ title: string; url: string }>
-  cost?: number
   error?: string
+  started_at?: string | null
+  finished_at?: string | null
 }
 
 export interface WorkflowRun {
@@ -80,7 +85,9 @@ export interface WorkflowRun {
   workflow_name?: string
   status: RunStatus
   created_at: string
-  finished_at?: string
+  started_at?: string | null
+  finished_at?: string | null
+  error?: string | null
   cost?: number
   node_runs?: NodeRun[]
 }
@@ -117,9 +124,4 @@ export interface AdminConfig {
   pricing: PricingRate[]
   plans: Plan[]
   settings: Array<{ key: string; value: string | number | boolean; description: string }>
-  economics: {
-    gross_margin: number
-    provider_cost_usd_per_credit: number
-    customer_price_usd_per_credit: number
-  }
 }

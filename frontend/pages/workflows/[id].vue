@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ConnectionMode, MarkerType, VueFlow, useVueFlow, type Connection, type Edge, type EdgeChange } from '@vue-flow/core'
 import { apiErrorMessage } from '~/composables/useApi'
-import type { NodeKind, WorkflowNode } from '~/types/api'
+import { useAuthAsyncData } from '~/composables/useAuthAsyncData'
+import type { NodeKind, SearchPeriod, Workflow, WorkflowNode } from '~/types/api'
+import { formatCredits } from '~/utils/credits'
 import {
   NODE_META,
   addLink,
@@ -23,12 +25,19 @@ const toast = useToast()
 const id = String(route.params.id)
 const flowId = `workflow-${id}`
 
-const { data: workflow, error: workflowError } = await useAsyncData(`workflow-${id}`, () => api.workflows.get(id))
-if (workflowError.value || !workflow.value) {
-  throw createError({ statusCode: 404, statusMessage: 'Цепочка не найдена', fatal: false })
+const { data: workflow, error: workflowError, status } = await useAuthAsyncData<Workflow>(
+  `workflow-${id}`,
+  () => api.workflows.get(id)
+)
+if (status.value === 'error' || !workflow.value) {
+  throw createError({
+    statusCode: (workflowError.value as any)?.statusCode || 404,
+    statusMessage: 'Цепочка не найдена',
+    fatal: false
+  })
 }
 
-const nodes = ref<WorkflowNode[]>(structuredClone(toRaw(workflow.value.draft_graph?.nodes || [])).map(node => ({
+const nodes = ref<WorkflowNode[]>(structuredClone(toRaw(workflow.value.draft_graph?.nodes || [])).map((node: WorkflowNode) => ({
   ...node,
   parents: node.parents || [],
   children: node.children || []
@@ -83,6 +92,29 @@ const qualityModes = [
   { label: 'Быстрый', value: 'simple_text' },
   { label: 'Точный', value: 'complex_text' }
 ]
+// USelect не принимает пустую строку как значение элемента — используем явный "any".
+const searchPeriods = [
+  { label: 'Любое время', value: 'any' },
+  { label: 'Последний час', value: 'h' },
+  { label: 'Последние 24 часа', value: 'd' },
+  { label: 'Последняя неделя', value: 'w' },
+  { label: 'Последний месяц', value: 'm' },
+  { label: 'Последний год', value: 'y' }
+]
+const selectedPeriod = computed({
+  get: () => selected.value?.data.period || 'any',
+  set: (value: string) => {
+    if (!selected.value) return
+    selected.value.data.period = value === 'any' ? undefined : (value as SearchPeriod)
+  }
+})
+const selectedInstructions = computed({
+  get: () => selected.value?.data.instructions || '',
+  set: (value: string) => {
+    if (!selected.value) return
+    selected.value.data.instructions = value
+  }
+})
 const defaultEdgeOptions = {
   type: 'default',
   markerEnd: MarkerType.ArrowClosed,
@@ -155,7 +187,8 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
     children: [],
     data: {
       label: item.label,
-      complexity: type === 'prompt' ? 'simple_text' : undefined
+      complexity: type === 'prompt' ? 'simple_text' : undefined,
+      instructions: type === 'prompt' ? '' : undefined
     }
   }
   nodes.value = [...nodes.value, node]
@@ -282,7 +315,7 @@ const run = async () => {
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <span class="editor-cost"><UIcon name="i-lucide-coins" />≈ {{ estimatedCost.toLocaleString('ru', { maximumFractionDigits: 2 }) }} credits</span>
+        <span class="editor-cost"><UIcon name="i-lucide-coins" />≈ {{ formatCredits(estimatedCost) }} credits</span>
         <UButton label="Проверить" icon="i-lucide-circle-check" color="neutral" variant="ghost" class="text-white/80" @click="checkGraph" />
         <UButton label="Опубликовать" color="neutral" variant="outline" class="border-white/15 bg-white/5 text-white" @click="publish" />
         <UButton label="Запустить" icon="i-lucide-play" @click="run" />
@@ -409,16 +442,22 @@ const run = async () => {
               <UInput v-model="selected.data.label" class="w-full" />
             </UFormField>
             <UFormField v-if="selected.type === 'web_search'" label="Что найти">
-              <UTextarea v-model="selected.data.query" :rows="7" class="w-full" placeholder="Главные новости рынка за последние сутки" />
+              <UTextarea v-model="selected.data.query" :rows="7" class="w-full bg-[#232433]" placeholder="Главные новости рынка за последние сутки" />
+            </UFormField>
+            <UFormField v-if="selected.type === 'web_search'" label="Период">
+              <USelect v-model="selectedPeriod" :items="searchPeriods" value-key="value" class="w-full" />
             </UFormField>
             <template v-if="selected.type === 'prompt'">
               <UFormField label="Режим">
                 <USelect v-model="selected.data.complexity" :items="qualityModes" value-key="value" class="w-full" />
               </UFormField>
-              <UFormField label="Инструкция">
+              <UFormField label="Промпт">
                 <UTextarea v-model="selected.data.prompt" :rows="7" class="w-full" placeholder="Выдели 5 фактов и сделай краткий вывод" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Текст родительских узлов подставится во вход модели автоматически.</p>
+              <UFormField label="Инструкция">
+                <UTextarea v-model="selectedInstructions" :rows="4" class="w-full" placeholder="Отвечай кратко, без вступлений" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Результаты поиска подставляются во вход автоматически.</p>
             </template>
             <template v-if="selected.type === 'telegram_send'">
               <UFormField label="Получатель">
@@ -434,8 +473,8 @@ const run = async () => {
           <p class="text-sm leading-6 text-white/45">Кликните узел, чтобы настроить его. Соединяйте выход (справа) со входом (слева).</p>
           <div class="editor-cost-card">
             <p class="mb-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/35">Оценка запуска</p>
-            <p class="mb-0 text-3xl font-extrabold text-white">≈ {{ estimatedCost.toLocaleString('ru', { maximumFractionDigits: 2 }) }}</p>
-            <p class="mb-0 mt-1 text-xs text-white/40">credits; спишется по фактическому usage</p>
+            <p class="mb-0 text-3xl font-extrabold text-white">≈ {{ formatCredits(estimatedCost) }}</p>
+            <p class="mb-0 mt-1 text-xs text-white/40">предварительная оценка стоимости запуска</p>
           </div>
         </div>
         <div v-if="validationErrors.length" class="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">

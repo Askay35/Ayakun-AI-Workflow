@@ -12,7 +12,15 @@ export default defineNuxtConfig({
     }
   },
   routeRules: {
-    '/auth': { redirect: '/login' }
+    '/auth': { redirect: '/login' },
+    '/dashboard': { ssr: false },
+    '/workflows': { ssr: false },
+    '/workflows/**': { ssr: false },
+    '/runs': { ssr: false },
+    '/runs/**': { ssr: false },
+    '/billing': { ssr: false },
+    '/profile': { ssr: false },
+    '/admin': { ssr: false }
   },
   app: {
     head: {

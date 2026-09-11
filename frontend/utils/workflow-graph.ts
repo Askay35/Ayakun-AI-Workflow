@@ -1,9 +1,9 @@
 import type { NodeKind, WorkflowNode } from '~/types/api'
 
 export const NODE_META: Record<NodeKind, { label: string; caption: string; icon: string; accent: string }> = {
-  web_search: { label: 'Поиск в сети', caption: 'Web Search', icon: 'i-lucide-search', accent: '#2bbf8e' },
+  web_search: { label: 'Поиск в сети', caption: 'Поиск в сети', icon: 'i-lucide-search', accent: '#2bbf8e' },
   prompt: { label: 'Обработка', caption: 'AI Prompt', icon: 'i-lucide-sparkles', accent: '#8b7cff' },
-  telegram_send: { label: 'Telegram', caption: 'Send Message', icon: 'i-lucide-send', accent: '#2aa8e0' }
+  telegram_send: { label: 'Telegram', caption: 'Отправить сообщение', icon: 'i-lucide-send', accent: '#2aa8e0' }
 }
 
 export type GraphLink = { source: string; target: string }
