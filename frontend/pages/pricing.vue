@@ -3,7 +3,7 @@ import type { Plan } from '~/types/api'
 
 const api = useApi()
 const fallback: Plan[] = [
-  { id: 1, code: 'free', name: 'Free', price: 0, currency: 'RUB', limits: { included_credits: 500 } },
+  { id: 1, code: 'free', name: 'Free', price: 0, currency: 'RUB', limits: { included_credits: 100 } },
   { id: 2, code: 'starter', name: 'Starter', price: 990, currency: 'RUB', limits: { included_credits: 5000 } },
   { id: 3, code: 'pro', name: 'Pro', price: 1990, currency: 'RUB', limits: { included_credits: 15000 } },
   { id: 4, code: 'max', name: 'Max', price: 3990, currency: 'RUB', limits: { included_credits: 50000 } }
@@ -27,7 +27,6 @@ const featuresFor = (plan: Plan) => {
     `${balance.toLocaleString('ru')} credits на балансе`,
     'любое число цепочек',
     'запуск вручную и по расписанию',
-    'цена каждого запуска видна заранее'
   ]
 }
 </script>
@@ -71,21 +70,18 @@ const featuresFor = (plan: Plan) => {
               :label="meta(plan).action"
               block
               size="lg"
-              class="mt-auto"
-              :color="plan.code === 'starter' ? 'primary' : 'neutral'"
-              :variant="plan.code === 'starter' ? 'solid' : 'outline'"
+              class="mt-auto text-white!"
+              :color="plan.code !== 'free' ? 'primary' : 'neutral'"
+              :variant="plan.code !== 'free' ? 'solid' : 'outline'"
             />
           </article>
         </div>
-        <p class="mx-auto mt-8 max-w-2xl text-center text-sm leading-6 muted">
-          Оценка запуска приблизительная. Списываются только фактически использованные credits после ответа провайдера.
-        </p>
       </div>
     </section>
 
     <section class="section alt">
       <div class="shell grid items-center gap-10 md:grid-cols-2">
-        <div class="section-heading !mb-0">
+        <div class="section-heading mb-0!">
           <p class="eyebrow">Без искусственных рамок</p>
           <h2>Создавайте столько, сколько нужно</h2>
           <p>Не нужно выбирать тариф из-за одной дополнительной цепочки. Пока на балансе есть credits — все ваши автоматизации работают.</p>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useAuthAsyncData } from '~/composables/useAuthAsyncData'
 import { formatCredits } from '~/utils/credits'
 import { statusColor, statusLabel } from '~/utils/run-status'
 
