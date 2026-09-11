@@ -84,20 +84,26 @@ def test_output_text_serializes_http_json() -> None:
     assert "user@example.com" in text
 
 
-def test_http_request_requires_single_incoming_link() -> None:
-    graph = WorkflowGraph(nodes=[
+def test_http_request_allows_zero_or_one_incoming_link() -> None:
+    with_parent = WorkflowGraph(nodes=[
         PromptNode(id="prompt", prompt="Найди пользователя"),
         HttpRequestNode(id="http", request_json=REQUEST_TEMPLATE, parents=["prompt"]),
         TelegramSendNode(id="tg", parents=["http"]),
     ])
-    assert validate_graph(graph, strict=True) == []
+    assert validate_graph(with_parent, strict=True) == []
 
-    broken = WorkflowGraph(nodes=[
-        PromptNode(id="prompt", prompt="Найди пользователя"),
+    as_start = WorkflowGraph(nodes=[
         HttpRequestNode(id="http", request_json=REQUEST_TEMPLATE),
     ])
-    errors = validate_graph(broken, strict=True)
-    assert any("ровно одну входящую связь" in item for item in errors)
+    assert validate_graph(as_start, strict=True) == []
+
+    too_many = WorkflowGraph(nodes=[
+        PromptNode(id="a", prompt="A", children=["http"]),
+        PromptNode(id="b", prompt="B", children=["http"]),
+        HttpRequestNode(id="http", request_json=REQUEST_TEMPLATE, parents=["a", "b"]),
+    ])
+    errors = validate_graph(too_many, strict=True)
+    assert any("только одну входящую связь" in item for item in errors)
 
 
 class FakeHttpResponse:

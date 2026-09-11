@@ -172,11 +172,12 @@ class DefaultExecutors:
 
     async def http_request(self, node: HttpRequestNode, context: dict) -> dict | list:
         records = parent_records(node, context)
-        if len(records) != 1:
-            raise ValueError("HTTP Request принимает ровно одну входящую связь")
+        if len(records) > 1:
+            raise ValueError("HTTP Request может иметь только одну входящую связь")
+        parent_output = records[0].get("output") if records else None
         request_data = form_request_body(
             node.request_json,
-            json_root_from_output(records[0].get("output")),
+            json_root_from_output(parent_output) if parent_output is not None else {},
         )
         method = str(request_data.get("method") or "GET").upper()
         url = request_data.get("url")

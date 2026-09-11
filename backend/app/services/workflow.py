@@ -88,9 +88,9 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
             elif node.type == NodeType.HTTP_REQUEST:
                 if not node.request_json.strip():
                     errors.append(f"Узел {node.id}: укажите данные запроса")
-                if len(node.parents) != 1:
-                    errors.append(f"Узел {node.id}: HTTP Request должен иметь ровно одну входящую связь")
-                elif node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
+                if len(node.parents) > 1:
+                    errors.append(f"Узел {node.id}: HTTP Request может иметь только одну входящую связь")
+                elif len(node.parents) == 1 and node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
                     errors.append(f"Узел {node.id}: родитель HTTP Request должен быть узлом с выводом")
             elif node.type == NodeType.IF_ELSE:
                 if not node.condition.strip():

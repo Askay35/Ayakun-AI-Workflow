@@ -519,7 +519,7 @@ const run = async () => {
               <UFormField label="Данные запроса">
                 <UTextarea v-model="selectedRequestJson" :rows="14" class="w-full font-mono text-xs" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Ровно одна входящая связь. Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} берутся из вывода предыдущего узла. После подстановки значение должно остаться валидным JSON.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи (можно без родителей). Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} берутся из вывода предыдущего узла. После подстановки значение должно остаться валидным JSON.</p>
             </template>
             <template v-if="selected.type === 'if_else'">
               <UFormField label="Условие">
