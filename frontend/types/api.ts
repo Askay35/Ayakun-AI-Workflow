@@ -73,7 +73,7 @@ export interface NodeRun {
   status: NodeRunStatus
   attempt?: number
   output?: Record<string, any> | any[]
-  citations?: Array<{ title: string; url: string }>
+  citations?: Array<{ title: string; url: string; date?: string }>
   error?: string
   started_at?: string | null
   finished_at?: string | null
@@ -105,7 +105,7 @@ export interface BillingSummary {
   plan?: Plan
   balance: number
   usage_this_month: number
-  ledger: Array<{ id: Id; created_at: string; amount: number; description: string }>
+  ledger: Array<{ id: Id; created_at: string; amount: number; kind?: string; description: string }>
 }
 
 export interface PricingRate {

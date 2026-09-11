@@ -150,7 +150,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
               target="_blank"
               rel="noopener noreferrer"
               class="mt-1 block text-sm text-primary hover:underline"
-            >{{ citation.title }}</a>
+            >{{ citation.title }} - {{ citation.date }}</a>
           </div>
         </div>
 

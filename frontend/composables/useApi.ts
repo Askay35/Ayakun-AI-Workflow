@@ -2,6 +2,7 @@ import type {
   AdminConfig, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
   User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
 } from '~/types/api'
+import { visibleLedgerEntries } from '~/utils/ledger'
 
 let refreshRequest: Promise<string | null> | null = null
 
@@ -209,7 +210,7 @@ export const useApi = () => {
             citations: Array.isArray(node.output)
               ? node.output
                   .filter((item: any) => item?.url)
-                  .map((item: any) => ({ title: item.title || item.url, url: item.url }))
+                  .map((item: any) => ({ title: item.title || item.url, url: item.url, date: item.date }))
               : (node.output as any)?.citations
           }))
         } as WorkflowRun
@@ -223,19 +224,25 @@ export const useApi = () => {
           request<Plan[]>('/billing/plans'),
           request<{ balance: number }>('/billing/wallet'),
           request<{ plan_id: number } | null>('/billing/subscription'),
-          request<Array<{ id: string; created_at: string; amount: number; kind: string; reference?: string }>>('/billing/ledger'),
+          request<Array<{
+            id: string
+            created_at: string
+            amount: number
+            kind: string
+            reference?: string
+            metadata?: Record<string, unknown>
+            metadata_?: Record<string, unknown>
+          }>>('/billing/ledger'),
           request<Array<{ cost: number }>>('/billing/usage')
         ])
         return {
           plan: plans.find(plan => plan.id === subscription?.plan_id),
           balance: Number(wallet.balance),
           usage_this_month: usage.reduce((sum, item) => sum + Number(item.cost), 0),
-          ledger: ledger.map(item => ({
-            id: item.id,
-            created_at: item.created_at,
-            amount: Number(item.amount),
-            description: item.reference || item.kind
-          }))
+          ledger: visibleLedgerEntries(ledger.map(item => ({
+            ...item,
+            metadata_: item.metadata_ || item.metadata
+          })))
         }
       },
       checkout: (planId: number) => request<{ confirmation_url: string | null }>('/billing/subscription/checkout', {

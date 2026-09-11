@@ -61,16 +61,19 @@ const checkout = async (planId: number) => {
     </div>
     <div class="panel mt-8 p-6">
       <h2 class="mb-1 text-xl font-extrabold">История баланса</h2>
-      <p class="mb-4 text-sm muted">Пополнения и списания за выполненные цепочки.</p>
-      <div class="mt-3 divide-y divide-default">
-        <div v-for="entry in summary?.ledger" :key="entry.id" class="flex justify-between py-3">
+      <p class="mb-4 text-sm muted">Пополнения и фактические списания за звенья. Резерв на время запуска в историю не попадает.</p>
+      <div v-if="summary?.ledger?.length" class="mt-3 divide-y divide-default">
+        <div v-for="entry in summary.ledger" :key="entry.id" class="flex justify-between gap-4 py-3">
           <div>
-            <p>{{ entry.description }}</p>
-            <p class="text-xs muted">{{ new Date(entry.created_at).toLocaleString('ru') }}</p>
+            <p class="mb-0 font-medium">{{ entry.description }}</p>
+            <p class="mb-0 mt-1 text-xs muted">{{ new Date(entry.created_at).toLocaleString('ru') }}</p>
           </div>
-          <strong :class="entry.amount > 0 ? 'text-[#4b3dcc]' : ''">{{ entry.amount > 0 ? '+' : '' }}{{ formatCredits(entry.amount) }}</strong>
+          <strong class="shrink-0" :class="entry.amount > 0 ? 'text-[#4b3dcc]' : 'text-[#c45c3e]'">
+            {{ entry.amount > 0 ? '+' : '' }}{{ formatCredits(entry.amount) }}
+          </strong>
         </div>
       </div>
+      <p v-else class="mb-0 mt-3 text-sm muted">Пока нет операций с балансом.</p>
     </div>
   </div>
 </template>

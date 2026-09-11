@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatCredits } from '~/utils/credits'
 import { statusColor, statusLabel } from '~/utils/run-status'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
@@ -15,9 +16,10 @@ const { data: runs, pending, refresh } = await useAuthAsyncData('runs', () => ap
     <div class="panel p-5">
       <div v-if="pending" class="space-y-3"><USkeleton v-for="i in 5" :key="i" class="h-16" /></div>
       <div v-else-if="runs?.length" class="divide-y divide-default">
-        <NuxtLink v-for="run in runs" :key="run.id" :to="`/runs/${run.id}`" class="grid items-center gap-4 py-4 transition hover:translate-x-1 sm:grid-cols-[1fr_140px_180px_24px]">
+        <NuxtLink v-for="run in runs" :key="run.id" :to="`/runs/${run.id}`" class="grid items-center gap-4 py-4 transition hover:translate-x-1 sm:grid-cols-[1fr_120px_120px_180px_24px]">
           <div class="flex items-center gap-3"><span class="grid size-11 shrink-0 place-items-center rounded-xl bg-[#efedff] text-[#6758ee]"><UIcon name="i-lucide-play" /></span><div><p class="mb-0 font-bold">{{ run.workflow_name || 'Запуск цепочки' }}</p><p class="mb-0 mt-1 text-xs muted">ID {{ run.id.slice(0, 8) }}</p></div></div>
           <UBadge :color="statusColor(run.status)" variant="soft" class="w-fit">{{ statusLabel(run.status) }}</UBadge>
+          <span class="text-sm font-semibold tabular-nums">{{ formatCredits(run.cost) }} <span class="text-xs font-medium muted">cr</span></span>
           <span class="text-sm muted">{{ new Date(run.created_at).toLocaleString('ru') }}</span>
           <UIcon name="i-lucide-chevron-right" class="muted" />
         </NuxtLink>
