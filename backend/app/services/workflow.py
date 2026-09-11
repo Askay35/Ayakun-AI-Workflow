@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 import logging
 import uuid
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -54,6 +55,19 @@ def topological_nodes(graph: WorkflowGraph):
                 queue.append(child_id)
 
 
+def _validate_request_json(node_id: str, request_json: str, errors: list[str]) -> None:
+    try:
+        parsed = json.loads(request_json)
+    except json.JSONDecodeError as exc:
+        errors.append(f"Узел {node_id}: некорректный JSON в данных запроса ({exc.msg})")
+        return
+    if not isinstance(parsed, dict):
+        errors.append(f"Узел {node_id}: данные запроса должны быть JSON-объектом")
+        return
+    if "url" not in parsed:
+        errors.append(f"Узел {node_id}: в данных запроса нет поля url")
+
+
 def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
     """Проверка графа. strict=True — перед публикацией/валидацией в UI (полный набор правил)."""
     errors: list[str] = []
@@ -71,6 +85,27 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
                 errors.append(f"Узел {node.id}: укажите поисковый запрос")
             elif node.type == NodeType.PROMPT and not node.prompt.strip():
                 errors.append(f"Узел {node.id}: укажите промпт")
+            elif node.type == NodeType.HTTP_REQUEST:
+                if not node.request_json.strip():
+                    errors.append(f"Узел {node.id}: укажите данные запроса")
+                if len(node.parents) != 1:
+                    errors.append(f"Узел {node.id}: HTTP Request должен иметь ровно одну входящую связь")
+                elif node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
+                    errors.append(f"Узел {node.id}: родитель HTTP Request должен быть узлом с выводом")
+            elif node.type == NodeType.IF_ELSE:
+                if not node.condition.strip():
+                    errors.append(f"Узел {node.id}: укажите условие IF ELSE")
+                if len(node.parents) != 1:
+                    errors.append(f"Узел {node.id}: IF ELSE должен иметь ровно одну входящую связь")
+                elif node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
+                    errors.append(f"Узел {node.id}: родитель IF ELSE должен быть узлом с выводом")
+                if not node.true_children:
+                    errors.append(f"Узел {node.id}: подключите ветку TRUE")
+                if not node.false_children:
+                    errors.append(f"Узел {node.id}: подключите ветку FALSE")
+                overlap = set(node.true_children) & set(node.false_children)
+                if overlap:
+                    errors.append(f"Узел {node.id}: TRUE и FALSE не могут вести в один узел")
     for node in graph.nodes:
         for parent_id in node.parents:
             if parent_id not in known:
@@ -81,6 +116,14 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
             if child_id not in known:
                 errors.append(f"Узел {node.id}: неизвестный потомок {child_id}")
         indegree[node.id] = len(node.parents)
+        if node.type == NodeType.HTTP_REQUEST:
+            if node.request_json.strip():
+                _validate_request_json(node.id, node.request_json, errors)
+            if not strict and len(node.parents) > 1:
+                errors.append(f"Узел {node.id}: HTTP Request может иметь только одну входящую связь")
+        if node.type == NodeType.IF_ELSE:
+            if not strict and len(node.parents) > 1:
+                errors.append(f"Узел {node.id}: IF ELSE может иметь только одну входящую связь")
         if node.type == NodeType.TELEGRAM_SEND:
             if len(node.parents) > 1:
                 errors.append(f"Узел {node.id}: Telegram может иметь только одну входящую связь")

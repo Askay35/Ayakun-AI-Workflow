@@ -91,6 +91,20 @@ class SMTPEmailProvider:
         # smtplib синхронный — уводим в thread, чтобы не блокировать event loop.
         await asyncio.to_thread(deliver)
 
+def llm_instructions(instructions: str | None = None, output_format: str | None = None) -> str | None:
+    parts: list[str] = []
+    if instructions and str(instructions).strip():
+        parts.append(str(instructions).strip())
+    if output_format and str(output_format).strip():
+        parts.append(
+            "Верни результат в следующем формате:\n"
+            f"{str(output_format).strip()}\n\n"
+            "Строго соблюдай указанную структуру ответа.\n"
+            "Не добавляй дополнительный текст, markdown или пояснения вне этого формата."
+        )
+    return "\n\n".join(parts) or None
+
+
 def prompt_input(prompt: str, input_data: str | list[str] | None = None) -> str:
     chunks = [item for item in input_data if item] if isinstance(input_data, list) else (
         [input_data] if input_data else []
@@ -156,6 +170,7 @@ class LLMProvider(Protocol):
         input_data: str | list[str] | None = None,
         model: str | None = None,
         max_tokens: int | None = None,
+        output_format: str | None = None,
     ) -> LLMResult: ...
 
 class OpenAICompatibleProvider:
@@ -181,14 +196,16 @@ class OpenAICompatibleProvider:
         input_data: str | list[str] | None = None,
         model: str | None = None,
         max_tokens: int | None = None,
+        output_format: str | None = None,
     ) -> LLMResult:
         selected_model = model or self.model
         payload: dict[str, object] = {
             "model": selected_model,
             "input": prompt_input(prompt, input_data),
         }
-        if instructions:
-            payload["instructions"] = instructions
+        combined_instructions = llm_instructions(instructions, output_format)
+        if combined_instructions:
+            payload["instructions"] = combined_instructions
         if max_tokens is not None:
             payload["max_output_tokens"] = max_tokens
 

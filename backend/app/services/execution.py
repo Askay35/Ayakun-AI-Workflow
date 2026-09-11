@@ -6,16 +6,19 @@
 
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
+import json
 
 import httpx
 
+from helper import evaluate_condition, expression_root, form_request_body, json_root_from_output
 from core.config import settings
-from schemas.workflow import Node, NodeType, PromptNode, TelegramSendNode, WebSearchNode
+from schemas.workflow import HttpRequestNode, IfElseNode, Node, NodeType, PromptNode, TelegramSendNode, WebSearchNode
 from services.providers import (
     ModelRouter,
     SearchResult,
     TelegramNotificationProvider,
     WebSearchRouter,
+    llm_instructions,
 )
 from services.pricing import PricingService, maximum_output_tokens
 from utils.deepseek_tokenizer import count_prompt_tokens
@@ -50,7 +53,10 @@ def output_text(output: object) -> str:
             value = output.get(key)
             if isinstance(value, str) and value.strip():
                 return value
-        return ""
+        try:
+            return json.dumps(output, ensure_ascii=False)
+        except (TypeError, ValueError):
+            return str(output)
     if isinstance(output, list):
         chunks: list[str] = []
         for item in output:
@@ -137,10 +143,11 @@ class DefaultExecutors:
         )
         setting_key = "complex_llm_model" if node.complexity == "complex_text" else "simple_llm_model"
         model = node.model or await self.pricing.setting(setting_key, default_model)
+        composed_instructions = llm_instructions(node.instructions or None, node.output_format or None)
         input_data = parent_output_texts(node, context) or None
         input_tokens = count_prompt_tokens(
             node.prompt,
-            instructions=node.instructions or None,
+            instructions=composed_instructions,
             input_data=input_data,
         )
         price = await self.pricing.get("deepseek", model)
@@ -156,11 +163,50 @@ class DefaultExecutors:
         result = await provider.prompt(
             node.prompt,
             instructions=node.instructions or None,
+            output_format=node.output_format or None,
             input_data=input_data,
             model=model,
             max_tokens=max_tokens,
         )
         return result.model_dump(mode="json")
+
+    async def http_request(self, node: HttpRequestNode, context: dict) -> dict | list:
+        records = parent_records(node, context)
+        if len(records) != 1:
+            raise ValueError("HTTP Request принимает ровно одну входящую связь")
+        request_data = form_request_body(
+            node.request_json,
+            json_root_from_output(records[0].get("output")),
+        )
+        method = str(request_data.get("method") or "GET").upper()
+        url = request_data.get("url")
+        if not isinstance(url, str) or not url.strip():
+            raise ValueError("В данных запроса не указан url")
+        headers = request_data.get("headers") or {}
+        if headers and not isinstance(headers, dict):
+            raise ValueError("headers в данных запроса должны быть JSON-объектом")
+        body = request_data.get("body")
+        kwargs: dict = {
+            "method": method,
+            "url": url.strip(),
+            "headers": headers,
+            "timeout": settings.provider_timeout_seconds,
+        }
+        if body is not None:
+            kwargs["json"] = body
+        response = await self.client.request(**kwargs)
+        if response.is_error:
+            snippet = (response.text or "")[:500]
+            raise ValueError(f"HTTP {response.status_code}: {snippet or 'ошибка запроса'}")
+        if not response.content:
+            return {"status": response.status_code}
+        try:
+            payload = response.json()
+        except json.JSONDecodeError:
+            return {"status": response.status_code, "text": response.text}
+        if isinstance(payload, (dict, list)):
+            return payload
+        return {"data": payload}
 
     async def telegram_send(self, node: TelegramSendNode, context: dict) -> dict:
         chat_id = node.chat_id or context.get("input", {}).get("chat_id")
@@ -175,9 +221,24 @@ class DefaultExecutors:
         await self.notifications.send(str(chat_id), message)
         return {"sent": True, "text": message}
 
+    async def if_else(self, node: IfElseNode, context: dict) -> dict | list:
+        records = parent_records(node, context)
+        if len(records) != 1:
+            raise ValueError("IF ELSE принимает ровно одну входящую связь")
+        payload = expression_root(records[0].get("output"))
+        taken = evaluate_condition(node.condition, payload)
+        context.setdefault("taken_branches", {})[node.id] = "true" if taken else "false"
+        if isinstance(payload, dict):
+            return dict(payload)
+        if isinstance(payload, list):
+            return list(payload)
+        return {"value": payload}
+
     def registry(self) -> NodeRegistry:
         registry = NodeRegistry()
         registry.register(NodeType.WEB_SEARCH, self.web_search)
         registry.register(NodeType.PROMPT, self.prompt)
         registry.register(NodeType.TELEGRAM_SEND, self.telegram_send)
+        registry.register(NodeType.HTTP_REQUEST, self.http_request)
+        registry.register(NodeType.IF_ELSE, self.if_else)
         return registry

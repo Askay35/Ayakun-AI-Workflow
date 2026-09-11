@@ -14,6 +14,8 @@ const meta = computed(() => NODE_META[props.kind])
 const preview = computed(() => {
   if (props.kind === 'web_search') return props.data.query?.trim() || 'Запрос ещё не задан'
   if (props.kind === 'prompt') return props.data.prompt?.trim() || 'Инструкция ещё не задана'
+  if (props.kind === 'http_request') return props.data.request_json?.trim() || 'Данные запроса ещё не заданы'
+  if (props.kind === 'if_else') return props.data.condition?.trim() || 'Условие ещё не задано'
   return props.data.chat_id ? `Чат ${props.data.chat_id}` : 'В ваш Telegram'
 })
 </script>
@@ -38,8 +40,29 @@ const preview = computed(() => {
         </div>
       </div>
       <p class="n8n-node-preview">{{ preview }}</p>
+      <div v-if="kind === 'if_else'" class="if-else-outputs">
+        <div class="if-else-row">
+          <span class="if-else-label is-true">TRUE</span>
+          <Handle
+            :id="`${nodeId}-true`"
+            type="source"
+            :position="Position.Right"
+            class="n8n-handle n8n-handle-out"
+          />
+        </div>
+        <div class="if-else-row">
+          <span class="if-else-label is-false">FALSE</span>
+          <Handle
+            :id="`${nodeId}-false`"
+            type="source"
+            :position="Position.Right"
+            class="n8n-handle n8n-handle-out"
+          />
+        </div>
+      </div>
     </div>
     <Handle
+      v-if="kind !== 'if_else'"
       :id="`${nodeId}-out`"
       type="source"
       :position="Position.Right"

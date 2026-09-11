@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.billing import PricingRate, RuntimeSetting
 from schemas.workflow import WorkflowGraph
+from services.providers import llm_instructions
 from utils.deepseek_tokenizer import count_prompt_tokens
 
 THOUSAND = Decimal("1000")
@@ -136,7 +137,10 @@ def _node_type(node: object) -> str:
 def _estimated_prompt_input_tokens(node: object, graph: WorkflowGraph | None = None) -> int:
     tokens = count_prompt_tokens(
         getattr(node, "prompt", "") or "",
-        instructions=getattr(node, "instructions", None),
+        instructions=llm_instructions(
+            getattr(node, "instructions", None),
+            getattr(node, "output_format", None),
+        ),
     )
     if graph is None:
         return tokens
@@ -148,7 +152,7 @@ def _estimated_prompt_input_tokens(node: object, graph: WorkflowGraph | None = N
         parent_type = _node_type(parent)
         if parent_type == "web_search":
             tokens += ESTIMATED_SEARCH_CONTEXT_TOKENS
-        elif parent_type == "prompt":
+        elif parent_type in {"prompt", "http_request"}:
             tokens += ESTIMATED_PROMPT_CONTEXT_TOKENS
     return tokens
 
@@ -157,7 +161,7 @@ def node_estimate(node: object, graph: WorkflowGraph | None = None) -> Decimal:
     node_type = _node_type(node)
     if node_type == "web_search":
         return billable_credits(DEFAULT_PRICES[("serper", "search")].search)
-    if node_type == "telegram_send":
+    if node_type in {"telegram_send", "http_request"}:
         return Decimal("0")
     if node_type != "prompt":
         return Decimal("0")

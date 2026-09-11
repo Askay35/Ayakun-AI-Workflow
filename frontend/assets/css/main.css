@@ -857,6 +857,30 @@ a { color: inherit; text-decoration: none; }
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
+.if-else-outputs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.if-else-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 18px;
+  padding-right: 8px;
+}
+.if-else-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.if-else-label.is-true { color: #7dffa6; }
+.if-else-label.is-false { color: #ff9b8a; }
+.n8n-node.is-if_else .if-else-row .n8n-handle-out {
+  top: 50%;
+}
 .workflow-editor .vue-flow__handle.n8n-handle {
   z-index: 3;
   width: 12px;

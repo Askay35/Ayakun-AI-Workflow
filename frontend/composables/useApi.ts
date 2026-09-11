@@ -103,11 +103,22 @@ export const useApi = () => {
           ? {
               prompt: node.data.prompt || '',
               instructions: node.data.instructions || '',
+              output_format: node.data.output_format || '',
               complexity: node.data.complexity || 'simple_text'
             }
-          : {
-              chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined
-            })
+          : node.type === 'http_request'
+            ? {
+                request_json: node.data.request_json || ''
+              }
+            : node.type === 'if_else'
+              ? {
+                  condition: node.data.condition || '',
+                  true_children: node.true_children || [],
+                  false_children: node.false_children || []
+                }
+              : {
+                  chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined
+                })
     }))
   })
 
@@ -118,7 +129,9 @@ export const useApi = () => {
         return {
           ...node,
           parents: [...(node.parents || node.data.parents || [])],
-          children: [...(node.children || node.data.children || [])]
+          children: [...(node.children || node.data.children || [])],
+          true_children: [...(node.true_children || node.data.true_children || [])],
+          false_children: [...(node.false_children || node.data.false_children || [])]
         }
       }
       return {
@@ -126,6 +139,8 @@ export const useApi = () => {
         type: node.type,
         parents: [...(node.parents || [])],
         children: [...(node.children || [])],
+        true_children: [...(node.true_children || [])],
+        false_children: [...(node.false_children || [])],
         position: node.position || { x: 80 + index * 280, y: 160 },
         data: {
           label: node.label || node.type,
@@ -133,8 +148,15 @@ export const useApi = () => {
           period: node.period || undefined,
           prompt: node.prompt,
           instructions: node.instructions,
+          output_format: node.output_format,
           model: node.model,
           complexity: node.complexity || (String(node.model || '').includes('pro') ? 'complex_text' : 'simple_text'),
+          request_json: typeof node.request_json === 'string'
+            ? node.request_json
+            : node.request_json
+              ? JSON.stringify(node.request_json, null, 2)
+              : undefined,
+          condition: node.condition,
           chat_id: node.chat_id ? String(node.chat_id) : undefined
         }
       }

@@ -57,6 +57,10 @@ async def node_cost(
         return credits, 0, {**details, "provider_cost_usd": str(provider_cost_usd(credits))}
     if getattr(node, "type") == NodeType.TELEGRAM_SEND:
         return Decimal("0"), 0, {"provider": "telegram", "model": "send"}
+    if getattr(node, "type") == NodeType.HTTP_REQUEST:
+        return Decimal("0"), 0, {"provider": "http", "model": "request"}
+    if getattr(node, "type") == NodeType.IF_ELSE:
+        return Decimal("0"), 0, {"provider": "if_else", "model": "branch"}
     usage = output.get("usage") if isinstance(output, dict) else {}
     usage = usage or {}
     model = output.get("model") or getattr(node, "model", None) or (
@@ -70,7 +74,7 @@ async def node_cost(
     if hit + miss == 0:
         miss = int(usage.get("input_tokens", 0))
     generated = int(usage.get("output_tokens", 0))
-    credits = quantize_credits(usage_credits(price, hit, miss, generated))
+    credits = quantize_credits(usage_credits(price, hit, miss, generated) * settings.credits_cost_multiplier)
     units = hit + miss + generated
     details = {
         "provider": "deepseek",
@@ -183,10 +187,22 @@ class WorkflowRunExecutor:
                 lambda: self.billing.reservation_remaining(self.reservation_request_id),
             ).registry()
             try:
+                blocked_edges: set[tuple[str, str]] = set()
                 for node in topological_nodes(self.graph):
                     if await self.is_cancelled():
                         return
+                    if not self._is_reachable(node, context, blocked_edges):
+                        await self.skip_branch_node(node)
+                        continue
                     await self.execute_node(node, context, registry)
+                    if node.type == NodeType.IF_ELSE:
+                        branch = (context.get("taken_branches") or {}).get(node.id)
+                        skipped_children = (
+                            getattr(node, "false_children", [])
+                            if branch == "true"
+                            else getattr(node, "true_children", [])
+                        )
+                        blocked_edges.update((node.id, child_id) for child_id in skipped_children)
                 self.run.output = context["nodes"]
                 self.run.status = RunStatus.succeeded
                 logger.info(
@@ -210,7 +226,41 @@ class WorkflowRunExecutor:
         run_input = dict(self.run.input)
         if self.user.chat_id and "chat_id" not in run_input:
             run_input["chat_id"] = self.user.chat_id
-        return {"input": run_input, "nodes": {}}
+        return {"input": run_input, "nodes": {}, "taken_branches": {}}
+
+    def _is_reachable(
+        self,
+        node: WorkflowNode,
+        context: dict,
+        blocked_edges: set[tuple[str, str]],
+    ) -> bool:
+        if not node.parents:
+            return True
+        executed = context.get("nodes") or {}
+        for parent_id in node.parents:
+            if parent_id not in executed:
+                continue
+            if (parent_id, node.id) in blocked_edges:
+                continue
+            return True
+        return False
+
+    async def skip_branch_node(self, node: WorkflowNode) -> None:
+        node_run = await self.get_or_create_node_run(node)
+        if node_run.status == NodeRunStatus.succeeded:
+            return
+        node_run.status = NodeRunStatus.cancelled
+        node_run.error = "Ветка IF ELSE не выбрана"
+        node_run.finished_at = datetime.datetime.now(datetime.UTC)
+        await self.db.commit()
+        logger.info(
+            "Звено пропущено: ветка не выбрана",
+            extra=self.log_fields(
+                event="node.skipped_branch",
+                node_id=node.id,
+                node_type=node_type_value(node.type),
+            ),
+        )
 
     async def is_cancelled(self) -> bool:
         await self.db.refresh(self.run)
@@ -282,7 +332,9 @@ class WorkflowRunExecutor:
         context: dict,
         registry: NodeRegistry,
     ) -> None:
-        max_attempts = 1 if node.type in {NodeType.PROMPT, NodeType.TELEGRAM_SEND} else 3
+        max_attempts = 1 if node.type in {
+            NodeType.PROMPT, NodeType.TELEGRAM_SEND, NodeType.HTTP_REQUEST, NodeType.IF_ELSE
+        } else 3
         last_error: Exception | None = None
         for attempt in range(node_run.attempt, max_attempts):
             node_run.attempt = attempt + 1

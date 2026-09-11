@@ -1,7 +1,7 @@
 export type Id = string
 export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 export type NodeRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled'
-export type NodeKind = 'web_search' | 'prompt' | 'telegram_send'
+export type NodeKind = 'web_search' | 'prompt' | 'http_request' | 'if_else' | 'telegram_send'
 export type SearchPeriod = 'h' | 'd' | 'w' | 'm' | 'y'
 
 export interface ApiEnvelope<T> {
@@ -33,14 +33,19 @@ export interface WorkflowNode {
   position: { x: number; y: number }
   parents: Id[]
   children: Id[]
+  true_children?: Id[]
+  false_children?: Id[]
   data: {
     label: string
     query?: string
     period?: SearchPeriod
     prompt?: string
     instructions?: string
+    output_format?: string
     model?: string
     complexity?: 'simple_text' | 'complex_text'
+    request_json?: string
+    condition?: string
     chat_id?: string
     status?: RunStatus
     output?: string

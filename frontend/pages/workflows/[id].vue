@@ -6,8 +6,11 @@ import type { NodeKind, SearchPeriod, Workflow, WorkflowNode } from '~/types/api
 import { formatCredits } from '~/utils/credits'
 import {
   NODE_META,
+  DEFAULT_HTTP_REQUEST_JSON,
+  IF_ELSE_CONDITION_PLACEHOLDER,
   addLink,
   applyLinks,
+  branchFromHandle,
   canConnect,
   dropNodeLinks,
   flowEdgesFromLinks,
@@ -108,11 +111,41 @@ const selectedPeriod = computed({
     selected.value.data.period = value === 'any' ? undefined : (value as SearchPeriod)
   }
 })
+const JSON_EXPRESSION_EXAMPLE = '{{$json.userId}}'
+const OUTPUT_FORMAT_PLACEHOLDER = [
+  '{',
+  '  "json": {',
+  '    "userId": "{{id пользователя}}",',
+  '    "email": "{{email пользователя}}"',
+  '  }',
+  '}'
+].join('\n')
 const selectedInstructions = computed({
   get: () => selected.value?.data.instructions || '',
   set: (value: string) => {
     if (!selected.value) return
     selected.value.data.instructions = value
+  }
+})
+const selectedOutputFormat = computed({
+  get: () => selected.value?.data.output_format || '',
+  set: (value: string) => {
+    if (!selected.value) return
+    selected.value.data.output_format = value
+  }
+})
+const selectedRequestJson = computed({
+  get: () => selected.value?.data.request_json || '',
+  set: (value: string) => {
+    if (!selected.value) return
+    selected.value.data.request_json = value
+  }
+})
+const selectedCondition = computed({
+  get: () => selected.value?.data.condition || '',
+  set: (value: string) => {
+    if (!selected.value) return
+    selected.value.data.condition = value
   }
 })
 const defaultEdgeOptions = {
@@ -188,7 +221,10 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
     data: {
       label: item.label,
       complexity: type === 'prompt' ? 'simple_text' : undefined,
-      instructions: type === 'prompt' ? '' : undefined
+      instructions: type === 'prompt' ? '' : undefined,
+      output_format: type === 'prompt' ? '' : undefined,
+      request_json: type === 'http_request' ? DEFAULT_HTTP_REQUEST_JSON : undefined,
+      condition: type === 'if_else' ? '' : undefined
     }
   }
   nodes.value = [...nodes.value, node]
@@ -197,27 +233,33 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
 }
 const connectionEnds = (connection: Connection) => ({
   source: resolveNodeId(nodes.value, connection.source),
-  target: resolveNodeId(nodes.value, connection.target)
+  target: resolveNodeId(nodes.value, connection.target),
+  branch: branchFromHandle(connection.sourceHandle)
 })
+const connectBlockedTitle = (targetId: string) => {
+  const type = nodes.value.find(node => node.id === targetId)?.type
+  if (type === 'telegram_send') return 'Telegram принимает только одну входящую связь'
+  if (type === 'http_request') return 'HTTP Request принимает только одну входящую связь'
+  if (type === 'if_else') return 'IF ELSE принимает только одну входящую связь'
+  return 'Так соединить нельзя'
+}
 const onConnect = (connection: Connection) => {
-  const { source, target } = connectionEnds(connection)
+  const { source, target, branch } = connectionEnds(connection)
   if (!source || !target) return
-  if (!canConnect(nodes.value, links.value, source, target)) {
+  if (!canConnect(nodes.value, links.value, source, target, connection.sourceHandle)) {
     toast.add({
-      title: nodes.value.find(node => node.id === target)?.type === 'telegram_send'
-        ? 'Telegram принимает только одну входящую связь'
-        : 'Так соединить нельзя',
+      title: connectBlockedTitle(target),
       color: 'warning'
     })
     return
   }
-  links.value = addLink(links.value, source, target)
+  links.value = addLink(links.value, source, target, branch)
   edges.value = [...edges.value, {
     ...defaultEdgeOptions,
     id: `${source}-->${target}`,
     source,
     target,
-    sourceHandle: `${source}-out`,
+    sourceHandle: branch ? `${source}-${branch}` : `${source}-out`,
     targetHandle: `${target}-in`
   }]
 }
@@ -401,6 +443,12 @@ const run = async () => {
             <template #node-prompt="{ id: nodeId, data, selected: active }">
               <WorkflowNodeCard :node-id="nodeId" kind="prompt" :data="data" :selected="active" />
             </template>
+            <template #node-http_request="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="http_request" :data="data" :selected="active" />
+            </template>
+            <template #node-if_else="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="if_else" :data="data" :selected="active" />
+            </template>
             <template #node-telegram_send="{ id: nodeId, data, selected: active }">
               <WorkflowNodeCard :node-id="nodeId" kind="telegram_send" :data="data" :selected="active" />
             </template>
@@ -412,7 +460,7 @@ const run = async () => {
         <div v-if="!nodes.length" class="editor-empty">
           <span class="editor-empty-icon"><UIcon name="i-lucide-workflow" class="size-6" /></span>
           <p class="mb-1 text-sm font-extrabold text-white">Соберите цепочку</p>
-          <p class="mb-0 max-w-xs text-center text-xs leading-5 text-white/45">Перетащите «Поиск», «Обработку» или «Telegram» на холст и соедините точки справа налево.</p>
+          <p class="mb-0 max-w-xs text-center text-xs leading-5 text-white/45">Перетащите узлы на холст и соедините выход справа со входом слева. У IF ELSE два выхода: TRUE и FALSE.</p>
         </div>
         <div class="editor-zoom">
           <button type="button" class="editor-zoom-btn" @click="zoomOut()">−</button>
@@ -457,7 +505,27 @@ const run = async () => {
               <UFormField label="Инструкция">
                 <UTextarea v-model="selectedInstructions" :rows="4" class="w-full" placeholder="Отвечай кратко, без вступлений" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Результаты поиска подставляются во вход автоматически.</p>
+              <UFormField label="Формат вывода">
+                <UTextarea
+                  v-model="selectedOutputFormat"
+                  :rows="8"
+                  class="w-full font-mono text-xs"
+                  :placeholder="OUTPUT_FORMAT_PLACEHOLDER"
+                />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его. Результаты поиска подставляются во вход автоматически.</p>
+            </template>
+            <template v-if="selected.type === 'http_request'">
+              <UFormField label="Данные запроса">
+                <UTextarea v-model="selectedRequestJson" :rows="14" class="w-full font-mono text-xs" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">Ровно одна входящая связь. Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} берутся из вывода предыдущего узла. После подстановки значение должно остаться валидным JSON.</p>
+            </template>
+            <template v-if="selected.type === 'if_else'">
+              <UFormField label="Условие">
+                <UTextarea v-model="selectedCondition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">Ровно одна входящая связь и два выхода: TRUE и FALSE. Выполняется только выбранная ветка. Данные предыдущего узла передаются дальше без изменений.</p>
             </template>
             <template v-if="selected.type === 'telegram_send'">
               <UFormField label="Получатель">

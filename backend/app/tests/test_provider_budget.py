@@ -53,6 +53,25 @@ async def test_provider_makes_one_call_and_preserves_truncated_result() -> None:
     assert result.usage.output_tokens == 50
 
 
+@pytest.mark.asyncio
+async def test_provider_appends_output_format_to_instructions() -> None:
+    provider = object.__new__(OpenAICompatibleProvider)
+    responses = FakeResponses()
+    provider.client = SimpleNamespace(responses=responses)
+    provider.model = "deepseek-v4-flash"
+
+    await provider.prompt(
+        "Сделай отчёт",
+        instructions="Кратко",
+        output_format='{"json": {"ok": true}}',
+    )
+
+    call = responses.calls[0]
+    assert call["instructions"].startswith("Кратко")
+    assert '{"json": {"ok": true}}' in call["instructions"]
+    assert "Верни результат в следующем формате:" in call["instructions"]
+
+
 def test_prompt_input_appends_connected_parent_data() -> None:
     assert prompt_input("Сделай вывод") == "Сделай вывод"
     assert prompt_input("Сделай вывод", ["новость A"]) == "Сделай вывод\n\nновость A"
