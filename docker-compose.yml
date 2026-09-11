@@ -2,7 +2,7 @@ x-backend: &backend
   build:
     context: .
     dockerfile: backend/app/Dockerfile
-  image: yakun-backend:${IMAGE_TAG:-dev}
+  image: ayakun-backend:${IMAGE_TAG:-dev}
   environment: &backend-environment
     ENVIRONMENT: ${ENVIRONMENT:-development}
     DB_URL: ${DB_URL}
@@ -141,7 +141,7 @@ services:
     build:
       context: ./frontend
       target: dependencies
-    image: yakun-frontend:${IMAGE_TAG:-dev}
+    image: ayakun-frontend:${IMAGE_TAG:-dev}
     environment:
       NUXT_API_BASE: ${NUXT_API_BASE:-http://backend:8000/api/v1}
       NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-http://localhost:8000/api/v1}
@@ -209,7 +209,7 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-yakun}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-ayakun}
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"

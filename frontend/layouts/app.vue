@@ -9,7 +9,7 @@ useAppTitle()
 <template>
   <div class="app-shell">
     <aside class="app-sidebar">
-      <NuxtLink to="/dashboard" class="brand app-logo">Yakun</NuxtLink>
+      <NuxtLink to="/dashboard" class="brand app-logo">Ayakun</NuxtLink>
       <nav class="app-nav">
         <UButton
           v-for="item in APP_NAV_ITEMS"

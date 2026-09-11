@@ -3,6 +3,7 @@
 .cursor/
 .idea/
 .vscode/
+.cursor/
 
 .env
 .env.*

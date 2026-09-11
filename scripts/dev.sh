@@ -28,7 +28,7 @@ check_docker_urls() {
 
   if [[ -z "$db_url" || "$db_url" == *"@localhost"* ]]; then
     echo "DB_URL должен указывать на хост postgres (не localhost), например:"
-    echo "  DB_URL=postgresql+asyncpg://USER:PASS@postgres:5432/yakun"
+    echo "  DB_URL=postgresql+asyncpg://USER:PASS@postgres:5432/ayakun"
     exit 1
   fi
   if [[ -z "$redis_url" || "$redis_url" == *"@localhost"* ]]; then
@@ -37,7 +37,7 @@ check_docker_urls() {
   fi
   if [[ -z "$broker" || "$broker" == *"@localhost"* ]]; then
     echo "CELERY_BROKER_URL должен указывать на rabbitmq, например:"
-    echo "  CELERY_BROKER_URL=amqp://USER:PASS@rabbitmq:5672/yakun"
+    echo "  CELERY_BROKER_URL=amqp://USER:PASS@rabbitmq:5672/ayakun"
     exit 1
   fi
 }

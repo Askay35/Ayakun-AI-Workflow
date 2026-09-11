@@ -9,7 +9,7 @@ useAppTitle()
       <div class="shell public-header-inner">
         <NuxtLink to="/" class="brand public-logo">
           <span class="logo-mark">Y</span>
-          Yakun
+          Ayakun
         </NuxtLink>
         <nav class="public-nav">
           <NuxtLink to="/#how" class="nav-link nav-hide">Как работает</NuxtLink>

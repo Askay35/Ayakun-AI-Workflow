@@ -1,5 +1,5 @@
 export const PAGE_TITLES: Record<string, string> = {
-  index: 'Yakun',
+  index: 'Ayakun',
   login: 'Вход',
   dashboard: 'Обзор',
   workflows: 'Цепочки',

@@ -6,7 +6,7 @@ export function useAppTitle(title?: MaybeRefOrGetter<string | undefined>) {
     title: computed(() => {
       const override = title === undefined ? undefined : toValue(title)
       if (override) return override
-      return PAGE_TITLES[String(route.name)] || 'Yakun'
+      return PAGE_TITLES[String(route.name)] || 'Ayakun'
     })
   })
 }

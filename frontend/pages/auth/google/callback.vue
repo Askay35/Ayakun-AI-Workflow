@@ -9,12 +9,12 @@ onMounted(async () => {
     const code = String(route.query.code || '')
     const state = String(route.query.state || '')
     if (!code || !state) throw new Error('Google не вернул code/state')
-    const verifier = sessionStorage.getItem('yakun_google_verifier') || ''
-    const redirectUri = sessionStorage.getItem('yakun_google_redirect_uri') || `${location.origin}/auth/google/callback`
+    const verifier = sessionStorage.getItem('ayakun_google_verifier') || ''
+    const redirectUri = sessionStorage.getItem('ayakun_google_redirect_uri') || `${location.origin}/auth/google/callback`
     if (!verifier) throw new Error('PKCE verifier не найден')
     await auth.accept(await api.auth.googleCallback(code, state, verifier, redirectUri))
-    sessionStorage.removeItem('yakun_google_verifier')
-    sessionStorage.removeItem('yakun_google_redirect_uri')
+    sessionStorage.removeItem('ayakun_google_verifier')
+    sessionStorage.removeItem('ayakun_google_redirect_uri')
     await navigateTo('/dashboard')
   } catch (reason: any) {
     error.value = reason?.message || 'Не удалось завершить вход.'

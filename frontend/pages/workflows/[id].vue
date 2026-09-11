@@ -208,11 +208,11 @@ const onEdgesChange = (changes: EdgeChange[]) => {
   }
 }
 const onDragStart = (event: DragEvent, type: NodeKind) => {
-  event.dataTransfer?.setData('application/yakun-node', type)
+  event.dataTransfer?.setData('application/ayakun-node', type)
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 const onDrop = (event: DragEvent) => {
-  const type = event.dataTransfer?.getData('application/yakun-node') as NodeKind
+  const type = event.dataTransfer?.getData('application/ayakun-node') as NodeKind
   if (!type || !(type in NODE_META)) return
   addNode(type, screenToFlowCoordinate({ x: event.clientX, y: event.clientY }))
 }

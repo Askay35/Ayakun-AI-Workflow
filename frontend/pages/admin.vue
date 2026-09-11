@@ -19,7 +19,7 @@ const load = async () => {
     config.value = structuredClone(await api.admin.config(credentials.value))
   } catch {
     credentials.value = ''
-    sessionStorage.removeItem('yakun_admin_auth')
+    sessionStorage.removeItem('ayakun_admin_auth')
     toast.add({ title: 'Неверный логин или пароль', color: 'error' })
   } finally {
     loading.value = false
@@ -27,14 +27,14 @@ const load = async () => {
 }
 const signIn = async () => {
   credentials.value = btoa(`${login.value}:${password.value}`)
-  sessionStorage.setItem('yakun_admin_auth', credentials.value)
+  sessionStorage.setItem('ayakun_admin_auth', credentials.value)
   await load()
 }
 const signOut = () => {
   credentials.value = ''
   password.value = ''
   config.value = undefined
-  sessionStorage.removeItem('yakun_admin_auth')
+  sessionStorage.removeItem('ayakun_admin_auth')
 }
 const saveRate = async (rate: PricingRate) => {
   try {
@@ -62,7 +62,7 @@ const saveSetting = async (setting: AdminConfig['settings'][number]) => {
 }
 
 onMounted(() => {
-  credentials.value = sessionStorage.getItem('yakun_admin_auth') || ''
+  credentials.value = sessionStorage.getItem('ayakun_admin_auth') || ''
   if (credentials.value) load()
 })
 </script>
@@ -72,7 +72,7 @@ onMounted(() => {
     <main class="min-h-screen bg-[#15161e] px-5 py-10 text-white">
       <div class="mx-auto max-w-6xl">
         <div v-if="!config" class="mx-auto mt-[12vh] max-w-sm rounded-3xl border border-white/10 bg-[#20212b] p-7 shadow-2xl">
-          <p class="mb-2 text-xs font-extrabold uppercase tracking-[.18em] text-violet-300">Yakun Admin</p>
+          <p class="mb-2 text-xs font-extrabold uppercase tracking-[.18em] text-violet-300">Ayakun Admin</p>
           <h1 class="mb-6 text-2xl font-extrabold">Вход в панель</h1>
           <form class="space-y-4" @submit.prevent="signIn">
             <UFormField label="Логин">
@@ -88,7 +88,7 @@ onMounted(() => {
         <template v-else>
           <header class="mb-8 flex items-center justify-between gap-4">
             <div>
-              <p class="mb-1 text-xs font-extrabold uppercase tracking-[.18em] text-violet-300">Yakun Admin</p>
+              <p class="mb-1 text-xs font-extrabold uppercase tracking-[.18em] text-violet-300">Ayakun Admin</p>
               <h1 class="mb-0 text-3xl font-extrabold">Billing и цены</h1>
             </div>
             <UButton label="Выйти" color="neutral" variant="ghost" @click="signOut" />

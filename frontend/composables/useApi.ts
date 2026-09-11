@@ -24,8 +24,8 @@ export const useApi = () => {
     return String(config.public.apiBase)
   })
   const cookieOpts = { path: '/', sameSite: 'lax' as const, maxAge: 60 * 60 * 24 * 30, watch: true as const }
-  const accessToken = useCookie<string | null>('yakun_access', cookieOpts)
-  const refreshToken = useCookie<string | null>('yakun_refresh', cookieOpts)
+  const accessToken = useCookie<string | null>('ayakun_access', cookieOpts)
+  const refreshToken = useCookie<string | null>('ayakun_refresh', cookieOpts)
 
   const unwrap = <T>(value: T | ApiEnvelope<T>): T =>
     typeof value === 'object' && value !== null && 'success' in value

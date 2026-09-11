@@ -15,8 +15,8 @@ const connectGoogle = async () => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
   const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
   const redirectUri = `${location.origin}/auth/google/callback`
-  sessionStorage.setItem('yakun_google_verifier', verifier)
-  sessionStorage.setItem('yakun_google_redirect_uri', redirectUri)
+  sessionStorage.setItem('ayakun_google_verifier', verifier)
+  sessionStorage.setItem('ayakun_google_redirect_uri', redirectUri)
   const { authorization_url } = await api.auth.googleStart(redirectUri, challenge)
   location.href = authorization_url
 }

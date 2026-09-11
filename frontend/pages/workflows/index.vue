@@ -26,7 +26,7 @@ const formatCost = (value?: number) => `${Number(value || 0).toLocaleString('ru'
       <div>
         <p class="eyebrow">Мои автоматизации</p>
         <h1 class="page-title">Цепочки</h1>
-        <p class="muted">Всё, что Yakun делает за вас — вручную или по расписанию.</p>
+        <p class="muted">Всё, что Ayakun делает за вас — вручную или по расписанию.</p>
       </div>
     </div>
     <div class="panel mb-6 p-4">

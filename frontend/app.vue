@@ -1,6 +1,6 @@
 <script setup lang="ts">
 useHead({
-  titleTemplate: (title?: string) => (!title || title === 'Yakun' ? 'Yakun' : `${title} · Yakun`)
+  titleTemplate: (title?: string) => (!title || title === 'Ayakun' ? 'Ayakun' : `${title} · Ayakun`)
 })
 </script>
 
