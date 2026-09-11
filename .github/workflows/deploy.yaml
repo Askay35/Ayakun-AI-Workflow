@@ -162,17 +162,31 @@ jobs:
             echo 'Running migrations...' && \
             $COMPOSE --profile migrate run --rm migrate && \
             echo 'Starting services...' && \
-            $COMPOSE up -d --no-build && \
-            echo 'Waiting for containers...' && \
-            sleep 30 && \
-            $COMPOSE ps && \
-            for service in backend frontend worker beat proxy; do \
-              if ! $COMPOSE ps --status running --services | grep -qx \"\$service\"; then \
-                echo \"ERROR: service \$service is not running\" && \
-                $COMPOSE logs --tail=120 \"\$service\" && \
-                exit 1; \
-              fi; \
+            if ! $COMPOSE up -d --no-build --pull never; then \
+              echo 'ERROR: compose up failed' && \
+              $COMPOSE ps -a && \
+              $COMPOSE logs --tail=150 backend frontend worker beat proxy && \
+              exit 1; \
+            fi && \
+            echo 'Waiting for containers to become ready...' && \
+            ready=0 && \
+            for i in \$(seq 1 36); do \
+              ok=1 && \
+              for service in backend frontend worker beat proxy; do \
+                if ! $COMPOSE ps --status running --services | grep -qx \"\$service\"; then \
+                  ok=0 && break; \
+                fi; \
+              done && \
+              if [ \"\$ok\" -eq 1 ]; then ready=1 && break; fi && \
+              echo \"waiting (\$i/36)...\" && \
+              sleep 5; \
             done && \
+            $COMPOSE ps -a && \
+            if [ \"\$ready\" -ne 1 ]; then \
+              echo 'ERROR: core services did not become running in time' && \
+              $COMPOSE logs --tail=150 backend frontend worker beat proxy && \
+              exit 1; \
+            fi && \
             echo 'Core services are up'"
 
       - name: Health check
