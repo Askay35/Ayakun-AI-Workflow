@@ -22,3 +22,5 @@
 **/dist/
 
 deploy/certs/
+
+npm-debug.log

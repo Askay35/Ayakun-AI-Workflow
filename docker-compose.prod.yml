@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${BACKEND_IMAGE:-ayakun-backend:dev}
+    image: ${PROD_BACKEND_IMAGE:-ayakun-backend:dev}
     environment:
       ENVIRONMENT: production
     command: ["uv", "run", "--no-sync", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
@@ -9,14 +9,14 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ${BACKEND_IMAGE:-ayakun-backend:dev}
+    image: ${PROD_BACKEND_IMAGE:-ayakun-backend:dev}
     environment:
       ENVIRONMENT: production
     volumes: !reset []
     restart: unless-stopped
 
   beat:
-    image: ${BACKEND_IMAGE:-ayakun-backend:dev}
+    image: ${PROD_BACKEND_IMAGE:-ayakun-backend:dev}
     environment:
       ENVIRONMENT: production
     volumes: !reset
@@ -24,13 +24,13 @@ services:
     restart: unless-stopped
 
   migrate:
-    image: ${BACKEND_IMAGE:-ayakun-backend:dev}
+    image: ${PROD_BACKEND_IMAGE:-ayakun-backend:dev}
     environment:
       ENVIRONMENT: production
     volumes: !reset []
 
   frontend:
-    image: ${FRONTEND_IMAGE:-ayakun-frontend:dev}
+    image: ${PROD_FRONTEND_IMAGE:-ghcr.io/askay35/ayakun-ai-workflow:latest}
     build: !reset null
     environment:
       NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-/api/v1}
