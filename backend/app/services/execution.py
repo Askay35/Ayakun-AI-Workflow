@@ -234,14 +234,19 @@ class DefaultExecutors:
         records = parent_records(node, context)
         if len(records) != 1:
             raise ValueError("IF ELSE принимает ровно одну входящую связь")
-        payload = expression_root(records[0].get("output"))
+        parent_output = records[0].get("output")
+        payload = expression_root(parent_output)
         taken = evaluate_condition(node.condition, payload)
         context.setdefault("taken_branches", {})[node.id] = "true" if taken else "false"
-        if isinstance(payload, dict):
-            return dict(payload)
-        if isinstance(payload, list):
-            return list(payload)
-        return {"value": payload}
+        if isinstance(parent_output, dict):
+            return dict(parent_output)
+        if isinstance(parent_output, list):
+            return list(parent_output)
+        if isinstance(parent_output, str):
+            return {"text": parent_output}
+        if parent_output is None:
+            return {}
+        return {"value": parent_output}
 
     def registry(self) -> NodeRegistry:
         registry = NodeRegistry()

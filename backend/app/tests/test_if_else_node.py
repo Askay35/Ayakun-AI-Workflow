@@ -74,23 +74,51 @@ async def test_if_else_executor_passes_input_through() -> None:
         false_children=["b"],
     )
     payload = {"userId": "123", "email": "test@example.com", "score": 0.91}
+    parent_output = {"text": json.dumps(payload), "usage": {"output_tokens": 4}}
     context = {
         "nodes": {
             "prompt": {
                 "type": "prompt",
-                "output": {"text": json.dumps(payload)},
+                "output": parent_output,
             }
         },
         "taken_branches": {},
     }
     result = await executors.if_else(node, context)
-    assert result == payload
+    assert result == parent_output
     assert context["taken_branches"]["iff"] == "true"
 
-    context["nodes"]["prompt"]["output"] = {"text": json.dumps({**payload, "score": 0.5})}
+    false_output = {"text": json.dumps({**payload, "score": 0.5}), "usage": {"output_tokens": 4}}
+    context["nodes"]["prompt"]["output"] = false_output
     result = await executors.if_else(node, context)
-    assert result["score"] == 0.5
+    assert result == false_output
     assert context["taken_branches"]["iff"] == "false"
+
+
+@pytest.mark.asyncio
+async def test_if_else_passes_http_payload_unchanged() -> None:
+    executors = object.__new__(DefaultExecutors)
+    node = IfElseNode(
+        id="iff",
+        condition='{{$data[0].price}} > 100',
+        parents=["http"],
+        true_children=["a"],
+        false_children=["b"],
+    )
+    parent_output = {"data": [{"price": 123}]}
+    context = {
+        "nodes": {
+            "http": {
+                "type": "http_request",
+                "output": parent_output,
+            }
+        },
+        "taken_branches": {},
+    }
+    result = await executors.if_else(node, context)
+    assert result == parent_output
+    assert result is not parent_output
+    assert context["taken_branches"]["iff"] == "true"
 
 
 def test_unselected_branch_is_not_reachable() -> None:

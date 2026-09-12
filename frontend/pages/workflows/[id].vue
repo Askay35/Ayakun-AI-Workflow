@@ -467,7 +467,7 @@ const run = async () => {
         <div v-if="!nodes.length" class="editor-empty">
           <span class="editor-empty-icon"><UIcon name="i-lucide-workflow" class="size-6" /></span>
           <p class="mb-1 text-sm font-extrabold text-white">Соберите цепочку</p>
-          <p class="mb-0 max-w-xs text-center text-xs leading-5 text-white/45">Перетащите узлы на холст и соедините выход справа со входом слева. У IF ELSE два выхода: TRUE и FALSE.</p>
+          <p class="mb-0 max-w-xs text-center text-xs leading-5 text-white/45">Перетащите узлы на холст и соедините выход справа со входом слева.</p>
         </div>
         <div class="editor-zoom">
           <button type="button" class="editor-zoom-btn" @click="zoomOut()">−</button>
