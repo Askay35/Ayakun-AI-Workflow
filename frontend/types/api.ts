@@ -47,6 +47,7 @@ export interface WorkflowNode {
     request_json?: string
     condition?: string
     chat_id?: string
+    message?: string
     status?: RunStatus
     output?: string
   }

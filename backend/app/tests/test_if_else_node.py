@@ -37,8 +37,13 @@ def test_condition_empty_and_invalid() -> None:
 
 
 def test_condition_missing_field() -> None:
-    with pytest.raises(ValueError, match="нет поля nonexistent"):
+    with pytest.raises(ValueError, match="нет поля json.nonexistent"):
         evaluate_condition('{{$json.nonexistent}} == "test"', {"score": 1})
+
+
+def test_condition_array_path() -> None:
+    assert evaluate_condition('{{$data[0].price}} > 100', {"data": [{"price": 123}]}) is True
+    assert evaluate_condition('{{$data.0.price}} == 123', {"data": [{"price": 123}]}) is True
 
 
 def test_if_else_graph_requires_both_branches() -> None:

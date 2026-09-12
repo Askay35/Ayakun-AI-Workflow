@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     initial_token_balance: Decimal = Decimal("100")
     default_run_cap_credits: Decimal = Decimal("100")
    
-    credits_cost_multiplier: float = 2
+    credits_cost_multiplier: Decimal = Decimal("2")
     cost_prompt_simple: Decimal = Decimal("100")
     cost_prompt_complex: Decimal = Decimal("300")
     cost_web_search: Decimal = Decimal("150")

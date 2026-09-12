@@ -10,16 +10,17 @@ export const NODE_META: Record<NodeKind, { label: string; caption: string; icon:
 
 export const DEFAULT_HTTP_REQUEST_JSON = `{
   "method": "GET",
-  "url": "https://api.example.com/users/{{$json.userId}}",
+  "url": "https://api.example.com/users/{{$userId}}",
   "headers": {
     "Authorization": "Bearer ..."
   },
   "body": {
-    "email": "{{$json.email}}"
+    "email": "{{$email}}"
   }
 }`
 
-export const IF_ELSE_CONDITION_PLACEHOLDER = '{{$json.status}} == "active"'
+export const IF_ELSE_CONDITION_PLACEHOLDER = '{{$status}} == "active"'
+export const TELEGRAM_MESSAGE_PLACEHOLDER = 'Цена: {{$data[0].price}}'
 
 export type GraphLink = { source: string; target: string; sourceHandle?: 'true' | 'false' }
 

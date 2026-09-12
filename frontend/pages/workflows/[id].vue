@@ -8,6 +8,7 @@ import {
   NODE_META,
   DEFAULT_HTTP_REQUEST_JSON,
   IF_ELSE_CONDITION_PLACEHOLDER,
+  TELEGRAM_MESSAGE_PLACEHOLDER,
   addLink,
   applyLinks,
   branchFromHandle,
@@ -111,13 +112,11 @@ const selectedPeriod = computed({
     selected.value.data.period = value === 'any' ? undefined : (value as SearchPeriod)
   }
 })
-const JSON_EXPRESSION_EXAMPLE = '{{$json.userId}}'
+const JSON_EXPRESSION_EXAMPLE = '{{$data[0].price}}'
 const OUTPUT_FORMAT_PLACEHOLDER = [
   '{',
-  '  "json": {',
-  '    "userId": "{{id пользователя}}",',
-  '    "email": "{{email пользователя}}"',
-  '  }',
+  '  "userId": "{{id пользователя}}",',
+  '  "email": "{{email пользователя}}"',
   '}'
 ].join('\n')
 const selectedInstructions = computed({
@@ -146,6 +145,13 @@ const selectedCondition = computed({
   set: (value: string) => {
     if (!selected.value) return
     selected.value.data.condition = value
+  }
+})
+const selectedTelegramMessage = computed({
+  get: () => selected.value?.data.message || '',
+  set: (value: string) => {
+    if (!selected.value) return
+    selected.value.data.message = value
   }
 })
 const defaultEdgeOptions = {
@@ -224,7 +230,8 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       instructions: type === 'prompt' ? '' : undefined,
       output_format: type === 'prompt' ? '' : undefined,
       request_json: type === 'http_request' ? DEFAULT_HTTP_REQUEST_JSON : undefined,
-      condition: type === 'if_else' ? '' : undefined
+      condition: type === 'if_else' ? '' : undefined,
+      message: type === 'telegram_send' ? '' : undefined
     }
   }
   nodes.value = [...nodes.value, node]
@@ -513,13 +520,13 @@ const run = async () => {
                   :placeholder="OUTPUT_FORMAT_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его. Результаты поиска подставляются во вход автоматически.</p>
+              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его.</p>
             </template>
             <template v-if="selected.type === 'http_request'">
               <UFormField label="Данные запроса">
                 <UTextarea v-model="selectedRequestJson" :rows="14" class="w-full font-mono text-xs" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи (можно без родителей). Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} берутся из вывода предыдущего узла. После подстановки значение должно остаться валидным JSON.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи (можно без родителей). Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня вывода предыдущего узла. После подстановки значение должно остаться валидным JSON.</p>
             </template>
             <template v-if="selected.type === 'if_else'">
               <UFormField label="Условие">
@@ -531,7 +538,15 @@ const run = async () => {
               <UFormField label="Получатель">
                 <UInput v-model="selected.data.chat_id" class="w-full" placeholder="Пусто — ваш аккаунт" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Исходящие можно вести дальше, но текст детям не передаётся.</p>
+              <UFormField label="Текст сообщения">
+                <UTextarea
+                  v-model="selectedTelegramMessage"
+                  :rows="6"
+                  class="w-full font-mono text-xs"
+                  :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
+                />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится вывод предыдущего узла. Если задан — подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня входных данных; отсутствующее поле останавливает запуск. Исходящие можно вести дальше, но текст детям не передаётся.</p>
             </template>
           </div>
         </template>

@@ -41,8 +41,21 @@ def test_form_request_body_uses_flat_parent_payload() -> None:
 
 
 def test_form_request_body_raises_on_missing_expression() -> None:
-    with pytest.raises(ValueError, match=r"нет поля userId"):
+    with pytest.raises(ValueError, match=r"нет поля json.userId"):
         form_request_body(REQUEST_TEMPLATE, {"email": "user@example.com"})
+
+
+def test_form_request_body_resolves_array_paths() -> None:
+    result = form_request_body(
+        '{"method":"GET","url":"https://api.example.com/{{$data[0].price}}"}',
+        {"data": [{"price": 123}]},
+    )
+    assert result["url"] == "https://api.example.com/123"
+    dotted = form_request_body(
+        '{"method":"GET","url":"https://api.example.com/{{$data.0.price}}"}',
+        {"data": [{"price": 123}]},
+    )
+    assert dotted["url"] == "https://api.example.com/123"
 
 
 def test_form_request_body_raises_on_malformed_json() -> None:

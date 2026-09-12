@@ -12,9 +12,10 @@ from pwdlib import PasswordHash
 from core.config import settings
 
 password_hash = PasswordHash.recommended()
-_JSON_PLACEHOLDER_RE = re.compile(r"\{\{\$json\.([^}]+)\}\}")
+_PLACEHOLDER_RE = re.compile(r"\{\{\$([^}]+)\}\}")
 _MISSING = object()
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
+_PATH_TOKEN_RE = re.compile(r"\[(-?\d+)\]|([A-Za-z_][\w]*)|(\d+)")
 
 
 def generate_login_code() -> str:
@@ -87,13 +88,17 @@ def try_parse_json(text: str) -> Any:
         return None
 
 
-def json_root_from_output(output: Any) -> Any:
-    """Данные предыдущего узла как $json: dict/list или JSON из поля text."""
+_OUTPUT_ENVELOPE_KEYS = frozenset({
+    "text", "usage", "provider", "model", "truncated", "citations", "answer", "content",
+})
+
+
+def structured_root(output: Any) -> Any | None:
+    """JSON на входе узла или None, если это обычный текст."""
     if output is None:
-        return {}
+        return None
     if isinstance(output, str):
-        parsed = try_parse_json(output)
-        return parsed if parsed is not None else {"text": output}
+        return try_parse_json(output)
     if isinstance(output, list):
         return output
     if isinstance(output, dict):
@@ -102,23 +107,84 @@ def json_root_from_output(output: Any) -> Any:
             parsed = try_parse_json(text)
             if parsed is not None:
                 return parsed
+            if set(output) <= _OUTPUT_ENVELOPE_KEYS:
+                return None
+        return output
+    return None
+
+
+def json_root_from_output(output: Any) -> Any:
+    """Корень для {{$path}}: dict/list узла или JSON, разобранный из поля text."""
+    if output is None:
+        return {}
+    structured = structured_root(output)
+    if structured is not None:
+        return structured
+    if isinstance(output, str):
+        return {"text": output}
+    if isinstance(output, dict):
         return output
     return output
 
 
-def _resolve_json_path(data: Any, path: str) -> Any:
-    current = data
-    for part in path.split("."):
-        if isinstance(current, dict) and part in current:
-            current = current[part]
+def parse_expression_path(path: str) -> list[str | int]:
+    raw = path.strip()
+    if raw.startswith("."):
+        raw = raw[1:]
+    if not raw:
+        raise ValueError("Пустое выражение {{$}}")
+    parts: list[str | int] = []
+    index = 0
+    while index < len(raw):
+        if raw[index] == ".":
+            index += 1
+            continue
+        match = _PATH_TOKEN_RE.match(raw, index)
+        if not match:
+            raise ValueError(f"Некорректный путь в выражении {{${path}}}")
+        index, number, name, dotted_index = match.end(), match.group(1), match.group(2), match.group(3)
+        if number is not None:
+            parts.append(int(number))
+        elif dotted_index is not None:
+            parts.append(int(dotted_index))
         else:
+            parts.append(name)
+    return parts
+
+
+def _walk_path(data: Any, parts: list[str | int]) -> Any:
+    current = data
+    for part in parts:
+        if isinstance(current, dict):
+            if part in current:
+                current = current[part]
+                continue
+            if isinstance(part, int) and str(part) in current:
+                current = current[str(part)]
+                continue
             return _MISSING
+        if isinstance(current, list) and isinstance(part, int):
+            if -len(current) <= part < len(current):
+                current = current[part]
+                continue
+            return _MISSING
+        return _MISSING
     return current
+
+
+def _resolve_json_path(data: Any, path: str) -> Any:
+    parts = parse_expression_path(path)
+    resolved = _walk_path(data, parts)
+    if resolved is not _MISSING:
+        return resolved
+    if parts and parts[0] == "json":
+        return _walk_path(data, parts[1:])
+    return _MISSING
 
 
 def _missing_expression_error(path: str) -> ValueError:
     return ValueError(
-        f"В данных предыдущего узла нет поля {path} ({{{{$json.{path}}}}})"
+        f"В данных предыдущего узла нет поля {path} ({{{{${path}}}}})"
     )
 
 
@@ -130,16 +196,16 @@ def _substitute_placeholders(value: Any, json_root: Any) -> Any:
     if not isinstance(value, str):
         return value
 
-    full_match = _JSON_PLACEHOLDER_RE.fullmatch(value.strip())
+    full_match = _PLACEHOLDER_RE.fullmatch(value.strip())
     if full_match:
-        path = full_match.group(1)
+        path = full_match.group(1).strip()
         resolved = _resolve_json_path(json_root, path)
         if resolved is _MISSING:
             raise _missing_expression_error(path)
         return resolved
 
     def replace(match: re.Match[str]) -> str:
-        path = match.group(1)
+        path = match.group(1).strip()
         resolved = _resolve_json_path(json_root, path)
         if resolved is _MISSING:
             raise _missing_expression_error(path)
@@ -147,7 +213,13 @@ def _substitute_placeholders(value: Any, json_root: Any) -> Any:
             return ""
         return str(resolved)
 
-    return _JSON_PLACEHOLDER_RE.sub(replace, value)
+    return _PLACEHOLDER_RE.sub(replace, value)
+
+
+def render_template(template: str, data: Any) -> str:
+    """Подставляет {{$path}} в строку. path считается от корня входных данных."""
+    result = _substitute_placeholders(template, data)
+    return "" if result is None else str(result)
 
 
 def _parse_request_template(body: str | dict) -> dict:
@@ -178,21 +250,17 @@ def _parse_request_input(value: str | dict | list | None) -> Any:
 
 
 def form_request_body(body: str | dict, input: str | dict | list | None = None) -> dict:
-    """Подставляет {{$json.path}} из input в JSON-шаблон body и возвращает dict."""
+    """Подставляет {{$path}} из input в JSON-шаблон body и возвращает dict."""
     template = _parse_request_template(body)
     payload = _parse_request_input(input)
-    json_root = payload.get("json", payload) if isinstance(payload, dict) and "json" in payload else payload
-    result = _substitute_placeholders(template, json_root)
+    result = _substitute_placeholders(template, payload)
     if not isinstance(result, dict):
         raise ValueError("Данные запроса должны быть JSON-объектом")
     return result
 
 
 def expression_root(output: Any) -> Any:
-    payload = json_root_from_output(output)
-    if isinstance(payload, dict) and "json" in payload:
-        return payload["json"]
-    return payload
+    return json_root_from_output(output)
 
 
 def _parse_literal(token: str) -> Any:
@@ -217,14 +285,14 @@ def _parse_literal(token: str) -> Any:
 
 def resolve_operand(token: str, json_root: Any) -> Any:
     stripped = token.strip()
-    full_match = _JSON_PLACEHOLDER_RE.fullmatch(stripped)
+    full_match = _PLACEHOLDER_RE.fullmatch(stripped)
     if full_match:
-        path = full_match.group(1)
+        path = full_match.group(1).strip()
         resolved = _resolve_json_path(json_root, path)
         if resolved is _MISSING:
             raise _missing_expression_error(path)
         return resolved
-    if _JSON_PLACEHOLDER_RE.search(stripped):
+    if _PLACEHOLDER_RE.search(stripped):
         substituted = _substitute_placeholders(stripped, json_root)
         return _parse_literal(str(substituted))
     return _parse_literal(stripped)

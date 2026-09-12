@@ -54,6 +54,7 @@ class PromptNode(Node):
 class TelegramSendNode(Node):
     type: Literal[NodeType.TELEGRAM_SEND] = NodeType.TELEGRAM_SEND
     chat_id: int | None = None
+    message: str = Field(default="", max_length=8000)
     position: dict[str, float] | None = None
 
 

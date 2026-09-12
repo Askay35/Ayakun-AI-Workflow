@@ -117,7 +117,8 @@ export const useApi = () => {
                   false_children: node.false_children || []
                 }
               : {
-                  chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined
+                  chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined,
+                  message: node.data.message || ''
                 })
     }))
   })
@@ -157,7 +158,8 @@ export const useApi = () => {
               ? JSON.stringify(node.request_json, null, 2)
               : undefined,
           condition: node.condition,
-          chat_id: node.chat_id ? String(node.chat_id) : undefined
+          chat_id: node.chat_id ? String(node.chat_id) : undefined,
+          message: node.message || ''
         }
       }
     })

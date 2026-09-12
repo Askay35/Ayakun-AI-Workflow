@@ -140,7 +140,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
             </div>
           </div>
           <pre v-if="formatOutput(step.output)" class="mt-4 overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step.output) }}</pre>
-          <p v-if="step.error" class="mt-4 rounded-xl bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
+          <p v-if="step.error" class="mt-4! rounded-xl bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
           <div v-if="step.citations?.length" class="mt-3 border-t border-default pt-3">
             <p class="text-xs font-semibold uppercase muted">Источники</p>
             <a

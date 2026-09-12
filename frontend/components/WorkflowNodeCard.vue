@@ -16,6 +16,11 @@ const preview = computed(() => {
   if (props.kind === 'prompt') return props.data.prompt?.trim() || 'Инструкция ещё не задана'
   if (props.kind === 'http_request') return props.data.request_json?.trim() || 'Данные запроса ещё не заданы'
   if (props.kind === 'if_else') return props.data.condition?.trim() || 'Условие ещё не задано'
+  if (props.kind === 'telegram_send') {
+    const text = props.data.message?.trim()
+    if (text) return text
+    return props.data.chat_id ? `Чат ${props.data.chat_id}` : 'В ваш Telegram'
+  }
   return props.data.chat_id ? `Чат ${props.data.chat_id}` : 'В ваш Telegram'
 })
 </script>

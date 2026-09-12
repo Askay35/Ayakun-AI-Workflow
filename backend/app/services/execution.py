@@ -10,7 +10,7 @@ import json
 
 import httpx
 
-from helper import evaluate_condition, expression_root, form_request_body, json_root_from_output
+from helper import evaluate_condition, expression_root, form_request_body, json_root_from_output, render_template
 from core.config import settings
 from schemas.workflow import HttpRequestNode, IfElseNode, Node, NodeType, PromptNode, TelegramSendNode, WebSearchNode
 from services.providers import (
@@ -211,8 +211,16 @@ class DefaultExecutors:
 
     async def telegram_send(self, node: TelegramSendNode, context: dict) -> dict:
         chat_id = node.chat_id or context.get("input", {}).get("chat_id")
-        texts = parent_output_texts(node, context)
-        message = texts[0] if texts else ""
+        records = parent_records(node, context)
+        if len(records) > 1:
+            raise ValueError("Telegram может иметь только одну входящую связь")
+        template = (node.message or "").strip()
+        if template:
+            parent_output = records[0].get("output") if records else None
+            message = render_template(template, expression_root(parent_output))
+        else:
+            texts = parent_output_texts(node, context)
+            message = texts[0] if texts else ""
         if not message:
             return {"sent": False, "text": ""}
         if not chat_id:
