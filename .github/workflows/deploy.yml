@@ -12,8 +12,8 @@ permissions:
 env:
   OWNER_NAME: askay35
   REPO_NAME: ayakun-ai-workflow
-  FRONTEND_IMAGE: ghcr.io/${{ env.OWNER_NAME }}/${{ env.REPO_NAME }}-frontend:latest
-  BACKEND_IMAGE: ghcr.io/${{ env.OWNER_NAME }}/${{ env.REPO_NAME }}-backend:latest
+  FRONTEND_IMAGE: ghcr.io/askay35/ayakun-ai-workflow-frontend:latest
+  BACKEND_IMAGE: ghcr.io/askay35/ayakun-ai-workflow-backend:latest
 
 jobs:
   build:
