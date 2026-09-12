@@ -4,7 +4,7 @@ services:
     environment:
       ENVIRONMENT: production
     command: ["uv", "run", "--no-sync", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
-    ports: !reset
+    ports: !override
       - "127.0.0.1:8000:8000"
     volumes: !reset []
     restart: unless-stopped
@@ -38,7 +38,7 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
     command: ["node", ".output/server/index.mjs"]
-    ports: !reset
+    ports: !override
       - "127.0.0.1:3000:3000"
     volumes: !reset []
     depends_on:
