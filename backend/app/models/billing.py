@@ -115,7 +115,7 @@ class PricingRate(Base):
     input_cache_hit_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
     input_cache_miss_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
     output_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
-    search_credits: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
+    search_credits: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0)
     provider_costs: Mapped[dict] = mapped_column(JSONB, default=dict)
     active: Mapped[bool] = mapped_column(default=True)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
