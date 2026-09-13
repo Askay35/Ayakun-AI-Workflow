@@ -12,7 +12,7 @@ const orderedPlans = computed(() => {
   const rank = { free: 0, starter: 1, pro: 2, max: 3 } as Record<string, number>
   return [...(plans.value || [])].sort((a, b) => (rank[a.code] ?? 9) - (rank[b.code] ?? 9))
 })
-const planName = (code?: string, fallback?: string) => ({ free: 'Free', starter: 'Starter', pro: 'Pro', max: 'Max' } as Record<string, string>)[code || ''] || fallback || 'Free'
+const planName = (code?: string, fallback?: string) => ({ free: 'Пробный', starter: 'Старт', pro: 'Про', max: 'Макс' } as Record<string, string>)[code || ''] || fallback || 'Пробный'
 const checkout = async (planId: number) => {
   try {
     const { confirmation_url } = await api.billing.checkout(planId)

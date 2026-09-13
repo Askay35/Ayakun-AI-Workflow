@@ -88,7 +88,6 @@ async def update_plan(
     plan.price = data.price
     plan.currency = data.currency.upper()
     plan.limits = {
-        **{key: value for key, value in plan.limits.items() if key != "parallel_runs"},
         "included_credits": float(data.included_credits),
         "run_cap_credits": float(data.run_cap_credits),
     }

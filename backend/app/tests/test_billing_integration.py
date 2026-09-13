@@ -21,7 +21,7 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.asyncio
-async def test_parallel_runs_cannot_reserve_more_than_balance() -> None:
+async def test_concurrent_reserves_cannot_exceed_balance() -> None:
     engine = create_async_engine(settings.db_url)
     sessions = async_sessionmaker(engine, expire_on_commit=False)
     email = f"billing-test-{uuid.uuid4()}@example.invalid"

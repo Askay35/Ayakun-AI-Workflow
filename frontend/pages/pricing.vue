@@ -3,10 +3,10 @@ import type { Plan } from '~/types/api'
 
 const api = useApi()
 const fallback: Plan[] = [
-  { id: 1, code: 'free', name: 'Free', price: 0, currency: 'RUB', limits: { included_credits: 100 } },
-  { id: 2, code: 'starter', name: 'Starter', price: 990, currency: 'RUB', limits: { included_credits: 2000 } },
-  { id: 3, code: 'pro', name: 'Pro', price: 1990, currency: 'RUB', limits: { included_credits: 5000 } },
-  { id: 4, code: 'max', name: 'Max', price: 3990, currency: 'RUB', limits: { included_credits: 15000 } }
+  { id: 1, code: 'free', name: 'Пробный', price: 0, currency: 'RUB', limits: { included_credits: 1000 } },
+  { id: 2, code: 'starter', name: 'Старт', price: 390, currency: 'RUB', limits: { included_credits: 2000 } },
+  { id: 3, code: 'pro', name: 'Про', price: 990, currency: 'RUB', limits: { included_credits: 6500 } },
+  { id: 4, code: 'max', name: 'Макс', price: 1990, currency: 'RUB', limits: { included_credits: 15000 } }
 ]
 const { data: plans } = await useAsyncData('public-plans', () => api.billing.plans().catch(() => fallback))
 const ordered = computed(() => {
@@ -15,10 +15,10 @@ const ordered = computed(() => {
   return [...list].sort((a, b) => (rank[a.code] ?? 9) - (rank[b.code] ?? 9))
 })
 const planMeta: Record<string, { title: string; pitch: string; action: string }> = {
-  free: { title: 'Free', pitch: 'Чтобы собрать первые цепочки и проверить идею.', action: 'Попробовать бесплатно' },
-  starter: { title: 'Starter', pitch: 'Для регулярных личных и рабочих задач.', action: 'Выбрать Starter' },
-  pro: { title: 'Pro', pitch: 'Для большого числа ежедневных запусков.', action: 'Выбрать Pro' },
-  max: { title: 'Max', pitch: 'Для интенсивных автоматизаций.', action: 'Выбрать Max' }
+  free: { title: 'Пробный', pitch: 'Чтобы собрать первые цепочки и проверить идею.', action: 'Попробовать бесплатно' },
+  starter: { title: 'Старт', pitch: 'Больше кредитов для регулярных задач.', action: 'Выбрать Старт' },
+  pro: { title: 'Про', pitch: 'Запас кредитов для ежедневной работы.', action: 'Выбрать Про' },
+  max: { title: 'Макс', pitch: 'Максимальный запас кредитов.', action: 'Выбрать Макс' }
 }
 const meta = (plan: Plan) => planMeta[plan.code] || { title: plan.name, pitch: 'Гибкий тариф для ваших задач.', action: 'Выбрать' }
 const featuresFor = (plan: Plan) => {
@@ -40,7 +40,7 @@ const featuresFor = (plan: Plan) => {
           <h1 class="page-title !text-[clamp(42px,6vw,76px)]">Платите за результат,<br>а не за ограничения</h1>
           <p class="mx-auto mt-5 max-w-2xl text-lg leading-8 muted">
             На каждом тарифе доступны все действия, расписания и любое число цепочек.
-            Отличается только запас credits и внутренний лимит одного запуска.
+            Дороже тариф — больше кредитов на балансе.
           </p>
         </div>
         <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -52,7 +52,7 @@ const featuresFor = (plan: Plan) => {
             :style="{ animationDelay: `${index * 90}ms` }"
           >
             <span v-if="plan.code === 'starter'" class="absolute -top-3 right-6 rounded-full bg-[#6758ee] px-3 py-1 text-xs font-extrabold text-white">Выбирают чаще</span>
-            <p class="eyebrow">{{ plan.code === 'free' ? 'Для знакомства' : plan.code === 'starter' ? 'Для регулярной работы' : 'Больше запусков' }}</p>
+            <p class="eyebrow">{{ plan.code === 'free' ? 'Для знакомства' : plan.code === 'starter' ? 'Для регулярной работы' : 'Больше кредитов' }}</p>
             <h2 class="mb-2 text-3xl font-extrabold">{{ meta(plan).title }}</h2>
             <p class="min-h-12 text-sm leading-6 muted">{{ meta(plan).pitch }}</p>
             <div class="my-7 flex items-end gap-2">
