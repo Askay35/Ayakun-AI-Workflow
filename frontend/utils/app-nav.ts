@@ -9,7 +9,9 @@ export const PAGE_TITLES: Record<string, string> = {
   billing: 'Биллинг',
   profile: 'Профиль',
   pricing: 'Тарифы',
-  terms: 'Условия',
+  terms: 'Оферта',
+  contacts: 'Контакты',
+  delivery: 'Получение услуги',
   'auth-google-callback': 'Вход'
 }
 

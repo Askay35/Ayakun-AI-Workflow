@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { LEGAL } from '~/utils/legal'
+
 const auth = useAuth()
 useAppTitle()
 </script>
@@ -29,5 +31,21 @@ useAppTitle()
       </div>
     </header>
     <slot />
+    <footer class="public-footer">
+      <div class="shell public-footer-inner">
+        <div>
+          <p class="brand public-footer-logo">Ayakun</p>
+          <p class="mb-0 text-sm leading-6 muted">{{ LEGAL.entity }}</p>
+          <p class="mb-0 mt-2 text-sm muted">ИНН {{ LEGAL.inn }} · ОГРНИП {{ LEGAL.ogrnip }}</p>
+        </div>
+        <nav class="public-footer-links">
+          <NuxtLink to="/delivery">Как получить услугу</NuxtLink>
+          <NuxtLink to="/terms">Публичная оферта</NuxtLink>
+          <NuxtLink to="/contacts">Контакты и реквизиты</NuxtLink>
+          <a :href="`mailto:${LEGAL.email}`">{{ LEGAL.email }}</a>
+          <a :href="`tel:${LEGAL.phone}`">{{ LEGAL.phoneDisplay }}</a>
+        </nav>
+      </div>
+    </footer>
   </div>
 </template>

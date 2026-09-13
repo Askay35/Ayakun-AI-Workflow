@@ -145,7 +145,7 @@ const googleAuth = async () => {
 
       <p v-if="telegramStep === 'button'" class="mb-0 mt-6 text-center text-xs leading-5 muted">
         Продолжая, вы соглашаетесь с
-        <NuxtLink to="/terms" class="legal-link">условиями использования сервиса</NuxtLink>.
+        <NuxtLink to="/terms" class="legal-link">публичной офертой</NuxtLink>.
       </p>
     </section>
   </main>
