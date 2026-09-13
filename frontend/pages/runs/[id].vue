@@ -43,6 +43,21 @@ const formatOutput = (output?: NodeRun['output']) => {
   if (Array.isArray(output)) return ''
   return output.text || output.answer || JSON.stringify(output, null, 2)
 }
+const stepHasBody = (step: NodeRun) => Boolean(formatOutput(step.output) || step.error || step.citations?.length)
+const expanded = ref<Record<string, boolean>>({})
+const isStepExpanded = (step: NodeRun) => {
+  if (!stepHasBody(step)) return false
+  if (step.node_id in expanded.value) return expanded.value[step.node_id]
+  return true
+}
+const toggleStep = (step: NodeRun) => {
+  if (!stepHasBody(step)) return
+  expanded.value = { ...expanded.value, [step.node_id]: !isStepExpanded(step) }
+}
+watch(currentStep, (step) => {
+  if (step) expanded.value = { ...expanded.value, [step.node_id]: true }
+})
+
 
 const startPolling = () => {
   poll ??= setInterval(async () => {
@@ -117,8 +132,14 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
           class="panel p-5"
           :class="{ 'run-step-active': statusKey(step.status) === 'running' }"
         >
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-3 text-left"
+            :class="{ 'cursor-pointer': stepHasBody(step) }"
+            :aria-expanded="stepHasBody(step) ? isStepExpanded(step) : undefined"
+            @click="toggleStep(step)"
+          >
+            <div class="flex min-w-0 items-center gap-3">
               <span
                 class="run-step-icon"
                 :style="{ background: `${stepMeta(step).accent}1f`, color: stepMeta(step).accent }"
@@ -129,28 +150,36 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
                   :class="{ 'animate-spin': statusKey(step.status) === 'running' }"
                 />
               </span>
-              <div>
+              <div class="min-w-0">
                 <p class="mb-0 text-xs font-bold uppercase tracking-wider muted">Шаг {{ index + 1 }} · {{ stepMeta(step).label }}</p>
-                <h2 class="mb-0 font-bold">{{ stepTitle(step) }}</h2>
+                <h2 class="mb-0 truncate font-bold">{{ stepTitle(step) }}</h2>
               </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex shrink-0 items-center gap-2">
               <span v-if="stepDuration(step)" class="text-xs muted">{{ stepDuration(step) }}</span>
               <UBadge :color="statusColor(step.status)" variant="soft">{{ statusLabel(step.status) }}</UBadge>
+              <UIcon
+                v-if="stepHasBody(step)"
+                name="i-lucide-chevron-down"
+                class="size-4 muted transition-transform"
+                :class="{ 'rotate-180': isStepExpanded(step) }"
+              />
             </div>
-          </div>
-          <pre v-if="formatOutput(step.output)" class="mt-4 overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step.output) }}</pre>
-          <p v-if="step.error" class="mt-4! rounded-xl bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
-          <div v-if="step.citations?.length" class="mt-3 border-t border-default pt-3">
-            <p class="text-xs font-semibold uppercase muted">Источники</p>
-            <a
-              v-for="citation in step.citations"
-              :key="citation.url"
-              :href="citation.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="mt-1 block text-sm text-primary hover:underline"
-            >{{ citation.title }} - {{ citation.date }}</a>
+          </button>
+          <div v-if="isStepExpanded(step)" class="mt-4 space-y-4">
+            <pre v-if="formatOutput(step.output)" class="overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step.output) }}</pre>
+            <p v-if="step.error" class="rounded-xl bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
+            <div v-if="step.citations?.length" class="border-t border-default pt-3">
+              <p class="text-xs font-semibold uppercase muted">Источники</p>
+              <a
+                v-for="citation in step.citations"
+                :key="citation.url"
+                :href="citation.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mt-1 block text-sm text-primary hover:underline"
+              >{{ citation.title }} - {{ citation.date }}</a>
+            </div>
           </div>
         </div>
 

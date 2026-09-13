@@ -4,9 +4,9 @@ import type { Plan } from '~/types/api'
 const api = useApi()
 const fallback: Plan[] = [
   { id: 1, code: 'free', name: 'Free', price: 0, currency: 'RUB', limits: { included_credits: 100 } },
-  { id: 2, code: 'starter', name: 'Starter', price: 990, currency: 'RUB', limits: { included_credits: 5000 } },
-  { id: 3, code: 'pro', name: 'Pro', price: 1990, currency: 'RUB', limits: { included_credits: 15000 } },
-  { id: 4, code: 'max', name: 'Max', price: 3990, currency: 'RUB', limits: { included_credits: 50000 } }
+  { id: 2, code: 'starter', name: 'Starter', price: 990, currency: 'RUB', limits: { included_credits: 2000 } },
+  { id: 3, code: 'pro', name: 'Pro', price: 1990, currency: 'RUB', limits: { included_credits: 5000 } },
+  { id: 4, code: 'max', name: 'Max', price: 3990, currency: 'RUB', limits: { included_credits: 15000 } }
 ]
 const { data: plans } = await useAsyncData('public-plans', () => api.billing.plans().catch(() => fallback))
 const ordered = computed(() => {

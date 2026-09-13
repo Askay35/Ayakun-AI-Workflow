@@ -6,6 +6,8 @@ import { formatCredits } from '~/utils/credits'
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const api = useApi()
 const toast = useToast()
+const isMobileEditor = useIsMobileEditor()
+const showMobileGate = ref(false)
 const name = ref('')
 const creating = ref(false)
 const deletingId = ref<string>()
@@ -13,6 +15,10 @@ const { data: workflows, pending, refresh } = await useAuthAsyncData('workflows'
 
 const create = async () => {
   if (!name.value.trim()) return
+  if (isMobileEditor.value) {
+    showMobileGate.value = true
+    return
+  }
   creating.value = true
   try {
     const workflow = await api.workflows.create({ name: name.value, description: '' })
@@ -20,6 +26,14 @@ const create = async () => {
   } catch (error: any) {
     toast.add({ title: 'Не удалось создать цепочку', description: error?.data?.detail, color: 'error' })
   } finally { creating.value = false }
+}
+
+const openWorkflow = async (id: string) => {
+  if (isMobileEditor.value) {
+    showMobileGate.value = true
+    return
+  }
+  await navigateTo(`/workflows/${id}`)
 }
 
 const remove = async (id: string, workflowName: string) => {
@@ -41,7 +55,8 @@ const formatCost = (value?: number) => `${formatCredits(value)} credits`
 </script>
 
 <template>
-  <div class="page">
+  <WorkflowEditorUnavailable v-if="showMobileGate" embedded @close="showMobileGate = false" />
+  <div v-else class="page">
     <div class="page-head">
       <div>
         <p class="eyebrow">Мои автоматизации</p>
@@ -59,9 +74,9 @@ const formatCost = (value?: number) => `${formatCredits(value)} credits`
     <div v-else-if="workflows?.length" class="grid-cards">
       <div v-for="workflow in workflows" :key="workflow.id" class="panel workflow-card">
         <div class="flex items-start justify-between gap-3">
-          <NuxtLink :to="`/workflows/${workflow.id}`" class="grid size-11 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]">
+          <button type="button" class="grid size-11 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]" @click="openWorkflow(workflow.id)">
             <UIcon name="i-lucide-workflow" class="size-5" />
-          </NuxtLink>
+          </button>
           <div class="flex items-center gap-1">
             <span class="cost-pill"><UIcon name="i-lucide-coins" />{{ formatCost(workflow.estimated_run_cost) }} / запуск</span>
             <UButton
@@ -75,14 +90,14 @@ const formatCost = (value?: number) => `${formatCredits(value)} credits`
             />
           </div>
         </div>
-        <NuxtLink :to="`/workflows/${workflow.id}`" class="block">
+        <button type="button" class="block w-full cursor-pointer text-left" @click="openWorkflow(workflow.id)">
           <h2 class="mb-2 mt-5 text-xl font-extrabold">{{ workflow.name }}</h2>
           <p class="mb-5 text-sm muted">{{ workflow.schedule_cron ? 'Запускается автоматически' : 'Запуск вручную' }}</p>
           <div class="workflow-card-footer">
             <div class="flex items-center gap-2"><span class="status-dot" :class="{ online: workflow.status === 'published' }" /><span class="text-xs font-bold">{{ workflow.status === 'published' ? 'Активна' : 'Черновик' }}</span></div>
             <span class="text-xs muted">Изменена {{ new Date(workflow.updated_at).toLocaleDateString('ru') }}</span>
           </div>
-        </NuxtLink>
+        </button>
       </div>
     </div>
     <div v-else class="panel py-16 text-center">

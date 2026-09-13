@@ -50,8 +50,8 @@ class Subscription(Base):
 class Wallet(Base):
     __tablename__ = "wallets"
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    balance: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
-    reserved: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
+    balance: Mapped[Decimal] = mapped_column(Numeric(18,2), default=0)
+    reserved: Mapped[Decimal] = mapped_column(Numeric(18,2), default=0)
     currency: Mapped[str] = mapped_column(String(3), default="CRD")
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -112,10 +112,10 @@ class PricingRate(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     provider: Mapped[str] = mapped_column(String(50))
     model: Mapped[str] = mapped_column(String(120))
-    input_cache_hit_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 9), default=0)
-    input_cache_miss_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 9), default=0)
-    output_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 9), default=0)
-    search_credits: Mapped[Decimal] = mapped_column(Numeric(18, 9), default=0)
+    input_cache_hit_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
+    input_cache_miss_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
+    output_credits_per_1k: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
+    search_credits: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
     provider_costs: Mapped[dict] = mapped_column(JSONB, default=dict)
     active: Mapped[bool] = mapped_column(default=True)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
