@@ -60,7 +60,7 @@ def upgrade() -> None:
         SET name = 'Пробный',
             price = 0,
             currency = 'RUB',
-            limits = '{"included_credits": 1000, "run_cap_credits": 1000}'::jsonb
+            limits = '{"included_credits": 100, "run_cap_credits": 100}'::jsonb
         WHERE code = 'free'
         """
     )
