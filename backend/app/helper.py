@@ -268,7 +268,7 @@ def _parse_literal(token: str) -> Any:
     if not raw:
         raise ValueError("IF ELSE: некорректное условие")
     lowered = raw.lower()
-    if lowered == "null":
+    if lowered == "null" or lowered == "undefined":
         return None
     if lowered == "true":
         return True
@@ -283,13 +283,15 @@ def _parse_literal(token: str) -> Any:
     return raw
 
 
-def resolve_operand(token: str, json_root: Any) -> Any:
+def resolve_operand(token: str, json_root: Any, *, missing_as_null: bool = False) -> Any:
     stripped = token.strip()
     full_match = _PLACEHOLDER_RE.fullmatch(stripped)
     if full_match:
         path = full_match.group(1).strip()
         resolved = _resolve_json_path(json_root, path)
         if resolved is _MISSING:
+            if missing_as_null:
+                return None
             raise _missing_expression_error(path)
         return resolved
     if _PLACEHOLDER_RE.search(stripped):
@@ -370,10 +372,10 @@ def evaluate_condition(condition: str, json_root: Any) -> bool:
     try:
         parts = _split_condition(expression)
         if parts is None:
-            return _as_bool(resolve_operand(expression, json_root))
+            return _as_bool(resolve_operand(expression, json_root, missing_as_null=True))
         left_token, operator, right_token = parts
-        left = resolve_operand(left_token, json_root)
-        right = resolve_operand(right_token, json_root)
+        left = resolve_operand(left_token, json_root, missing_as_null=True)
+        right = resolve_operand(right_token, json_root, missing_as_null=True)
         if operator == "==":
             return _values_equal(left, right)
         if operator == "!=":

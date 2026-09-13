@@ -37,8 +37,16 @@ def test_condition_empty_and_invalid() -> None:
 
 
 def test_condition_missing_field() -> None:
-    with pytest.raises(ValueError, match="нет поля json.nonexistent"):
-        evaluate_condition('{{$json.nonexistent}} == "test"', {"score": 1})
+    data = {"score": 1}
+    assert evaluate_condition('{{$json.nonexistent}} == null', data) is True
+    assert evaluate_condition('{{$json.nonexistent}} == undefined', data) is True
+    assert evaluate_condition('{{$json.nonexistent}} != null', data) is False
+    assert evaluate_condition('{{$json.nonexistent}} != undefined', data) is False
+    assert evaluate_condition('{{$json.nonexistent}} == "test"', data) is False
+    assert evaluate_condition('{{$json.nonexistent}}', data) is False
+    assert evaluate_condition('{{$json.score}}', data) is True
+    with pytest.raises(ValueError, match="нельзя сравнить"):
+        evaluate_condition('{{$json.nonexistent}} > 1', data)
 
 
 def test_condition_array_path() -> None:

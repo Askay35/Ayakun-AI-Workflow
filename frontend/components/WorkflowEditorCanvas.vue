@@ -112,6 +112,12 @@ const selectedPeriod = computed({
   }
 })
 const JSON_EXPRESSION_EXAMPLE = '{{$data[0].price}}'
+const IF_ELSE_HELP_EXAMPLES = [
+  { code: '{{$data[0].price}} != null', note: 'поле есть и не null' },
+  { code: '{{$status}} == "active"', note: 'строка' },
+  { code: '{{$score}} >= 0.8', note: 'число' },
+  { code: '{{$flag}}', note: 'truthy-проверка' }
+] as const
 const OUTPUT_FORMAT_PLACEHOLDER = [
   '{',
   '  "userId": "{{id пользователя}}",',
@@ -531,7 +537,22 @@ const run = async () => {
               <UFormField label="Условие">
                 <UTextarea v-model="selectedCondition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Ровно одна входящая связь и два выхода: TRUE и FALSE. Выполняется только выбранная ветка. Данные предыдущего узла передаются дальше без изменений.</p>
+              <p class="mb-0 text-xs leading-5 text-white/40">Одна входящая связь, выходы TRUE и FALSE. Дальше уходит та же ветка данных, без изменений.</p>
+              <details class="editor-help mt-1! text-xs leading-5 text-white/40">
+                <summary class="text-[15px]">Как писать условие</summary>
+                <div class="editor-help-body">
+                  <p class="mt-1! ml-1">Сравнивайте поля вывода предыдущего узла. Путь в фигурных скобках, например <code>{{ JSON_EXPRESSION_EXAMPLE }}</code>.</p>
+                  <p class="mt-1! ml-1"><strong>Операторы:</strong> <code>==</code> <code>!=</code> <code>&gt;</code> <code>&lt;</code> <code>&gt;=</code> <code>&lt;=</code>. Также можно написать только поле — пустое / null / отсутствующее = FALSE.</p>
+                  <p class="mt-1! ml-1"><strong>Литералы:</strong> строки в кавычках, числа, <code>true</code>, <code>false</code>, <code>null</code>, <code>undefined</code> (то же, что null).</p>
+                  <p class="mt-1! ml-1"><strong>Есть ли поле:</strong> если API не вернул ключ, в условии это <code>null</code> — запуск не падает.</p>
+                  <ul>
+                    <li v-for="item in IF_ELSE_HELP_EXAMPLES" :key="item.code">
+                      <code>{{ item.code }}</code> — {{ item.note }}
+                    </li>
+                  </ul>
+                  <p>Сравнения <code>&gt;</code> / <code>&lt;</code> только для чисел: если поля нет, сначала проверьте <code>!= null</code>.</p>
+                </div>
+              </details>
             </template>
             <template v-if="selected.type === 'telegram_send'">
               <UFormField label="Получатель">
