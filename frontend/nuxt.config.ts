@@ -24,7 +24,7 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      meta: [{ name: 'description', content: 'Визуальные AI-цепочки: поиск, обработка и доставка без кода.' }],
+      meta: [{ name: 'description', content: 'Ayakun — визуальный конструктор AI-цепочек: поиск, обработка и доставка результата в Telegram без кода.' }],
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
