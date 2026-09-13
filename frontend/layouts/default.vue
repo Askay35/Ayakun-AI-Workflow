@@ -15,6 +15,7 @@ useAppTitle()
         </NuxtLink>
         <nav class="public-nav">
           <NuxtLink to="/#features" class="nav-link nav-hide">Возможности</NuxtLink>
+          <NuxtLink to="/#examples" class="nav-link nav-hide">Примеры</NuxtLink>
           <NuxtLink to="/#how" class="nav-link nav-hide">Как работает</NuxtLink>
           <NuxtLink to="/pricing" class="nav-link nav-hide">Тарифы</NuxtLink>
           <NuxtLink
