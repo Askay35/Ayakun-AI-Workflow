@@ -1,7 +1,6 @@
 <template>
   <main>
-    <section class="hero" @pointermove="onPointer">
-      <div class="hero-orb" :style="orbStyle" />
+    <section class="hero">
       <div class="shell hero-grid">
         <div class="reveal">
           <p class="eyebrow">Визуальные AI-цепочки</p>
@@ -17,7 +16,7 @@
           </div>
           <div class="trust-row">
             <span><UIcon name="i-lucide-check-circle-2" /> Без кода и серверов</span>
-            <span><UIcon name="i-lucide-check-circle-2" /> Цена видна до запуска</span>
+            <span><UIcon name="i-lucide-check-circle-2" /> Гибкие тарифы</span>
             <span><UIcon name="i-lucide-check-circle-2" /> 1000 credits при регистрации</span>
           </div>
         </div>
@@ -130,13 +129,4 @@ const audience = [
   { icon: 'i-lucide-building-2', title: 'Малый бизнес', text: 'Регулярные отчёты и уведомления без разработчика и отдельного сервера.' }
 ]
 
-const pointer = reactive({ x: 72, y: 18 })
-const orbStyle = computed(() => ({
-  transform: `translate(${pointer.x}%, ${pointer.y}%)`
-}))
-const onPointer = (event: PointerEvent) => {
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  pointer.x = ((event.clientX - rect.left) / rect.width) * 100
-  pointer.y = ((event.clientY - rect.top) / rect.height) * 100
-}
 </script>
