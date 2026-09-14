@@ -5,7 +5,7 @@ useAppTitle('Редактор')
 </script>
 
 <template>
-  <div class="editor-mobile-gate" :class="{ embedded }">
+  <div class="editor-mobile-gate" :class="{ embedded }" @click.self="embedded && emit('close')">
     <div class="editor-mobile-card reveal">
       <div class="editor-mobile-glow" aria-hidden="true" />
       <span class="editor-mobile-icon">
@@ -22,6 +22,7 @@ useAppTitle('Редактор')
       <div class="editor-mobile-actions">
         <UButton
           v-if="embedded"
+          class="w-full sm:w-auto"
           label="Понятно"
           icon="i-lucide-check"
           size="lg"
@@ -29,12 +30,13 @@ useAppTitle('Редактор')
         />
         <UButton
           v-else
+          class="w-full sm:w-auto"
           to="/workflows"
           label="К списку цепочек"
           icon="i-lucide-arrow-left"
           size="lg"
         />
-        <UButton to="/dashboard" label="На главную" color="neutral" variant="ghost" size="lg" />
+        <UButton class="w-full sm:w-auto" to="/dashboard" label="На главную" color="neutral" variant="ghost" size="lg" />
       </div>
     </div>
   </div>

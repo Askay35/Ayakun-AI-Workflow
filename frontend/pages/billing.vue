@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatCredits } from '~/utils/credits'
+import { apiErrorMessage } from '~/composables/useApi'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const api = useApi()
@@ -13,12 +14,21 @@ const orderedPlans = computed(() => {
   return [...(plans.value || [])].sort((a, b) => (rank[a.code] ?? 9) - (rank[b.code] ?? 9))
 })
 const planName = (code?: string, fallback?: string) => ({ free: 'Пробный', starter: 'Старт', pro: 'Про', max: 'Макс' } as Record<string, string>)[code || ''] || fallback || 'Пробный'
+const checkoutKeys = new Map<number, string>()
+const checkoutBusy = ref<number | null>(null)
 const checkout = async (planId: number) => {
+  if (checkoutBusy.value === planId) return
+  checkoutBusy.value = planId
+  const key = checkoutKeys.get(planId) ?? crypto.randomUUID()
+  checkoutKeys.set(planId, key)
   try {
-    const { confirmation_url } = await api.billing.checkout(planId)
+    const { confirmation_url } = await api.billing.checkout(planId, key)
     if (confirmation_url) location.href = confirmation_url
   } catch (error: any) {
-    toast.add({ title: 'Оплата недоступна', description: error?.data?.detail, color: 'error' })
+    checkoutKeys.delete(planId)
+    toast.add({ title: 'Оплата недоступна', description: apiErrorMessage(error), color: 'error' })
+  } finally {
+    checkoutBusy.value = null
   }
 }
 </script>
@@ -44,7 +54,7 @@ const checkout = async (planId: number) => {
           <h3 class="text-xl font-extrabold">{{ planName(plan.code, plan.name) }}</h3>
           <span class="font-extrabold">{{ Number(plan.price).toLocaleString('ru') }} ₽</span>
         </div>
-        <p class="my-5 text-3xl font-extrabold">{{ Number(plan.limits.included_credits || 0).toLocaleString('ru') }} <span class="text-sm font-medium muted">credits</span></p>
+        <p class="my-5 text-3xl font-extrabold">{{ Number(plan.limits?.included_credits || 0).toLocaleString('ru') }} <span class="text-sm font-medium muted">credits</span></p>
         <ul class="mb-6 space-y-2 text-sm">
           <li class="flex gap-2"><UIcon name="i-lucide-check" class="text-[#6758ee]" />Любое число цепочек</li>
           <li class="flex gap-2"><UIcon name="i-lucide-check" class="text-[#6758ee]" />Запуски по расписанию</li>
@@ -54,7 +64,8 @@ const checkout = async (planId: number) => {
           block
           size="lg"
           class="mt-auto"
-          :disabled="plan.id === summary?.plan?.id || plan.code === 'free'"
+          :loading="checkoutBusy === plan.id"
+          :disabled="plan.id === summary?.plan?.id || plan.code === 'free' || checkoutBusy === plan.id"
           @click="checkout(plan.id)"
         />
       </div>

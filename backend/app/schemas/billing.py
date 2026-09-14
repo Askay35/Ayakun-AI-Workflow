@@ -1,23 +1,37 @@
 import datetime
-from typing import Literal
 import uuid
 from decimal import Decimal
 from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field
-from yookassa.payment import PaymentResponse
 
-from models.billing import LedgerKind
+class LedgerKind(str, Enum):
+    credit = "credit"
+    purchase = "purchase"
+    reserve = "reserve"
+    charge = "charge"
+    settle = "settle"
+    release = "release"
+    refund = "refund"
 
+
+class PaymentStatus(str, Enum):
+    pending = "pending"
+    succeeded = "succeeded"
+    waiting_for_capture = "waiting_for_capture"
+    canceled = "canceled"
 
 class PaymentEvent(str, Enum):
-    PENDING = "pending"
-    WAITING_FOR_CAPTURE = "waiting_for_capture"
-    SUCCEEDED = "succeeded"
-    CANCELED = "canceled"
+    succeeded = "payment.succeeded"
+    canceled = "payment.canceled"
+
+class YooKassaPaymentObject(BaseModel):
+    id: str
+    status: PaymentStatus
+    model_config = ConfigDict(extra="ignore")
 
 class YooKassaWebhook(BaseModel):
     event: PaymentEvent
-    object: PaymentResponse
+    object: YooKassaPaymentObject
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -38,15 +52,18 @@ class WalletResponse(BaseModel):
     user_id: int
     balance: Decimal
     reserved: Decimal
-    currency: str
+    currency: str = "CRD"
     model_config = ConfigDict(from_attributes=True)
 
+class SubscriptionStatus(str, Enum):
+    active = "active"
+    inactive = "inactive"
 
 class SubscriptionResponse(BaseModel):
     id: uuid.UUID
     user_id: int
     plan_id: int
-    status: str
+    status: SubscriptionStatus
     starts_at: datetime.datetime
     ends_at: datetime.datetime | None
     model_config = ConfigDict(from_attributes=True)
@@ -97,6 +114,7 @@ class PaymentCreate(BaseModel):
 
 class PlanCheckout(BaseModel):
     plan_id: int
+    idempotency_key: str = Field(min_length=8, max_length=160)
 
 class PricingRateResponse(BaseModel):
     id: int

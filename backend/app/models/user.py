@@ -29,9 +29,9 @@ class User(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    payments: Mapped[list["Payment"]] = relationship(back_populates="user", cascade="all, delete-orphan", lazy="selectin")
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan", lazy="selectin")
-
+    payments: Mapped[list["Payment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    workflows: Mapped[list["Workflow"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 class AuthIdentity(Base):
     __tablename__ = "auth_identities"

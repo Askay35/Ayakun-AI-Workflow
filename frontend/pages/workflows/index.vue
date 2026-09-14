@@ -56,7 +56,7 @@ const formatCost = (value?: number) => `${formatCredits(value)} credits`
 
 <template>
   <WorkflowEditorUnavailable v-if="showMobileGate" embedded @close="showMobileGate = false" />
-  <div v-else class="page">
+  <div class="page">
     <div class="page-head">
       <div>
         <p class="eyebrow">Мои автоматизации</p>

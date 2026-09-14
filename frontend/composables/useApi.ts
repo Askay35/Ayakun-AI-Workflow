@@ -269,8 +269,8 @@ export const useApi = () => {
           })))
         }
       },
-      checkout: (planId: number) => request<{ confirmation_url: string | null }>('/billing/subscription/checkout', {
-        method: 'POST', body: { plan_id: planId}
+      checkout: (planId: number, idempotencyKey: string) => request<{ confirmation_url: string | null }>('/billing/subscription/checkout', {
+        method: 'POST', body: { plan_id: planId, idempotency_key: idempotencyKey }
       })
     },
     admin: {

@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from starlette.responses import RedirectResponse
+from fastapi import APIRouter, Depends, status
 
 from deps.auth import CurrentUser
 from deps.services import get_billing_service
 from schemas.billing import (
     LedgerResponse,
-    PaymentCreate,
     ApiPaymentResponse,
     PlanCheckout,
     PlanResponse,
@@ -53,6 +51,7 @@ async def subscription_checkout(
     confirmation_url: str = await service.create_plan_checkout(
         user,
         data.plan_id,
+        data.idempotency_key,
     )
     return ApiResponse[ApiPaymentResponse](success=True, data=ApiPaymentResponse(confirmation_url=confirmation_url))
 

@@ -8,7 +8,7 @@ import smtplib
 
 from email.message import EmailMessage
 from enum import Enum
-from typing import Protocol
+from typing import Any, Protocol
 import uuid
 
 import httpx
@@ -52,7 +52,15 @@ class WebSearchProvider(Protocol):
 
 
 class PaymentProvider(Protocol):
-    async def create_payment(self, amount: str, currency: str, description: str | None = None) -> PaymentResponse: ...
+    name: str
+    async def create_payment(
+        self,
+        amount: str,
+        currency: str,
+        description: str | None = None,
+        *,
+        idempotency_key: str | uuid.UUID | None = None,
+    ) -> Any: ...
     async def process_payment_webhook(self, payload: dict) -> tuple[str, PaymentStatus]: ...
 
 
@@ -357,12 +365,21 @@ class TelegramNotificationProvider:
 
 
 class YooKassaProvider:
+    name = "yookassa"
+
     def __init__(self, client: httpx.AsyncClient, config: Settings = settings):
         self.client = client
         self.config = config
 
-    async def create_payment(self, amount: str, currency: str, description: str | None = None) -> PaymentResponse:
-        payment = YooKassaPayment.create({
+    async def create_payment(
+        self,
+        amount: str,
+        currency: str,
+        description: str | None = None,
+        *,
+        idempotency_key: str | uuid.UUID | None = None,
+    ) -> PaymentResponse:
+        return await asyncio.to_thread(YooKassaPayment.create, {
             "amount": {
                 "value": amount,
                 "currency": currency
@@ -373,13 +390,11 @@ class YooKassaProvider:
             },
             "capture": True,
             "description": description or "Оплата тарифа Ayakun"
-        }, uuid.uuid4())
-
-        return payment
+        }, str(idempotency_key) if idempotency_key else str(uuid.uuid4()))
 
     async def process_payment_webhook(self, payload: dict) -> tuple[str, PaymentStatus]:
         payment = payload.get("object")
         event = payload.get("event")
-        if not event or event not in PaymentEvent or not isinstance(payment, dict) or not payment.get("id"):
-            raise HTTPException(400, "Некорректный payload")
+        if not event or event not in PaymentEvent or not isinstance(payment, dict) or not payment.get("id") or not payment.get("status") in PaymentStatus._value2member_map_:
+            raise HTTPException(400, "Некорректный webhook payload")
         return payment["id"], PaymentStatus(payment["status"])

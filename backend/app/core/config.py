@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     llm_max_output_tokens: int = 8192
     initial_token_balance: Decimal = Decimal("100")
     default_run_cap_credits: Decimal = Decimal("100")
+    max_workflows_count: int = 300
    
 
     yookassa_account_id: str | None = None
@@ -94,6 +95,7 @@ class Settings(BaseSettings):
     telegram_send_tokens: Decimal = Decimal("5")
     payment_tokens_per_ruble: Decimal = Decimal("100")
     payment_credits_per_usd: Decimal = Decimal("500")
+
 
     model_config = SettingsConfigDict(
         env_file=".env",

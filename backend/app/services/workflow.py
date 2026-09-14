@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from backend.app.core.config import settings
 from models.workflow import (
     NodeRun,
     NodeRunStatus,
@@ -184,6 +185,9 @@ class WorkflowService:
         return workflow
 
     async def create(self, data: WorkflowCreate, user: User) -> Workflow:
+        workflows_count = await self.db.scalar(select(func.count(Workflow.id)).where(Workflow.owner_id == user.id))
+        if workflows_count >= settings.max_workflows_count:
+            raise HTTPException(400, "Вы достигли максимального количества workflows")
         errors = validate_graph(data.graph)
         if errors:
             raise HTTPException(422, errors)

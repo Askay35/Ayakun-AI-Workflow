@@ -4,10 +4,13 @@ from decimal import Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from yookassa import Configuration, Payment as YooKassaPayment
+from sqlalchemy.orm import selectinload
+from yookassa import Configuration
 from yookassa.payment import PaymentResponse
+from schemas.billing import SubscriptionStatus
 
 from models.billing import (
     BillingReservation,
@@ -314,91 +317,125 @@ class BillingService:
         return wallet
 
     async def create_payment(
-        self, user: User, plan_id: int, idempotency_key: str
+        self, plan_id: int, idempotency_key: str
     ) -> PaymentResponse:
-        existing = await self.db.scalar(select(Payment).where(Payment.idempotency_key == idempotency_key))
-        if existing:
-            if existing.user_id != user.id:
-                raise HTTPException(409, "Idempotency key уже используется")
-            return existing
         if not self.payment_provider:
             raise HTTPException(503, "Платежный провайдер не настроен")
+
         plan = await self.db.get(Plan, plan_id)
-        if not plan or plan.price <= 0:
+        if not plan or not plan.price > 0:
             raise HTTPException(404, "Тариф не найден")
-        
-        intent = await self.payment_provider.create_payment(
-            f"{plan.price:.2f}", plan.currency.upper(), "Оплата тарифа " + plan.name
+
+        return await self.payment_provider.create_payment(
+            f"{plan.price:.2f}",
+            plan.currency.upper(),
+            "Оплата тарифа " + plan.name,
+            idempotency_key=idempotency_key,
         )
-        
-        return intent
 
     async def create_plan_checkout(
         self,
         user: User,
         plan_id: int,
+        idempotency_key: str,
     ) -> str:
-        idempotency_key = str(uuid.uuid4())
-        payment = await self.create_payment(
-            user,
-            plan_id,
-            idempotency_key
-        )
-        normalized_status = payment.status if payment.status in PaymentStatus._value2member_map_ else "pending"
-        payment_model = Payment(
-            user_id=user.id,
-            plan_id=plan_id,
-            provider=self.payment_provider.name,
-            provider_payment_id=payment.id,
-            amount=Decimal(payment.amount.value),
-            status=PaymentStatus(normalized_status),
-            idempotency_key=idempotency_key,
-        )
-        self.db.add(payment_model)
-        await self.db.commit()
-        
-        if not payment.confirmation.confirmation_url:
-            raise HTTPException(400, "Не удалось создать платеж: " + (payment.cancellation_details.reason if payment.cancellation_details else "причина неизвестна"))
+        existing = await self.db.scalar(select(Payment).where(Payment.idempotency_key == idempotency_key))
+        if existing:
+            if existing.user_id != user.id or existing.plan_id != plan_id:
+                raise HTTPException(409, "Idempotency key уже используется")
+
+        payment = await self.create_payment(plan_id, idempotency_key)
+        if not payment.confirmation or not payment.confirmation.confirmation_url:
+            reason = payment.cancellation_details.reason if payment.cancellation_details else "причина неизвестна"
+            raise HTTPException(400, "Не удалось создать платеж: " + reason)
+
+        if not existing:
+            normalized_status = payment.status if payment.status in PaymentStatus._value2member_map_ else "pending"
+            self.db.add(Payment(
+                user_id=user.id,
+                plan_id=plan_id,
+                provider=self.payment_provider.name,
+                provider_payment_id=payment.id,
+                amount=Decimal(payment.amount.value),
+                status=PaymentStatus(normalized_status),
+                idempotency_key=idempotency_key,
+            ))
+            try:
+                await self.db.commit()
+            except IntegrityError:
+                await self.db.rollback()
 
         return payment.confirmation.confirmation_url
+
+    def _plan_credits(self, plan: Plan | None) -> Decimal:
+        if not plan:
+            return Decimal("0")
+        return Decimal(str((plan.limits or {}).get("included_credits", 0)))
+
+    async def _activate_paid_plan(self, user_id: int, plan_id: int) -> None:
+        now = datetime.datetime.now(datetime.UTC)
+        ends_at = now + datetime.timedelta(days=30)
+        subscription = await self.db.scalar(
+            select(Subscription).where(Subscription.user_id == user_id).with_for_update()
+        )
+        if not subscription:
+            self.db.add(Subscription(
+                user_id=user_id,
+                plan_id=plan_id,
+                status=SubscriptionStatus.active,
+                starts_at=now,
+                ends_at=ends_at,
+            ))
+            return
+        subscription.plan_id = plan_id
+        subscription.status = SubscriptionStatus.active
+        subscription.starts_at = now
+        subscription.ends_at = ends_at
 
     async def process_payment_webhook(self, payload: dict) -> None:
         if not self.payment_provider:
             raise HTTPException(503, "Платежный провайдер не настроен")
-        
-        payment_id, payment_status = await self.payment_provider.process_payment_webhook(payload)    
-        
-        if payment_status != PaymentStatus.succeeded:
-            return
 
-        
-        with self.db.begin():
+        payment_id, payment_status = await self.payment_provider.process_payment_webhook(payload)
+
+        async with self.db.begin():
             payment = await self.db.scalar(
-                select(Payment).where(Payment.provider_payment_id == payment_id).with_for_update()
+                select(Payment)
+                .where(Payment.provider_payment_id == payment_id)
+                .options(selectinload(Payment.plan))
+                .with_for_update()
             )
             if not payment:
                 raise HTTPException(404, "Платеж не найден")
-            
-            if payment.status == PaymentStatus.pending:
-                payment.status = PaymentStatus.succeeded
-                wallet = await self.db.scalar(
-                    select(Wallet).where(Wallet.user_id == payment.user_id).with_for_update()
-                )
-                if not wallet:
-                    new_wallet = Wallet(
-                        user_id=payment.user_id,
-                        balance=payment.amount,
-                        reserved=Decimal("0"),
-                        currency=payment.currency,
-                    )
-                    self.db.add(new_wallet)
-                else:
-                    wallet.balance += payment.amount
 
-                self.db.add(WalletLedger(
+            if payment.status == PaymentStatus.succeeded:
+                return
+
+            if payment_status != PaymentStatus.succeeded:
+                payment.status = payment_status
+                return
+
+            payment.status = PaymentStatus.succeeded
+            credits = self._plan_credits(payment.plan)
+            wallet = await self.db.scalar(
+                select(Wallet).where(Wallet.user_id == payment.user_id).with_for_update()
+            )
+            if not wallet:
+                self.db.add(Wallet(
                     user_id=payment.user_id,
-                    kind=LedgerKind.purchase,
-                    amount=Decimal(payment.amount),
-                    idempotency_key=payment.idempotency_key,
-                    reference=payment.provider_payment_id,
+                    balance=credits,
+                    reserved=Decimal("0"),
                 ))
+            else:
+                wallet.balance += credits
+
+            if payment.plan_id is not None:
+                await self._activate_paid_plan(payment.user_id, payment.plan_id)
+
+            self.db.add(WalletLedger(
+                user_id=payment.user_id,
+                kind=LedgerKind.purchase,
+                amount=credits,
+                idempotency_key=f"purchase:{payment.provider_payment_id}",
+                reference=payment.provider_payment_id,
+            ))

@@ -1,5 +1,4 @@
 import datetime
-import enum
 import uuid
 from decimal import Decimal
 
@@ -7,23 +6,10 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Tex
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from schemas.billing import LedgerKind, PaymentStatus, SubscriptionStatus
 from db.base import Base
 from helper import utcnow
 
-class LedgerKind(str, enum.Enum):
-    credit = "credit"
-    purchase = "purchase"
-    reserve = "reserve"
-    charge = "charge"
-    settle = "settle"
-    release = "release"
-    refund = "refund"
-
-
-class PaymentStatus(str, enum.Enum):
-    pending = "pending"
-    succeeded = "succeeded"
-    cancelled = "cancelled"
 
 
 class Plan(Base):
@@ -35,13 +21,15 @@ class Plan(Base):
     currency: Mapped[str] = mapped_column(String(3), default="RUB")
     limits: Mapped[dict] = mapped_column(JSONB, default=dict)
 
+    payments: Mapped[list["Payment"]] = relationship(back_populates="plan", lazy="selectin")
+
 
 class Subscription(Base):
     __tablename__ = "subscriptions"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"))
-    status: Mapped[str] = mapped_column(String(30), default="active")
+    status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus, name="subscription_status"), default=SubscriptionStatus.active)
     starts_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     ends_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -51,7 +39,6 @@ class Wallet(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     balance: Mapped[Decimal] = mapped_column(Numeric(18,2), default=0)
     reserved: Mapped[Decimal] = mapped_column(Numeric(18,2), default=0)
-    currency: Mapped[str] = mapped_column(String(3), default="CRD")
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
@@ -156,3 +143,4 @@ class Payment(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     user: Mapped["User"] = relationship(back_populates="payments", lazy="selectin")
+    plan: Mapped["Plan"] = relationship(back_populates="payments", lazy="selectin")
