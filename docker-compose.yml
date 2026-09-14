@@ -240,5 +240,8 @@ volumes:
 networks:
   app:
     driver: bridge
+    driver_opts:
+      # Хост ens3 часто MTU 1400 (cloud). Docker default 1500 → TCP ок, TLS handshake висит.
+      com.docker.network.driver.mtu: "1400"
 
 
