@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.app.core.config import settings
+from core.config import settings
 from models.workflow import (
     NodeRun,
     NodeRunStatus,
