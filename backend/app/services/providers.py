@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from openai import OpenAI
 
-from yookassa import Payment as YooKassaPayment
+from yookassa import Configuration, Payment as YooKassaPayment
 from yookassa.payment import PaymentResponse
 
 from schemas.billing import PaymentEvent
@@ -366,10 +366,19 @@ class TelegramNotificationProvider:
 
 class YooKassaProvider:
     name = "yookassa"
+    request_timeout_seconds = 20
 
     def __init__(self, client: httpx.AsyncClient, config: Settings = settings):
         self.client = client
         self.config = config
+
+    def _configure(self) -> None:
+        if not self.config.yookassa_account_id or not self.config.yookassa_secret_key:
+            raise HTTPException(503, "Платежный провайдер не настроен")
+        Configuration.account_id = self.config.yookassa_account_id
+        Configuration.secret_key = self.config.yookassa_secret_key
+        Configuration.timeout = self.request_timeout_seconds
+        Configuration.max_attempts = 1
 
     async def create_payment(
         self,
@@ -379,7 +388,8 @@ class YooKassaProvider:
         *,
         idempotency_key: str | uuid.UUID | None = None,
     ) -> PaymentResponse:
-        return await asyncio.to_thread(YooKassaPayment.create, {
+        self._configure()
+        payload = {
             "amount": {
                 "value": amount,
                 "currency": currency
@@ -390,7 +400,15 @@ class YooKassaProvider:
             },
             "capture": True,
             "description": description or "Оплата тарифа Ayakun"
-        }, str(idempotency_key) if idempotency_key else str(uuid.uuid4()))
+        }
+        key = str(idempotency_key) if idempotency_key else str(uuid.uuid4())
+        try:
+            return await asyncio.wait_for(
+                asyncio.to_thread(YooKassaPayment.create, payload, key),
+                timeout=self.request_timeout_seconds + 5,
+            )
+        except TimeoutError as exc:
+            raise HTTPException(504, "ЮKassa не ответила вовремя") from exc
 
     async def process_payment_webhook(self, payload: dict) -> tuple[str, PaymentStatus]:
         payment = payload.get("object")

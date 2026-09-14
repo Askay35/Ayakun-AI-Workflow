@@ -7,6 +7,9 @@ x-backend: &backend
     - .env
   environment:
     ENVIRONMENT: ${ENVIRONMENT:-development}
+  dns:
+    - 8.8.8.8
+    - 1.1.1.1
   networks:
     - app
 
