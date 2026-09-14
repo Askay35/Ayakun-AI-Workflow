@@ -49,7 +49,9 @@ class UsageRecord(Base):
     __table_args__ = (UniqueConstraint("user_id", "idempotency_key", name="uq_usage_user_key"),)
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    workflow_run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("workflow_runs.id"), nullable=True)
+    workflow_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
     units: Mapped[int] = mapped_column(Integer, default=0)
     cost: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     idempotency_key: Mapped[str] = mapped_column(String(160))
@@ -68,7 +70,9 @@ class BillingReservation(Base):
     __tablename__ = "billing_reservations"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    workflow_run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("workflow_runs.id"), nullable=True, index=True)
+    workflow_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     request_id: Mapped[str] = mapped_column(String(160), unique=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     charged: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)

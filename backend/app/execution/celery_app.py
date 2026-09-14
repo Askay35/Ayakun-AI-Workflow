@@ -1,10 +1,14 @@
 from celery import Celery
+from pathlib import Path
+import sys
 
 from core.config import settings
 from core.logging import setup_logging
-import sys
 
-setup_logging("beat" if "beat" in sys.argv else "worker")
+_argv0 = Path(sys.argv[0]).name if sys.argv else ""
+_is_celery = _argv0.startswith("celery") or any(arg in {"worker", "beat"} for arg in sys.argv)
+if _is_celery:
+    setup_logging("beat" if "beat" in sys.argv else "worker")
 
 celery_app = Celery(
     "ayakun",

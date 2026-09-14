@@ -71,17 +71,42 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "${datasource}" },
-          "expr": "sum(count_over_time({service=\"worker\", event=\"node.succeeded\"}[$__range]))",
+          "expr": "sum(count_over_time({service=~\"backend|worker\", event=~\"http.inbound|http.outbound\"}[$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
       ],
-      "title": "Звенья выполнены",
+      "title": "HTTP запросы",
       "type": "stat"
     },
     {
       "datasource": { "type": "loki", "uid": "${datasource}" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 4 },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 4 },
+      "id": 7,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "${datasource}" },
+          "expr": "{service=~\"$service\", event=~\"http.inbound|http.outbound\"} | json | line_format \"{{.direction}} {{.method}} {{.path}}{{.url}}  status={{.status_code}}  {{.duration_ms}}ms\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP: входящие и исходящие",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 13 },
       "id": 5,
       "options": {
         "dedupStrategy": "none",
@@ -96,17 +121,17 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "${datasource}" },
-          "expr": "{service=~\"$service\"} | json | event=~\"$event\" | run_id=~\"$run_id\" | line_format \"{{.msg}}  credits={{.credits}}  usage_in={{.input_cache_miss_tokens}}/{{.output_tokens}}  {{.node_type}} {{.node_id}}\"",
+          "expr": "{service=~\"$service\"} | json | event=~\"$event\" | line_format \"{{.msg}}  {{if .method}}{{.method}} {{.path}}{{.url}} status={{.status_code}} {{.duration_ms}}ms{{end}}{{if .credits}} credits={{.credits}}{{end}}{{if .node_type}} {{.node_type}} {{.node_id}}{{end}}\"",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Логи выполнения",
+      "title": "Все логи",
       "type": "logs"
     },
     {
       "datasource": { "type": "loki", "uid": "${datasource}" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 21 },
       "id": 6,
       "options": {
         "dedupStrategy": "none",
@@ -121,12 +146,12 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "${datasource}" },
-          "expr": "{service=\"worker\", event=~\"node.started|node.succeeded|node.failed\"} | json | run_id=~\"$run_id\"",
+          "expr": "{service=\"worker\", event=~\"node.started|node.succeeded|node.failed|run.started|run.succeeded|run.failed\"} | json |~ \"$run_id\"",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Звенья: запуск, вывод, credits, usage",
+      "title": "Цепочки и звенья",
       "type": "logs"
     }
   ],
@@ -180,12 +205,11 @@
         "type": "query"
       },
       {
-        "allValue": ".+",
-        "current": { "text": ".+", "value": ".+" },
+        "current": { "text": "", "value": "" },
         "datasource": { "type": "loki", "uid": "${datasource}" },
         "hide": 0,
         "includeAll": false,
-        "label": "run_id",
+        "label": "run_id (опц.)",
         "name": "run_id",
         "options": [],
         "query": "",
@@ -197,8 +221,8 @@
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Ayakun: выполнение цепочек",
+  "title": "Ayakun: логи",
   "uid": "ayakun-execution-logs",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

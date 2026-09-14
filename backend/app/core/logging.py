@@ -90,6 +90,11 @@ def setup_logging(service: str, level: int = logging.INFO) -> None:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JsonFormatter(service))
     root = logging.getLogger()
+    # Не затираем уже настроенный сервис (uvicorn backend), если Celery импортируется в том же процессе.
+    existing = next((h for h in root.handlers if isinstance(h.formatter, JsonFormatter)), None)
+    if existing is not None and getattr(existing.formatter, "service", None) not in {None, service}:
+        install_outbound_http_logging()
+        return
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(level)
