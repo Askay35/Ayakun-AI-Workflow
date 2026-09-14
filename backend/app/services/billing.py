@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy.orm import selectinload
 from yookassa import Configuration
+from yookassa.configuration import ConfigurationError
 from yookassa.payment import PaymentResponse
 
 from models.billing import (
@@ -307,17 +308,23 @@ class BillingService:
     ) -> PaymentResponse:
         if not self.payment_provider:
             raise HTTPException(503, "Платежный провайдер не настроен")
+        if settings.yookassa_account_id and settings.yookassa_secret_key:
+            Configuration.account_id = settings.yookassa_account_id
+            Configuration.secret_key = settings.yookassa_secret_key
 
         plan = await self.db.get(Plan, plan_id)
         if not plan or not plan.price > 0:
             raise HTTPException(404, "Тариф не найден")
 
-        return await self.payment_provider.create_payment(
-            f"{plan.price:.2f}",
-            plan.currency.upper(),
-            "Оплата тарифа " + plan.name,
-            idempotency_key=idempotency_key,
-        )
+        try:
+            return await self.payment_provider.create_payment(
+                f"{plan.price:.2f}",
+                plan.currency.upper(),
+                "Оплата тарифа " + plan.name,
+                idempotency_key=idempotency_key,
+            )
+        except ConfigurationError as exc:
+            raise HTTPException(503, "Платежный провайдер не настроен") from exc
 
     async def create_plan_checkout(
         self,
