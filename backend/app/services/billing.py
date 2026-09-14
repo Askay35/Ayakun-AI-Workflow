@@ -379,7 +379,7 @@ class BillingService:
         if current:
             return False
         taken = await self.db.scalar(select(User).where(User.email == receipt_email))
-        if taken is not None and getattr(taken, "id", None) != getattr(user, "id", None):
+        if taken is not None:
             raise HTTPException(409, "Этот email уже занят другим аккаунтом")
         user.email = receipt_email
         return True
