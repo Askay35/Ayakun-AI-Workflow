@@ -26,6 +26,7 @@ class FakeDB:
         self.payment_by_key: Payment | None = None
         self.payment_by_provider: Payment | None = None
         self.wallet: Wallet | None = None
+        self.user_by_email: object | None = None
         self.added: list[object] = []
         self.commits = 0
         self.rollbacks = 0
@@ -43,6 +44,8 @@ class FakeDB:
             return self.payment_by_provider
         if entity is Wallet:
             return self.wallet
+        if entity is User:
+            return self.user_by_email
         return None
 
     def add(self, obj) -> None:
@@ -70,12 +73,13 @@ class FakeProvider:
         self.calls: list[dict] = []
         self.payment = payment or yookassa_payment()
 
-    async def create_payment(self, amount, currency, description=None, *, idempotency_key=None):
+    async def create_payment(self, amount, currency, description=None, *, idempotency_key=None, customer_email=None):
         self.calls.append({
             "amount": amount,
             "currency": currency,
             "description": description,
             "idempotency_key": idempotency_key,
+            "customer_email": customer_email,
         })
         return self.payment
 
@@ -139,16 +143,60 @@ async def test_checkout_passes_client_idempotency_key_to_provider() -> None:
     db.plans[2] = paid_plan()
     provider = FakeProvider()
     url = await BillingService(db, provider).create_plan_checkout(
-        SimpleNamespace(id=1), 2, "client-key-123456"
+        SimpleNamespace(id=1, email="buyer@example.com"), 2, "client-key-123456"
     )
     assert url == "https://yookassa.test/confirm"
     assert provider.calls[0]["idempotency_key"] == "client-key-123456"
     assert provider.calls[0]["amount"] == "390.00"
+    assert provider.calls[0]["customer_email"] == "buyer@example.com"
     assert db.commits == 1
     saved = next(item for item in db.added if isinstance(item, Payment))
     assert saved.idempotency_key == "client-key-123456"
     assert saved.provider_payment_id == "pay_1"
     assert saved.amount == Decimal("390.00")
+
+
+@pytest.mark.asyncio
+async def test_checkout_uses_request_email_when_profile_email_missing() -> None:
+    db = FakeDB()
+    db.plans[2] = paid_plan()
+    provider = FakeProvider()
+    user = SimpleNamespace(id=1, email=None)
+    url = await BillingService(db, provider).create_plan_checkout(
+        user,
+        2,
+        "client-key-receipt",
+        customer_email="  Receipt.User@Example.com ",
+    )
+    assert url == "https://yookassa.test/confirm"
+    assert provider.calls[0]["customer_email"] == "receipt.user@example.com"
+    assert user.email == "receipt.user@example.com"
+
+
+@pytest.mark.asyncio
+async def test_checkout_does_not_overwrite_existing_profile_email() -> None:
+    db = FakeDB()
+    db.plans[2] = paid_plan()
+    user = SimpleNamespace(id=1, email="buyer@example.com")
+    await BillingService(db, FakeProvider()).create_plan_checkout(
+        user, 2, "client-key-keep-email", customer_email="other@example.com"
+    )
+    assert user.email == "buyer@example.com"
+
+
+@pytest.mark.asyncio
+async def test_checkout_rejects_email_taken_by_another_user() -> None:
+    db = FakeDB()
+    db.plans[2] = paid_plan()
+    db.user_by_email = SimpleNamespace(id=99, email="taken@example.com")
+    with pytest.raises(HTTPException) as error:
+        await BillingService(db, FakeProvider()).create_plan_checkout(
+            SimpleNamespace(id=1, email=None),
+            2,
+            "client-key-taken",
+            customer_email="taken@example.com",
+        )
+    assert error.value.status_code == 409
 
 
 @pytest.mark.asyncio
@@ -159,7 +207,7 @@ async def test_checkout_replay_returns_same_url_without_second_insert() -> None:
     db.payment_by_key = pending_payment(plan)
     provider = FakeProvider()
     url = await BillingService(db, provider).create_plan_checkout(
-        SimpleNamespace(id=1), 2, "checkout-key-1"
+        SimpleNamespace(id=1, email="buyer@example.com"), 2, "checkout-key-1"
     )
     assert url == "https://yookassa.test/confirm"
     assert provider.calls[0]["idempotency_key"] == "checkout-key-1"
@@ -176,14 +224,14 @@ async def test_checkout_rejects_foreign_or_mismatched_idempotency_key() -> None:
     db.payment_by_key = pending_payment(plan, user_id=9)
     with pytest.raises(HTTPException) as error:
         await BillingService(db, FakeProvider()).create_plan_checkout(
-            SimpleNamespace(id=1), 2, "checkout-key-1"
+            SimpleNamespace(id=1, email="buyer@example.com"), 2, "checkout-key-1"
         )
     assert error.value.status_code == 409
 
     db.payment_by_key = pending_payment(plan)
     with pytest.raises(HTTPException) as error:
         await BillingService(db, FakeProvider()).create_plan_checkout(
-            SimpleNamespace(id=1), 3, "checkout-key-1"
+            SimpleNamespace(id=1, email="buyer@example.com"), 3, "checkout-key-1"
         )
     assert error.value.status_code == 409
 
@@ -194,7 +242,7 @@ async def test_checkout_rejects_free_plan_and_missing_confirmation() -> None:
     db.plans[1] = Plan(id=1, code="free", name="Пробный", price=Decimal("0"), currency="RUB", limits={})
     with pytest.raises(HTTPException) as error:
         await BillingService(db, FakeProvider()).create_plan_checkout(
-            SimpleNamespace(id=1), 1, "client-key-123456"
+            SimpleNamespace(id=1, email="buyer@example.com"), 1, "client-key-123456"
         )
     assert error.value.status_code == 404
 
@@ -202,7 +250,7 @@ async def test_checkout_rejects_free_plan_and_missing_confirmation() -> None:
     provider = FakeProvider(yookassa_payment(confirmation=False))
     with pytest.raises(HTTPException) as error:
         await BillingService(db, provider).create_plan_checkout(
-            SimpleNamespace(id=1), 2, "client-key-123456"
+            SimpleNamespace(id=1, email="buyer@example.com"), 2, "client-key-123456"
         )
     assert error.value.status_code == 400
 

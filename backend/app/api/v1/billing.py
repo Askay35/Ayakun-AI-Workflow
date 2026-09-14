@@ -46,6 +46,7 @@ async def checkout(
         user,
         data.plan_id,
         data.idempotency_key,
+        customer_email=data.customer_email,
     )
     return ApiResponse[ApiPaymentResponse](success=True, data=ApiPaymentResponse(confirmation_url=confirmation_url))
 

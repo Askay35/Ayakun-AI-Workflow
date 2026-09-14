@@ -2,7 +2,7 @@ import datetime
 import uuid
 from decimal import Decimal
 from enum import Enum
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class LedgerKind(str, Enum):
     credit = "credit"
@@ -101,6 +101,7 @@ class PaymentCreate(BaseModel):
 class PlanCheckout(BaseModel):
     plan_id: int
     idempotency_key: str = Field(min_length=8, max_length=160)
+    customer_email: EmailStr | None = None
 
 class PricingRateResponse(BaseModel):
     id: int

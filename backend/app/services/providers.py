@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from openai import OpenAI
 
 from yookassa import Configuration, Payment as YooKassaPayment
+from yookassa.domain.exceptions import BadRequestError
 from yookassa.payment import PaymentResponse
 
 from schemas.billing import PaymentEvent
@@ -60,6 +61,7 @@ class PaymentProvider(Protocol):
         description: str | None = None,
         *,
         idempotency_key: str | uuid.UUID | None = None,
+        customer_email: str | None = None,
     ) -> Any: ...
     async def process_payment_webhook(self, payload: dict) -> tuple[str, PaymentStatus]: ...
 
@@ -387,8 +389,12 @@ class YooKassaProvider:
         description: str | None = None,
         *,
         idempotency_key: str | uuid.UUID | None = None,
+        customer_email: str | None = None,
     ) -> PaymentResponse:
         self._configure()
+        if not customer_email:
+            raise HTTPException(400, "Для оплаты нужен email (чек 54-ФЗ)")
+        description = description or "Оплата тарифа Ayakun"
         payload = {
             "amount": {
                 "value": amount,
@@ -399,7 +405,20 @@ class YooKassaProvider:
                 "return_url": self.config.yookassa_return_url
             },
             "capture": True,
-            "description": description or "Оплата тарифа Ayakun"
+            "description": description,
+            "receipt": {
+                "customer": {"email": customer_email},
+                "items": [
+                    {
+                        "description": description[:128],
+                        "quantity": "1.00",
+                        "amount": {"value": amount, "currency": currency},
+                        "vat_code": 1,
+                        "payment_mode": "full_payment",
+                        "payment_subject": "service",
+                    }
+                ],
+            },
         }
         key = str(idempotency_key) if idempotency_key else str(uuid.uuid4())
         try:
@@ -409,6 +428,11 @@ class YooKassaProvider:
             )
         except TimeoutError as exc:
             raise HTTPException(504, "ЮKassa не ответила вовремя") from exc
+        except BadRequestError as exc:
+            detail = None
+            if getattr(exc, "content", None):
+                detail = exc.content.get("description") or exc.content.get("parameter")
+            raise HTTPException(400, detail or "Некорректный запрос к ЮKassa") from exc
 
     async def process_payment_webhook(self, payload: dict) -> tuple[str, PaymentStatus]:
         payment = payload.get("object")

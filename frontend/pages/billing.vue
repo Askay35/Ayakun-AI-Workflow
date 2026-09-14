@@ -4,6 +4,7 @@ import { apiErrorMessage } from '~/composables/useApi'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const api = useApi()
+const auth = useAuth()
 const toast = useToast()
 const [{ data: summary }, { data: plans }] = await Promise.all([
   useAuthAsyncData('billing', () => api.billing.summary()),
@@ -16,13 +17,21 @@ const orderedPlans = computed(() => {
 const planName = (code?: string, fallback?: string) => ({ free: 'Пробный', starter: 'Старт', pro: 'Про', max: 'Макс' } as Record<string, string>)[code || ''] || fallback || 'Пробный'
 const checkoutKeys = new Map<number, string>()
 const checkoutBusy = ref<number | null>(null)
-const checkout = async (planId: number) => {
+const emailModalOpen = ref(false)
+const pendingPlanId = ref<number | null>(null)
+const receiptEmail = ref('')
+const profileEmail = computed(() => auth.user.value?.email?.trim() || '')
+
+const checkout = async (planId: number, customerEmail?: string) => {
   if (checkoutBusy.value === planId) return
   checkoutBusy.value = planId
   const key = checkoutKeys.get(planId) ?? crypto.randomUUID()
   checkoutKeys.set(planId, key)
   try {
-    const { confirmation_url } = await api.billing.checkout(planId, key)
+    const { confirmation_url } = await api.billing.checkout(planId, key, customerEmail)
+    if (auth.user.value && customerEmail && !auth.user.value.email) {
+      auth.user.value = { ...auth.user.value, email: customerEmail.trim().toLowerCase() }
+    }
     if (confirmation_url) location.href = confirmation_url
   } catch (error: any) {
     checkoutKeys.delete(planId)
@@ -30,6 +39,31 @@ const checkout = async (planId: number) => {
   } finally {
     checkoutBusy.value = null
   }
+}
+
+const startCheckout = (planId: number) => {
+  const email = profileEmail.value || receiptEmail.value.trim()
+  if (email) {
+    checkout(planId, email)
+    return
+  }
+  pendingPlanId.value = planId
+  emailModalOpen.value = true
+}
+
+const confirmReceiptEmail = () => {
+  const email = receiptEmail.value.trim()
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast.add({ title: 'Укажите email', description: 'Нужен адрес, куда отправить чек.', color: 'error' })
+    return
+  }
+  if (pendingPlanId.value == null) return
+  checkout(pendingPlanId.value, email)
+}
+
+const onEmailModalOpen = (open: boolean) => {
+  emailModalOpen.value = open
+  if (!open && checkoutBusy.value == null) pendingPlanId.value = null
 }
 </script>
 
@@ -65,10 +99,38 @@ const checkout = async (planId: number) => {
           class="mt-auto"
           :loading="checkoutBusy === plan.id"
           :disabled="plan.code === 'free' || checkoutBusy === plan.id"
-          @click="checkout(plan.id)"
+          @click="startCheckout(plan.id)"
         />
       </div>
     </div>
+    <UModal
+      :open="emailModalOpen"
+      title="Email для чека"
+      description="Укажите почту для чека — она сохранится в профиле."
+      :dismissible="checkoutBusy == null"
+      :ui="{ footer: 'justify-end' }"
+      @update:open="onEmailModalOpen"
+    >
+      <template #body>
+        <form class="space-y-4" @submit.prevent="confirmReceiptEmail">
+          <UFormField label="Email">
+            <UInput
+              v-model="receiptEmail"
+              type="email"
+              autocomplete="email"
+              placeholder="name@example.com"
+              size="lg"
+              class="w-full"
+              autofocus
+            />
+          </UFormField>
+        </form>
+      </template>
+      <template #footer="{ close }">
+        <UButton label="Отмена" color="neutral" variant="outline" :disabled="checkoutBusy != null" @click="close" />
+        <UButton label="Перейти к оплате" :loading="checkoutBusy != null" @click="confirmReceiptEmail" />
+      </template>
+    </UModal>
     <div class="panel mt-8 p-6">
       <h2 class="mb-1 text-xl font-extrabold">История баланса</h2>
       <p class="mb-4 text-sm muted">Пополнения и фактические списания за звенья. Резерв на время запуска в историю не попадает.</p>

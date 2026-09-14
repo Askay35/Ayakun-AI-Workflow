@@ -266,8 +266,13 @@ export const useApi = () => {
           })))
         }
       },
-      checkout: (planId: number, idempotencyKey: string) => request<{ confirmation_url: string | null }>('/billing/checkout', {
-        method: 'POST', body: { plan_id: planId, idempotency_key: idempotencyKey }
+      checkout: (planId: number, idempotencyKey: string, customerEmail?: string) => request<{ confirmation_url: string | null }>('/billing/checkout', {
+        method: 'POST',
+        body: {
+          plan_id: planId,
+          idempotency_key: idempotencyKey,
+          ...(customerEmail ? { customer_email: customerEmail } : {})
+        }
       })
     },
     admin: {

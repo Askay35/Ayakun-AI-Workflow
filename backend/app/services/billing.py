@@ -304,7 +304,7 @@ class BillingService:
         return wallet
 
     async def create_payment(
-        self, plan_id: int, idempotency_key: str
+        self, plan_id: int, idempotency_key: str, *, customer_email: str | None = None
     ) -> PaymentResponse:
         if not self.payment_provider:
             raise HTTPException(503, "Платежный провайдер не настроен")
@@ -322,6 +322,7 @@ class BillingService:
                 plan.currency.upper(),
                 "Оплата тарифа " + plan.name,
                 idempotency_key=idempotency_key,
+                customer_email=customer_email,
             )
         except ConfigurationError as exc:
             raise HTTPException(503, "Платежный провайдер не настроен") from exc
@@ -331,13 +332,21 @@ class BillingService:
         user: User,
         plan_id: int,
         idempotency_key: str,
+        *,
+        customer_email: str | None = None,
     ) -> str:
         existing = await self.db.scalar(select(Payment).where(Payment.idempotency_key == idempotency_key))
         if existing:
             if existing.user_id != user.id or existing.plan_id != plan_id:
                 raise HTTPException(409, "Idempotency key уже используется")
 
-        payment = await self.create_payment(plan_id, idempotency_key)
+        receipt_email = (customer_email or getattr(user, "email", None) or "").strip().lower() or None
+        email_attached = await self._attach_profile_email(user, receipt_email)
+        payment = await self.create_payment(
+            plan_id,
+            idempotency_key,
+            customer_email=receipt_email,
+        )
         if not payment.confirmation or not payment.confirmation.confirmation_url:
             reason = payment.cancellation_details.reason if payment.cancellation_details else "причина неизвестна"
             raise HTTPException(400, "Не удалось создать платеж: " + reason)
@@ -353,12 +362,27 @@ class BillingService:
                 status=PaymentStatus(normalized_status),
                 idempotency_key=idempotency_key,
             ))
+        if not existing or email_attached:
             try:
                 await self.db.commit()
             except IntegrityError:
                 await self.db.rollback()
+                if email_attached:
+                    raise HTTPException(409, "Этот email уже занят другим аккаунтом")
 
         return payment.confirmation.confirmation_url
+
+    async def _attach_profile_email(self, user: User, receipt_email: str | None) -> bool:
+        if not receipt_email:
+            return False
+        current = (getattr(user, "email", None) or "").strip().lower()
+        if current:
+            return False
+        taken = await self.db.scalar(select(User).where(User.email == receipt_email))
+        if taken is not None and getattr(taken, "id", None) != getattr(user, "id", None):
+            raise HTTPException(409, "Этот email уже занят другим аккаунтом")
+        user.email = receipt_email
+        return True
 
     def _plan_credits(self, plan: Plan | None) -> Decimal:
         if not plan:
