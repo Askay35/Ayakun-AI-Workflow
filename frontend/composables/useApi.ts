@@ -270,7 +270,7 @@ export const useApi = () => {
         }
       },
       checkout: (planId: number) => request<{ confirmation_url: string | null }>('/billing/subscription/checkout', {
-        method: 'POST', body: { plan_id: planId, idempotency_key: crypto.randomUUID() }
+        method: 'POST', body: { plan_id: planId}
       })
     },
     admin: {

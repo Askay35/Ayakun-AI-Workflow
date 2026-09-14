@@ -5,10 +5,11 @@
 
 import asyncio
 import smtplib
-import time
+
 from email.message import EmailMessage
 from enum import Enum
 from typing import Protocol
+import uuid
 
 import httpx
 from fastapi import HTTPException
@@ -16,6 +17,11 @@ from pydantic import BaseModel, Field
 
 from openai import OpenAI
 
+from yookassa import Payment as YooKassaPayment
+from yookassa.payment import PaymentResponse
+
+from schemas.billing import PaymentEvent
+from models.billing import Payment, PaymentStatus
 from schemas.common import SearchPeriod
 from core.config import LLMProviderId, Settings, WebSearchProviderId, settings
 
@@ -41,22 +47,13 @@ class SearchResult(BaseModel):
     snippet: str
     date: str | None = None
 
-
-class PaymentIntent(BaseModel):
-    provider_id: str
-    confirmation_url: str | None = None
-    status: str
-
-
 class WebSearchProvider(Protocol):
     async def search(self, query: str, period: SearchPeriod | None = None) -> list[SearchResult]: ...
 
 
 class PaymentProvider(Protocol):
-    async def create_payment(self, amount: str, currency: str, idempotency_key: str, description: str) -> PaymentIntent: ...
-    async def get_payment(self, provider_id: str) -> PaymentIntent: ...
-    async def refund(self, provider_id: str, amount: str, currency: str, idempotency_key: str) -> PaymentIntent: ...
-    def parse_webhook(self, payload: dict) -> str: ...
+    async def create_payment(self, amount: str, currency: str, description: str | None = None) -> PaymentResponse: ...
+    async def process_payment_webhook(self, payload: dict) -> tuple[str, PaymentStatus]: ...
 
 
 class NotificationProvider(Protocol):
@@ -364,65 +361,25 @@ class YooKassaProvider:
         self.client = client
         self.config = config
 
-    def _auth(self) -> tuple[str, str]:
-        if not self.config.yookassa_shop_id or not self.config.yookassa_secret_key:
-            raise HTTPException(503, "YooKassa не настроена")
-        return self.config.yookassa_shop_id, self.config.yookassa_secret_key
-
-    async def create_payment(self, amount: str, currency: str, idempotency_key: str, description: str) -> PaymentIntent:
-        response = await self.client.post(
-            "https://api.yookassa.ru/v3/payments",
-            auth=self._auth(),
-            headers={"Idempotence-Key": idempotency_key},
-            json={
-                "amount": {"value": amount, "currency": currency},
-                "capture": True,
-                "description": description,
-                "confirmation": {"type": "redirect", "return_url": self.config.yookassa_return_url},
+    async def create_payment(self, amount: str, currency: str, description: str | None = None) -> PaymentResponse:
+        payment = YooKassaPayment.create({
+            "amount": {
+                "value": amount,
+                "currency": currency
             },
-            timeout=self.config.provider_timeout_seconds,
-        )
-        response.raise_for_status()
-        data = response.json()
-        return PaymentIntent(
-            provider_id=data["id"],
-            confirmation_url=(data.get("confirmation") or {}).get("confirmation_url"),
-            status=data["status"],
-        )
-
-    async def get_payment(self, provider_id: str) -> PaymentIntent:
-        response = await self.client.get(
-            f"https://api.yookassa.ru/v3/payments/{provider_id}",
-            auth=self._auth(),
-            timeout=self.config.provider_timeout_seconds,
-        )
-        response.raise_for_status()
-        data = response.json()
-        return PaymentIntent(provider_id=data["id"], status=data["status"])
-
-    async def refund(
-        self,
-        provider_id: str,
-        amount: str,
-        currency: str,
-        idempotency_key: str,
-    ) -> PaymentIntent:
-        response = await self.client.post(
-            "https://api.yookassa.ru/v3/refunds",
-            auth=self._auth(),
-            headers={"Idempotence-Key": idempotency_key},
-            json={
-                "payment_id": provider_id,
-                "amount": {"value": amount, "currency": currency},
+            "confirmation": {
+                "type": "redirect",
+                "return_url": self.config.yookassa_return_url
             },
-            timeout=self.config.provider_timeout_seconds,
-        )
-        response.raise_for_status()
-        data = response.json()
-        return PaymentIntent(provider_id=data["id"], status=data["status"])
+            "capture": True,
+            "description": description or "Оплата тарифа Ayakun"
+        }, uuid.uuid4())
 
-    def parse_webhook(self, payload: dict) -> str:
+        return payment
+
+    async def process_payment_webhook(self, payload: dict) -> tuple[str, PaymentStatus]:
         payment = payload.get("object")
-        if not isinstance(payment, dict) or not payment.get("id"):
-            raise HTTPException(422, "Некорректный webhook YooKassa")
-        return str(payment["id"])
+        event = payload.get("event")
+        if not event or event not in PaymentEvent or not isinstance(payment, dict) or not payment.get("id"):
+            raise HTTPException(400, "Некорректный payload")
+        return payment["id"], PaymentStatus(payment["status"])

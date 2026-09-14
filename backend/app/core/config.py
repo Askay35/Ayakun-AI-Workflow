@@ -75,11 +75,13 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 30
     llm_max_retries: int = 3
     llm_max_output_tokens: int = 8192
-    yookassa_shop_id: str | None = None
-    yookassa_secret_key: str | None = None
-    yookassa_return_url: str = "http://localhost:3000/billing"
     initial_token_balance: Decimal = Decimal("100")
     default_run_cap_credits: Decimal = Decimal("100")
+   
+
+    yookassa_account_id: str | None = None
+    yookassa_secret_key: str | None = None
+    yookassa_return_url: str = "http://localhost:3000/billing"
    
     credits_cost_multiplier: Decimal = Decimal("2")
     cost_prompt_simple: Decimal = Decimal("100")

@@ -2,6 +2,7 @@ import datetime
 import enum
 from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from models.billing import Payment
 from db.base import Base
 
 
@@ -33,7 +34,8 @@ class User(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    payments: Mapped[list["Payment"]] = relationship(back_populates="user", cascade="all, delete-orphan", lazy="selectin")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan", lazy="selectin")
 
 
 class AuthIdentity(Base):

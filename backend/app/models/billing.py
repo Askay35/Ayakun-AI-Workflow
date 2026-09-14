@@ -5,10 +5,10 @@ from decimal import Decimal
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
-from models.user import utcnow
+from models.user import User, utcnow
 
 
 class LedgerKind(str, enum.Enum):
@@ -151,9 +151,9 @@ class Payment(Base):
     provider: Mapped[str] = mapped_column(String(30), default="yookassa")
     provider_payment_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 6))
-    currency: Mapped[str] = mapped_column(String(3), default="RUB")
     status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status"), default=PaymentStatus.pending)
     idempotency_key: Mapped[str] = mapped_column(String(160), unique=True)
-    confirmation_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="payments", lazy="selectin")

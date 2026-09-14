@@ -1,32 +1,23 @@
-from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status
+from starlette.responses import RedirectResponse
 
 from deps.auth import CurrentUser
 from deps.services import get_billing_service
 from schemas.billing import (
     LedgerResponse,
     PaymentCreate,
-    PaymentResponse,
+    ApiPaymentResponse,
     PlanCheckout,
     PlanResponse,
     SubscriptionResponse,
     UsageResponse,
     WalletResponse,
+    YooKassaWebhook,
 )
 from schemas.common import ApiResponse
 from services.billing import BillingService
 
 router = APIRouter()
-
-
-class YooKassaObject(BaseModel):
-    id: str
-
-
-class YooKassaWebhook(BaseModel):
-    event: str
-    object: YooKassaObject
-
 
 @router.get("/plans", response_model=ApiResponse[list[PlanResponse]])
 async def plans(service: BillingService = Depends(get_billing_service)):
@@ -54,26 +45,27 @@ async def usage(user: CurrentUser, service: BillingService = Depends(get_billing
     return ApiResponse(success=True, data=await service.usage(user))
 
 
-@router.post("/payments", response_model=ApiResponse[PaymentResponse], status_code=status.HTTP_201_CREATED)
+@router.post("/payments", response_model=ApiResponse[ApiPaymentResponse], status_code=status.HTTP_201_CREATED)
 async def create_payment(
     data: PaymentCreate, user: CurrentUser, service: BillingService = Depends(get_billing_service)
 ):
-    payment = await service.create_payment(user, data.amount, data.currency, data.idempotency_key)
-    return ApiResponse(success=True, data=payment)
+    payment = await service.create_payment(user, data.amount, "RUB", data.idempotency_key)
+    if not payment.confirmation_url:
+        raise HTTPException(400, "Не удалось создать платеж: " + (payment.cancellation_details.reason if payment.cancellation_details else "причина неизвестна"))
+    return RedirectResponse(url=payment.confirmation_url)
 
 
-@router.post("/subscription/checkout", response_model=ApiResponse[PaymentResponse], status_code=status.HTTP_201_CREATED)
+@router.post("/subscription/checkout", response_model=ApiResponse[ApiPaymentResponse], status_code=status.HTTP_201_CREATED)
 async def subscription_checkout(
     data: PlanCheckout,
     user: CurrentUser,
     service: BillingService = Depends(get_billing_service),
 ):
-    payment = await service.create_plan_checkout(
+    confirmation_url: str = await service.create_plan_checkout(
         user,
         data.plan_id,
-        data.idempotency_key,
     )
-    return ApiResponse(success=True, data=payment)
+    return ApiResponse[ApiPaymentResponse](success=True, data=ApiPaymentResponse(confirmation_url=confirmation_url))
 
 
 @router.post("/webhooks/yookassa", response_model=ApiResponse[None])

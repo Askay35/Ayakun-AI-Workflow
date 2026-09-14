@@ -6,6 +6,9 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from yookassa import Configuration, Payment as YooKassaPayment
+from yookassa.payment import PaymentResponse
+
 from models.billing import (
     BillingReservation,
     LedgerKind,
@@ -23,6 +26,9 @@ from core.config import settings
 from services.providers import PaymentProvider
 from services.pricing import quantize_credits
 
+
+Configuration.account_id = settings.yookassa_account_id
+Configuration.secret_key = settings.yookassa_secret_key
 
 class BillingService:
     def __init__(self, db: AsyncSession, payment_provider: PaymentProvider | None = None):
@@ -308,8 +314,8 @@ class BillingService:
         return wallet
 
     async def create_payment(
-        self, user: User, amount: Decimal, currency: str, idempotency_key: str
-    ) -> Payment:
+        self, user: User, plan_id: int, idempotency_key: str
+    ) -> PaymentResponse:
         existing = await self.db.scalar(select(Payment).where(Payment.idempotency_key == idempotency_key))
         if existing:
             if existing.user_id != user.id:
@@ -317,101 +323,82 @@ class BillingService:
             return existing
         if not self.payment_provider:
             raise HTTPException(503, "Платежный провайдер не настроен")
+        plan = await self.db.get(Plan, plan_id)
+        if not plan or plan.price <= 0:
+            raise HTTPException(404, "Тариф не найден")
+        
         intent = await self.payment_provider.create_payment(
-            f"{amount:.2f}", currency.upper(), idempotency_key, "Пополнение баланса Ayakun"
+            f"{plan.price:.2f}", plan.currency.upper(), "Оплата тарифа " + plan.name
         )
-        normalized_status = intent.status if intent.status in PaymentStatus._value2member_map_ else "pending"
-        payment = Payment(
-            user_id=user.id,
-            provider_payment_id=intent.provider_id,
-            amount=amount,
-            currency=currency.upper(),
-            status=PaymentStatus(normalized_status),
-            idempotency_key=idempotency_key,
-            confirmation_url=intent.confirmation_url,
-        )
-        self.db.add(payment)
-        await self.db.commit()
-        return payment
+        
+        return intent
 
     async def create_plan_checkout(
         self,
         user: User,
         plan_id: int,
-        idempotency_key: str,
-    ) -> Payment:
-        plan = await self.db.get(Plan, plan_id)
-        if not plan or plan.code == "free":
-            raise HTTPException(404, "Платный тариф не найден")
+    ) -> str:
+        idempotency_key = str(uuid.uuid4())
         payment = await self.create_payment(
             user,
-            plan.price,
-            plan.currency,
-            idempotency_key,
+            plan_id,
+            idempotency_key
         )
-        if payment.plan_id not in (None, plan.id):
-            raise HTTPException(409, "Idempotency key относится к другому тарифу")
-        payment.plan_id = plan.id
+        normalized_status = payment.status if payment.status in PaymentStatus._value2member_map_ else "pending"
+        payment_model = Payment(
+            user_id=user.id,
+            plan_id=plan_id,
+            provider=self.payment_provider.name,
+            provider_payment_id=payment.id,
+            amount=Decimal(payment.amount.value),
+            status=PaymentStatus(normalized_status),
+            idempotency_key=idempotency_key,
+        )
+        self.db.add(payment_model)
         await self.db.commit()
-        return payment
+        
+        if not payment.confirmation.confirmation_url:
+            raise HTTPException(400, "Не удалось создать платеж: " + (payment.cancellation_details.reason if payment.cancellation_details else "причина неизвестна"))
 
-    async def process_yookassa_webhook(self, provider_payment_id: str) -> None:
-        if not self.payment_provider:
-            raise HTTPException(503, "Платежный провайдер не настроен")
-        authoritative = await self.payment_provider.get_payment(provider_payment_id)
-        payment = await self.db.scalar(
-            select(Payment).where(Payment.provider_payment_id == provider_payment_id).with_for_update()
-        )
-        if not payment:
-            raise HTTPException(404, "Платеж не найден")
-        normalized_status = (
-            authoritative.status if authoritative.status in PaymentStatus._value2member_map_ else "pending"
-        )
-        new_status = PaymentStatus(normalized_status)
-        if payment.status == PaymentStatus.succeeded:
-            return
-        payment.status = new_status
-        if new_status == PaymentStatus.succeeded:
-            wallet = await self.db.scalar(select(Wallet).where(Wallet.user_id == payment.user_id).with_for_update())
-            if not wallet:
-                wallet = Wallet(user_id=payment.user_id)
-                self.db.add(wallet)
-                await self.db.flush()
-            key = f"payment:{provider_payment_id}"
-            if not await self._already_applied(key):
-                if payment.plan_id:
-                    plan = await self.db.get(Plan, payment.plan_id)
-                    token_amount = Decimal(str(plan.limits.get("included_credits", 0)))
-                    active = list(await self.db.scalars(
-                        select(Subscription).where(
-                            Subscription.user_id == payment.user_id,
-                            Subscription.status == "active",
-                        )
-                    ))
-                    now = datetime.datetime.now(datetime.UTC)
-                    for subscription in active:
-                        subscription.status = "expired"
-                        subscription.ends_at = now
-                    self.db.add(Subscription(
-                        user_id=payment.user_id,
-                        plan_id=payment.plan_id,
-                        starts_at=now,
-                        ends_at=now + datetime.timedelta(days=30),
-                    ))
-                else:
-                    token_amount = payment.amount * settings.payment_credits_per_usd
-                wallet.balance += token_amount
-                self.db.add(WalletLedger(
-                    user_id=payment.user_id,
-                    kind=LedgerKind.purchase,
-                    amount=token_amount,
-                    idempotency_key=key,
-                    reference=str(payment.id),
-                ))
-        await self.db.commit()
+        return payment.confirmation.confirmation_url
 
     async def process_payment_webhook(self, payload: dict) -> None:
         if not self.payment_provider:
             raise HTTPException(503, "Платежный провайдер не настроен")
-        provider_payment_id = self.payment_provider.parse_webhook(payload)
-        await self.process_yookassa_webhook(provider_payment_id)
+        
+        payment_id, payment_status = await self.payment_provider.process_payment_webhook(payload)    
+        
+        if payment_status != PaymentStatus.succeeded:
+            return
+
+        
+        with self.db.begin():
+            payment = await self.db.scalar(
+                select(Payment).where(Payment.provider_payment_id == payment_id).with_for_update()
+            )
+            if not payment:
+                raise HTTPException(404, "Платеж не найден")
+            
+            if payment.status == PaymentStatus.pending:
+                payment.status = PaymentStatus.succeeded
+                wallet = await self.db.scalar(
+                    select(Wallet).where(Wallet.user_id == payment.user_id).with_for_update()
+                )
+                if not wallet:
+                    new_wallet = Wallet(
+                        user_id=payment.user_id,
+                        balance=payment.amount,
+                        reserved=Decimal("0"),
+                        currency=payment.currency,
+                    )
+                    self.db.add(new_wallet)
+                else:
+                    wallet.balance += payment.amount
+
+                self.db.add(WalletLedger(
+                    user_id=payment.user_id,
+                    kind=LedgerKind.purchase,
+                    amount=Decimal(payment.amount),
+                    idempotency_key=payment.idempotency_key,
+                    reference=payment.provider_payment_id,
+                ))
