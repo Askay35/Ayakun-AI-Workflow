@@ -276,8 +276,14 @@ class WorkflowService:
         workflow = await self._owned(workflow_id, user)
         if not workflow.published_version_id:
             raise HTTPException(409, "Workflow не опубликован")
+        version = await self.db.get(WorkflowVersion, workflow.published_version_id)
+        graph = WorkflowGraph.model_validate(version.graph_snapshot if version else {"nodes": []})
         if self.billing:
-            await self.billing.ensure_initial_credit(user)
+            wallet = await self.billing.ensure_initial_credit(user)
+            estimate = await PricingService(self.db).estimate_graph(graph)
+            available = wallet.balance - wallet.reserved
+            if available < estimate:
+                raise HTTPException(402, "Недостаточно credits для запуска")
         run = WorkflowRun(
             id=uuid.uuid4(),
             workflow_id=workflow.id,

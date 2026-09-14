@@ -244,10 +244,8 @@ export const useApi = () => {
     billing: {
       plans: () => request<Plan[]>('/billing/plans'),
       summary: async (): Promise<BillingSummary> => {
-        const [plans, wallet, subscription, ledger, usage] = await Promise.all([
-          request<Plan[]>('/billing/plans'),
+        const [wallet, ledger, usage] = await Promise.all([
           request<{ balance: number }>('/billing/wallet'),
-          request<{ plan_id: number } | null>('/billing/subscription'),
           request<Array<{
             id: string
             created_at: string
@@ -260,7 +258,6 @@ export const useApi = () => {
           request<Array<{ cost: number }>>('/billing/usage')
         ])
         return {
-          plan: plans.find(plan => plan.id === subscription?.plan_id),
           balance: Number(wallet.balance),
           usage_this_month: usage.reduce((sum, item) => sum + Number(item.cost), 0),
           ledger: visibleLedgerEntries(ledger.map(item => ({
@@ -269,7 +266,7 @@ export const useApi = () => {
           })))
         }
       },
-      checkout: (planId: number, idempotencyKey: string) => request<{ confirmation_url: string | null }>('/billing/subscription/checkout', {
+      checkout: (planId: number, idempotencyKey: string) => request<{ confirmation_url: string | null }>('/billing/checkout', {
         method: 'POST', body: { plan_id: planId, idempotency_key: idempotencyKey }
       })
     },

@@ -7,7 +7,7 @@ from core.logging import JsonFormatter, output_preview
 def test_output_preview_keeps_ai_usage() -> None:
     preview = output_preview({
         "text": "итог",
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-flash",
         "truncated": False,
         "usage": {"input_tokens": 59, "output_tokens": 331},
     })

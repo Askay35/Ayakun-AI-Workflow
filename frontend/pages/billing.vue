@@ -37,13 +37,12 @@ const checkout = async (planId: number) => {
   <div class="page">
     <div class="page-head">
       <div>
-        <p class="eyebrow">Баланс и подписка</p>
-        <h1 class="page-title">Управление тарифом</h1>
-        <p class="muted">Пополняйте запас запусков, когда это действительно нужно.</p>
+        <p class="eyebrow">Баланс</p>
+        <h1 class="page-title">Пополнение credits</h1>
+        <p class="muted">Оплатили пакет — кредиты сразу на балансе, без срока действия.</p>
       </div>
     </div>
     <div class="grid-cards">
-      <div class="panel metric-card" style="--card-accent:#bdb6ff"><p class="mb-0 text-sm font-bold muted">Ваш тариф</p><p class="metric-value">{{ planName(summary?.plan?.code, summary?.plan?.name) }}</p><p class="mb-0 mt-1 text-xs muted">все функции доступны</p></div>
       <div class="panel metric-card" style="--card-accent:#c9f169"><p class="mb-0 text-sm font-bold muted">На балансе</p><p class="metric-value">{{ formatCredits(summary?.balance) }}</p><p class="mb-0 mt-1 text-xs muted">credits для запусков</p></div>
       <div class="panel metric-card" style="--card-accent:#ffb681"><p class="mb-0 text-sm font-bold muted">Потрачено за месяц</p><p class="metric-value">{{ formatCredits(summary?.usage_this_month) }}</p><p class="mb-0 mt-1 text-xs muted">credits</p></div>
     </div>
@@ -60,12 +59,12 @@ const checkout = async (planId: number) => {
           <li class="flex gap-2"><UIcon name="i-lucide-check" class="text-[#6758ee]" />Запуски по расписанию</li>
         </ul>
         <UButton
-          :label="plan.id === summary?.plan?.id ? 'Текущий тариф' : plan.code === 'free' ? 'Бесплатный тариф' : 'Перейти на тариф'"
+          :label="plan.code === 'free' ? 'Бесплатный пакет' : 'Купить credits'"
           block
           size="lg"
           class="mt-auto"
           :loading="checkoutBusy === plan.id"
-          :disabled="plan.id === summary?.plan?.id || plan.code === 'free' || checkoutBusy === plan.id"
+          :disabled="plan.code === 'free' || checkoutBusy === plan.id"
           @click="checkout(plan.id)"
         />
       </div>

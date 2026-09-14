@@ -55,20 +55,6 @@ class WalletResponse(BaseModel):
     currency: str = "CRD"
     model_config = ConfigDict(from_attributes=True)
 
-class SubscriptionStatus(str, Enum):
-    active = "active"
-    inactive = "inactive"
-
-class SubscriptionResponse(BaseModel):
-    id: uuid.UUID
-    user_id: int
-    plan_id: int
-    status: SubscriptionStatus
-    starts_at: datetime.datetime
-    ends_at: datetime.datetime | None
-    model_config = ConfigDict(from_attributes=True)
-
-
 class LedgerResponse(BaseModel):
     id: uuid.UUID
     kind: LedgerKind

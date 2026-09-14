@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from yookassa import Configuration
 from yookassa.payment import PaymentResponse
-from schemas.billing import SubscriptionStatus
 
 from models.billing import (
     BillingReservation,
@@ -18,7 +17,6 @@ from models.billing import (
     Payment,
     PaymentStatus,
     Plan,
-    Subscription,
     UsageRecord,
     Wallet,
     WalletLedger,
@@ -41,26 +39,8 @@ class BillingService:
     async def plans(self) -> list[Plan]:
         return list(await self.db.scalars(select(Plan).order_by(Plan.price)))
 
-    async def subscription(self, user: User) -> Subscription | None:
-        return await self.db.scalar(
-            select(Subscription)
-            .where(Subscription.user_id == user.id, Subscription.status == "active")
-            .order_by(Subscription.starts_at.desc())
-        )
-
-    async def plan_limits(self, user: User) -> dict:
-        await self.ensure_initial_credit(user)
-        subscription = await self.subscription(user)
-        if not subscription:
-            return {}
-        plan = await self.db.get(Plan, subscription.plan_id)
-        return dict(plan.limits) if plan else {}
-
     async def run_cap(self, user: User) -> Decimal:
-        subscription = await self.subscription(user)
-        plan = await self.db.get(Plan, subscription.plan_id) if subscription else None
-        limits = dict(plan.limits) if plan else {}
-        return Decimal(str(limits.get("run_cap_credits", settings.default_run_cap_credits)))
+        return Decimal(str(settings.default_run_cap_credits))
 
     async def ledger(self, user: User) -> list[WalletLedger]:
         return list(await self.db.scalars(
@@ -98,10 +78,6 @@ class BillingService:
                 idempotency_key=key,
                 reference="free-plan",
             ))
-        subscription = await self.subscription(user)
-        if not subscription:
-            if free_plan:
-                self.db.add(Subscription(user_id=user.id, plan_id=free_plan.id))
         await self.db.commit()
         return wallet
 
@@ -196,9 +172,17 @@ class BillingService:
         )
         if not reservation or reservation.user_id != user.id or reservation.status != "active":
             raise HTTPException(409, "Активный резерв не найден")
-        amount = quantize_credits(max(amount, Decimal("0")))
-        if amount > reservation.remaining or amount > wallet.reserved or amount > wallet.balance:
-            raise HTTPException(409, "Фактическая стоимость превышает резерв")
+        requested = quantize_credits(max(amount, Decimal("0")))
+        chargeable = min(
+            requested,
+            reservation.remaining,
+            wallet.reserved,
+            max(wallet.balance, Decimal("0")),
+        )
+        chargeable = quantize_credits(chargeable)
+        if chargeable <= 0:
+            raise HTTPException(409, "Активный резерв исчерпан")
+        amount = chargeable
         wallet.reserved -= amount
         wallet.balance -= amount
         reservation.charged += amount
@@ -206,6 +190,8 @@ class BillingService:
         if run:
             run.cost += amount
         payload = details or {}
+        if requested > amount:
+            payload = {**payload, "capped": True, "requested_credits": str(requested)}
         self.db.add(WalletLedger(
             user_id=user.id,
             kind=LedgerKind.charge,
@@ -372,26 +358,6 @@ class BillingService:
             return Decimal("0")
         return Decimal(str((plan.limits or {}).get("included_credits", 0)))
 
-    async def _activate_paid_plan(self, user_id: int, plan_id: int) -> None:
-        now = datetime.datetime.now(datetime.UTC)
-        ends_at = now + datetime.timedelta(days=30)
-        subscription = await self.db.scalar(
-            select(Subscription).where(Subscription.user_id == user_id).with_for_update()
-        )
-        if not subscription:
-            self.db.add(Subscription(
-                user_id=user_id,
-                plan_id=plan_id,
-                status=SubscriptionStatus.active,
-                starts_at=now,
-                ends_at=ends_at,
-            ))
-            return
-        subscription.plan_id = plan_id
-        subscription.status = SubscriptionStatus.active
-        subscription.starts_at = now
-        subscription.ends_at = ends_at
-
     async def process_payment_webhook(self, payload: dict) -> None:
         if not self.payment_provider:
             raise HTTPException(503, "Платежный провайдер не настроен")
@@ -428,9 +394,6 @@ class BillingService:
                 ))
             else:
                 wallet.balance += credits
-
-            if payment.plan_id is not None:
-                await self._activate_paid_plan(payment.user_id, payment.plan_id)
 
             self.db.add(WalletLedger(
                 user_id=payment.user_id,

@@ -62,14 +62,14 @@ class Settings(BaseSettings):
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_complex_model: str = "deepseek-v4-pro"
-    deepseek_simple_model: str = "deepseek-v4-flash"
+    deepseek_simple_model: str = "deepseek-flash"
     # Admin routing: which provider/model for each workflow stage
     web_search_provider: WebSearchProviderId = WebSearchProviderId.serper
     simple_llm_provider: LLMProviderId = LLMProviderId.deepseek
     simple_llm_model: str | None = None
     complex_llm_provider: LLMProviderId = LLMProviderId.deepseek
     complex_llm_model: str | None = None
-    allowed_llm_models: str = "deepseek-v4-flash,deepseek-v4-pro,qwen-turbo,qwen-plus"
+    allowed_llm_models: str = "deepseek-flash,deepseek-v4-flash,deepseek-v4-pro,qwen-turbo,qwen-plus"
     provider_timeout_seconds: float = 60
     provider_max_retries: int = 3
     llm_timeout_seconds: float = 30

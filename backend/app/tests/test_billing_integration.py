@@ -114,7 +114,7 @@ async def test_charge_and_release_are_idempotent_and_never_go_negative() -> None
             await billing.reserve_run(user, run.id, f"run:{run.id}")
             details = {
                 "provider": "deepseek",
-                "model": "deepseek-v4-flash",
+                "model": "deepseek-flash",
                 "input_cache_miss_tokens": 100,
                 "output_tokens": 50,
                 "provider_cost_usd": "0.01",

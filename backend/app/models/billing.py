@@ -6,7 +6,7 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, Numeric, String, Tex
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from schemas.billing import LedgerKind, PaymentStatus, SubscriptionStatus
+from schemas.billing import LedgerKind, PaymentStatus
 from db.base import Base
 from helper import utcnow
 
@@ -22,16 +22,6 @@ class Plan(Base):
     limits: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     payments: Mapped[list["Payment"]] = relationship(back_populates="plan", lazy="selectin")
-
-
-class Subscription(Base):
-    __tablename__ = "subscriptions"
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"))
-    status: Mapped[SubscriptionStatus] = mapped_column(Enum(SubscriptionStatus, name="subscription_status"), default=SubscriptionStatus.active)
-    starts_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    ends_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Wallet(Base):

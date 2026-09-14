@@ -7,7 +7,6 @@ from schemas.billing import (
     ApiPaymentResponse,
     PlanCheckout,
     PlanResponse,
-    SubscriptionResponse,
     UsageResponse,
     WalletResponse,
     YooKassaWebhook,
@@ -28,11 +27,6 @@ async def wallet(user: CurrentUser, service: BillingService = Depends(get_billin
     return ApiResponse(success=True, data=result)
 
 
-@router.get("/subscription", response_model=ApiResponse[SubscriptionResponse])
-async def subscription(user: CurrentUser, service: BillingService = Depends(get_billing_service)):
-    return ApiResponse(success=True, data=await service.subscription(user))
-
-
 @router.get("/ledger", response_model=ApiResponse[list[LedgerResponse]])
 async def ledger(user: CurrentUser, service: BillingService = Depends(get_billing_service)):
     return ApiResponse(success=True, data=await service.ledger(user))
@@ -42,8 +36,8 @@ async def ledger(user: CurrentUser, service: BillingService = Depends(get_billin
 async def usage(user: CurrentUser, service: BillingService = Depends(get_billing_service)):
     return ApiResponse(success=True, data=await service.usage(user))
 
-@router.post("/subscription/checkout", response_model=ApiResponse[ApiPaymentResponse], status_code=status.HTTP_201_CREATED)
-async def subscription_checkout(
+@router.post("/checkout", response_model=ApiResponse[ApiPaymentResponse], status_code=status.HTTP_201_CREATED)
+async def checkout(
     data: PlanCheckout,
     user: CurrentUser,
     service: BillingService = Depends(get_billing_service),

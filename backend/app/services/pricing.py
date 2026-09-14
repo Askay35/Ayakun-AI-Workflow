@@ -2,11 +2,12 @@
 
 from dataclasses import dataclass
 from decimal import ROUND_CEILING, Decimal
-from math import floor
+from math import ceil, floor
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import settings
 from models.billing import PricingRate, RuntimeSetting
 from schemas.workflow import WorkflowGraph
 from services.providers import llm_instructions
@@ -22,6 +23,10 @@ MARGIN_MULTIPLIER = Decimal("2")
 ESTIMATED_SEARCH_CONTEXT_TOKENS = 800
 # Типичный ответ предыдущего prompt-узла во входе следующего.
 ESTIMATED_PROMPT_CONTEXT_TOKENS = 400
+ESTIMATED_SIMPLE_OUTPUT_TOKENS = 8_000
+ESTIMATED_COMPLEX_OUTPUT_TOKENS = 8_000
+INPUT_TOKEN_PADDING = 32
+INPUT_TOKEN_SAFETY_RATIO = Decimal("0.15")
 
 
 @dataclass(frozen=True)
@@ -34,10 +39,12 @@ class Price:
     search: Decimal = Decimal("0")
 
 
+_FLASH_PRICE = Price(
+    "deepseek", "deepseek-flash", Decimal("0.014"), Decimal("0.44"), Decimal("1.32")
+)
 DEFAULT_PRICES: dict[tuple[str, str], Price] = {
-    ("deepseek", "deepseek-v4-flash"): Price(
-        "deepseek", "deepseek-v4-flash", Decimal("0.014"), Decimal("0.44"), Decimal("1.32")
-    ),
+    ("deepseek", "deepseek-flash"): _FLASH_PRICE,
+    ("deepseek", "deepseek-v4-flash"): _FLASH_PRICE,
     ("deepseek", "deepseek-v4-pro"): Price(
         "deepseek", "deepseek-v4-pro", Decimal("0.044"), Decimal("1.32"), Decimal("3.96")
     ),
@@ -65,6 +72,13 @@ def quantize_credits(amount: Decimal) -> Decimal:
     return Decimal(amount).quantize(CREDIT_QUANTUM)
 
 
+def billed_credits(price: Price, cache_hit: int, cache_miss: int, output: int) -> Decimal:
+    """Списание LLM: usage × credits_cost_multiplier, квантование как у фактического charge."""
+    return quantize_credits(
+        usage_credits(price, cache_hit, cache_miss, output) * settings.credits_cost_multiplier
+    )
+
+
 def billable_credits(amount: Decimal) -> Decimal:
     """Оценка запуска: целое число credits, округление вверх."""
     if amount <= 0:
@@ -77,11 +91,25 @@ def provider_cost_usd(credits: Decimal) -> Decimal:
     return credits * CREDIT_PROVIDER_COST_USD
 
 
-def maximum_output_tokens(price: Price, budget: Decimal, input_tokens: int) -> int:
-    input_cost = usage_credits(price, 0, input_tokens, 0)
-    if budget <= input_cost or price.output <= 0:
+def padded_input_tokens(tokens: int) -> int:
+    """Запас на расхождение локального tokenizer с usage API."""
+    if tokens <= 0:
         return 0
-    return max(0, floor((budget - input_cost) * THOUSAND / price.output))
+    extra = max(INPUT_TOKEN_PADDING, ceil(tokens * float(INPUT_TOKEN_SAFETY_RATIO)))
+    return tokens + extra
+
+
+def maximum_output_tokens(price: Price, budget: Decimal, input_tokens: int) -> int:
+    if price.output <= 0:
+        return 0
+    if billed_credits(price, 0, input_tokens, 0) >= budget:
+        return 0
+    multiplier = settings.credits_cost_multiplier
+    input_raw = usage_credits(price, 0, input_tokens, 0)
+    output = floor((budget / multiplier - input_raw) * THOUSAND / price.output)
+    while output > 0 and billed_credits(price, 0, input_tokens, output) > budget:
+        output -= 1
+    return max(0, output)
 
 
 class PricingService:
@@ -121,17 +149,29 @@ class PricingService:
             if node_type == "web_search":
                 total += billable_credits((await self.get("serper", "search")).search)
             elif node_type == "prompt":
-                model = node.model or (
-                    "deepseek-v4-pro" if node.complexity == "complex_text" else "deepseek-v4-flash"
-                )
-                price = await self.get("deepseek", model)
-                total += billable_credits(usage_credits(price, 0, _estimated_prompt_input_tokens(node, graph), 0))
+                price = await self.get("deepseek", _prompt_model(node))
+                total += _prompt_estimate_credits(price, node, graph)
         return total
 
 
 def _node_type(node: object) -> str:
     value = getattr(node, "type", "")
     return value.value if hasattr(value, "value") else str(value)
+
+
+def _prompt_model(node: object) -> str:
+    complexity = getattr(node, "complexity", "simple_text")
+    return getattr(node, "model", None) or (
+        "deepseek-v4-pro" if complexity == "complex_text" else "deepseek-flash"
+    )
+
+
+def _estimated_prompt_output_tokens(node: object) -> int:
+    complexity = getattr(node, "complexity", "simple_text")
+    model = str(getattr(node, "model", None) or "")
+    if complexity == "complex_text" or "pro" in model:
+        return ESTIMATED_COMPLEX_OUTPUT_TOKENS
+    return ESTIMATED_SIMPLE_OUTPUT_TOKENS
 
 
 def _estimated_prompt_input_tokens(node: object, graph: WorkflowGraph | None = None) -> int:
@@ -157,6 +197,15 @@ def _estimated_prompt_input_tokens(node: object, graph: WorkflowGraph | None = N
     return tokens
 
 
+def _prompt_estimate_credits(price: Price, node: object, graph: WorkflowGraph | None = None) -> Decimal:
+    return billed_credits(
+        price,
+        0,
+        _estimated_prompt_input_tokens(node, graph),
+        _estimated_prompt_output_tokens(node),
+    )
+
+
 def node_estimate(node: object, graph: WorkflowGraph | None = None) -> Decimal:
     node_type = _node_type(node)
     if node_type == "web_search":
@@ -165,12 +214,8 @@ def node_estimate(node: object, graph: WorkflowGraph | None = None) -> Decimal:
         return Decimal("0")
     if node_type != "prompt":
         return Decimal("0")
-    complexity = getattr(node, "complexity", "simple_text")
-    model = getattr(node, "model", None) or (
-        "deepseek-v4-pro" if complexity == "complex_text" else "deepseek-v4-flash"
-    )
-    price = DEFAULT_PRICES[("deepseek", model)]
-    return billable_credits(usage_credits(price, 0, _estimated_prompt_input_tokens(node, graph), 0))
+    price = DEFAULT_PRICES[("deepseek", _prompt_model(node))]
+    return _prompt_estimate_credits(price, node, graph)
 
 
 def estimate_run_cost(graph: WorkflowGraph | dict | None) -> Decimal:

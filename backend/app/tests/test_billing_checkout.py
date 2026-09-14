@@ -5,9 +5,9 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 
-from models.billing import Payment, PaymentStatus, Plan, Subscription, Wallet, WalletLedger
+from models.billing import Payment, PaymentStatus, Plan, Wallet, WalletLedger
 from models.user import User  # noqa: F401  — needed so Payment.user relationship can configure
-from schemas.billing import LedgerKind, SubscriptionStatus, WalletResponse
+from schemas.billing import LedgerKind, WalletResponse
 from services.billing import BillingService
 from services.providers import YooKassaProvider
 
@@ -26,7 +26,6 @@ class FakeDB:
         self.payment_by_key: Payment | None = None
         self.payment_by_provider: Payment | None = None
         self.wallet: Wallet | None = None
-        self.subscription: Subscription | None = None
         self.added: list[object] = []
         self.commits = 0
         self.rollbacks = 0
@@ -44,8 +43,6 @@ class FakeDB:
             return self.payment_by_provider
         if entity is Wallet:
             return self.wallet
-        if entity is Subscription:
-            return self.subscription
         return None
 
     def add(self, obj) -> None:
@@ -55,8 +52,6 @@ class FakeDB:
             self.payment_by_provider = obj
         elif isinstance(obj, Wallet):
             self.wallet = obj
-        elif isinstance(obj, Subscription):
-            self.subscription = obj
 
     async def commit(self) -> None:
         self.commits += 1
@@ -218,13 +213,10 @@ async def test_successful_webhook_credits_plan_credits_not_rubles() -> None:
     plan = paid_plan()
     db.payment_by_provider = pending_payment(plan)
     db.wallet = Wallet(user_id=1, balance=Decimal("100"), reserved=Decimal("0"))
-    db.subscription = Subscription(user_id=1, plan_id=1, status=SubscriptionStatus.active)
     await BillingService(db, FakeProvider()).process_payment_webhook(webhook_payload())
 
     assert db.payment_by_provider.status == PaymentStatus.succeeded
     assert db.wallet.balance == Decimal("2100")
-    assert db.subscription.plan_id == 2
-    assert db.subscription.status == SubscriptionStatus.active
     ledger = next(item for item in db.added if isinstance(item, WalletLedger))
     assert ledger.kind == LedgerKind.purchase
     assert ledger.amount == Decimal("2000")
@@ -232,7 +224,7 @@ async def test_successful_webhook_credits_plan_credits_not_rubles() -> None:
 
 
 @pytest.mark.asyncio
-async def test_successful_webhook_creates_wallet_and_subscription() -> None:
+async def test_successful_webhook_creates_wallet() -> None:
     db = FakeDB()
     plan = paid_plan()
     db.payment_by_provider = pending_payment(plan)
@@ -240,9 +232,6 @@ async def test_successful_webhook_creates_wallet_and_subscription() -> None:
 
     assert db.wallet is not None
     assert db.wallet.balance == Decimal("2000")
-    assert db.subscription is not None
-    assert db.subscription.plan_id == 2
-    assert db.subscription.ends_at is not None
 
 
 @pytest.mark.asyncio

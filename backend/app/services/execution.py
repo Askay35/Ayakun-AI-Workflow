@@ -20,7 +20,7 @@ from services.providers import (
     WebSearchRouter,
     llm_instructions,
 )
-from services.pricing import PricingService, maximum_output_tokens
+from services.pricing import PricingService, billed_credits, maximum_output_tokens, padded_input_tokens
 from utils.deepseek_tokenizer import count_prompt_tokens
 
 Executor = Callable[[object, dict], Awaitable[object]]
@@ -145,17 +145,20 @@ class DefaultExecutors:
         model = node.model or await self.pricing.setting(setting_key, default_model)
         composed_instructions = llm_instructions(node.instructions or None, node.output_format or None)
         input_data = parent_output_texts(node, context) or None
-        input_tokens = count_prompt_tokens(
+        input_tokens = padded_input_tokens(count_prompt_tokens(
             node.prompt,
             instructions=composed_instructions,
             input_data=input_data,
-        )
+        ))
         price = await self.pricing.get("deepseek", model)
         configured_max = int(await self.pricing.setting(
             "llm_max_output_tokens", settings.llm_max_output_tokens
         ))
+        remaining = await self.available_budget()
+        if billed_credits(price, 0, input_tokens, 0) >= remaining:
+            raise ValueError("Недостаточно credits даже для входных токенов LLM-запроса")
         max_tokens = min(
-            maximum_output_tokens(price, await self.available_budget(), input_tokens),
+            maximum_output_tokens(price, remaining, input_tokens),
             configured_max,
         )
         if max_tokens < 1:

@@ -33,7 +33,7 @@ from models.workflow import (
 from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode
 from services.billing import BillingService
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
-from services.pricing import PricingService, billable_credits, provider_cost_usd, quantize_credits, usage_credits
+from services.pricing import PricingService, billable_credits, billed_credits, provider_cost_usd
 from services.workflow import next_schedule, topological_nodes
 from core.logging import output_preview
 
@@ -74,7 +74,7 @@ async def node_cost(
     if hit + miss == 0:
         miss = int(usage.get("input_tokens", 0))
     generated = int(usage.get("output_tokens", 0))
-    credits = quantize_credits(usage_credits(price, hit, miss, generated) * settings.credits_cost_multiplier)
+    credits = billed_credits(price, hit, miss, generated)
     units = hit + miss + generated
     details = {
         "provider": "deepseek",
@@ -387,6 +387,7 @@ class WorkflowRunExecutor:
         node_run.status = NodeRunStatus.succeeded
         node_run.finished_at = datetime.datetime.now(datetime.UTC)
         context["nodes"][node.id] = {"type": node_type_value(node.type), "output": output}
+        remaining = await self.billing.reservation_remaining(self.reservation_request_id)
         cost, units, details = await node_cost(self.pricing, node, output)
         await self.billing.charge_reservation(
             self.user,
@@ -397,6 +398,8 @@ class WorkflowRunExecutor:
             workflow_run_id=self.run.id,
             details=details,
         )
+        if cost > remaining:
+            raise ValueError("Фактическая стоимость превысила остаток credits")
         extra = self.log_fields(
             event="node.succeeded",
             node_id=node.id,

@@ -29,7 +29,7 @@ async def test_provider_makes_one_call_and_preserves_truncated_result() -> None:
     provider = object.__new__(OpenAICompatibleProvider)
     responses = FakeResponses()
     provider.client = SimpleNamespace(responses=responses)
-    provider.model = "deepseek-v4-flash"
+    provider.model = "deepseek-flash"
 
     result = await provider.prompt(
         "Сделай отчёт",
@@ -40,7 +40,7 @@ async def test_provider_makes_one_call_and_preserves_truncated_result() -> None:
 
     assert len(responses.calls) == 1
     call = responses.calls[0]
-    assert call["model"] == "deepseek-v4-flash"
+    assert call["model"] == "deepseek-flash"
     assert call["instructions"] == "Кратко"
     assert call["input"] == prompt_input("Сделай отчёт", ["данные"])
     assert call["max_output_tokens"] == 50
@@ -58,7 +58,7 @@ async def test_provider_appends_output_format_to_instructions() -> None:
     provider = object.__new__(OpenAICompatibleProvider)
     responses = FakeResponses()
     provider.client = SimpleNamespace(responses=responses)
-    provider.model = "deepseek-v4-flash"
+    provider.model = "deepseek-flash"
 
     await provider.prompt(
         "Сделай отчёт",
