@@ -295,7 +295,7 @@ class WorkflowService:
         self.db.add(run)
         await self.db.flush()
         if self.billing:
-            await self.billing.reserve_run(user, run.id, f"run:{run.id}")
+            await self.billing.reserve_run(user, run.id, f"run:{run.id}", amount=estimate)
         else:
             await self.db.commit()
         from execution.tasks import execute_workflow

@@ -44,6 +44,8 @@ export interface WorkflowNode {
     output_format?: string
     model?: string
     complexity?: 'simple_text' | 'complex_text'
+    max_output_tokens?: number
+    max_run_credits?: number
     request_json?: string
     condition?: string
     chat_id?: string

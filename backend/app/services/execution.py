@@ -157,8 +157,10 @@ class DefaultExecutors:
         remaining = await self.available_budget()
         if billed_credits(price, 0, input_tokens, 0) >= remaining:
             raise ValueError("Недостаточно credits даже для входных токенов LLM-запроса")
+        node_max = max(1, int(getattr(node, "max_output_tokens", None) or settings.llm_max_output_tokens))
         max_tokens = min(
             maximum_output_tokens(price, remaining, input_tokens),
+            node_max,
             configured_max,
         )
         if max_tokens < 1:

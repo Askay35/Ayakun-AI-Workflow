@@ -104,6 +104,7 @@ class BillingService:
         user: User,
         workflow_run_id: uuid.UUID,
         request_id: str,
+        amount: Decimal | None = None,
     ) -> BillingReservation:
         existing = await self.db.scalar(
             select(BillingReservation).where(BillingReservation.request_id == request_id)
@@ -121,8 +122,14 @@ class BillingService:
             if existing.user_id != user.id or existing.workflow_run_id != workflow_run_id:
                 raise HTTPException(409, "request_id уже используется")
             return existing
-        amount = min(max(wallet.balance - wallet.reserved, Decimal("0")), cap)
-        if amount <= 0:
+        available = max(wallet.balance - wallet.reserved, Decimal("0"))
+        needed = quantize_credits(amount) if amount is not None else cap
+        if needed > cap:
+            raise HTTPException(402, "Максимальная стоимость запуска превышает лимит")
+        if needed > 0 and available < needed:
+            raise HTTPException(402, "Недостаточно credits для запуска")
+        amount = min(available, needed, cap) if needed > 0 else Decimal("0")
+        if needed > 0 and amount <= 0:
             raise HTTPException(402, "Недостаточно credits для запуска")
         reservation = BillingReservation(
             user_id=user.id,
@@ -174,6 +181,8 @@ class BillingService:
         if not reservation or reservation.user_id != user.id or reservation.status != "active":
             raise HTTPException(409, "Активный резерв не найден")
         requested = quantize_credits(max(amount, Decimal("0")))
+        if requested <= 0:
+            return wallet
         chargeable = min(
             requested,
             reservation.remaining,

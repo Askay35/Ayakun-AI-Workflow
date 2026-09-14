@@ -4,7 +4,7 @@ from api.v1.router import router
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from core.config import settings
 from core.exceptions import http_exception_handler
-from core.logging import setup_logging
+from core.logging import RequestLoggingMiddleware, setup_logging
 import httpx
 import redis.asyncio as redis
 
@@ -22,6 +22,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_url],

@@ -32,7 +32,11 @@ scrape_configs:
             event: event
             level: level
             node_type: node_type
+            direction: direction
+            method: method
       - labels:
           event:
           level:
           node_type:
+          direction:
+          method:

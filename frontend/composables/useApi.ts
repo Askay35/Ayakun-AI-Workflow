@@ -104,7 +104,8 @@ export const useApi = () => {
               prompt: node.data.prompt || '',
               instructions: node.data.instructions || '',
               output_format: node.data.output_format || '',
-              complexity: node.data.complexity || 'simple_text'
+              complexity: node.data.complexity || 'simple_text',
+              max_output_tokens: Number(node.data.max_output_tokens) || 8000
             }
           : node.type === 'http_request'
             ? {
@@ -132,7 +133,11 @@ export const useApi = () => {
           parents: [...(node.parents || node.data.parents || [])],
           children: [...(node.children || node.data.children || [])],
           true_children: [...(node.true_children || node.data.true_children || [])],
-          false_children: [...(node.false_children || node.data.false_children || [])]
+          false_children: [...(node.false_children || node.data.false_children || [])],
+          data: {
+            ...node.data,
+            max_output_tokens: Number(node.data.max_output_tokens ?? node.max_output_tokens) || 8000
+          }
         }
       }
       return {
@@ -152,6 +157,7 @@ export const useApi = () => {
           output_format: node.output_format,
           model: node.model,
           complexity: node.complexity || (String(node.model || '').includes('pro') ? 'complex_text' : 'simple_text'),
+          max_output_tokens: Number(node.max_output_tokens) || 8000,
           request_json: typeof node.request_json === 'string'
             ? node.request_json
             : node.request_json

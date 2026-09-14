@@ -4,6 +4,7 @@ import { apiErrorMessage } from '~/composables/useApi'
 import { useAuthAsyncData } from '~/composables/useAuthAsyncData'
 import type { NodeKind, SearchPeriod, Workflow, WorkflowNode } from '~/types/api'
 import { formatCredits } from '~/utils/credits'
+import { maxOutputTokensFromCredits, promptMaxCredits } from '~/utils/prompt-max-cost'
 import {
   NODE_META,
   DEFAULT_HTTP_REQUEST_JSON,
@@ -138,6 +139,20 @@ const selectedOutputFormat = computed({
     selected.value.data.output_format = value
   }
 })
+const selectedMaxRunCredits = computed({
+  get: () => {
+    if (!selected.value || selected.value.type !== 'prompt') return 0
+    const stored = Number(selected.value.data.max_run_credits)
+    if (Number.isFinite(stored) && stored > 0) return stored
+    return promptMaxCredits(selected.value)
+  },
+  set: (value: number | string) => {
+    if (!selected.value || selected.value.type !== 'prompt') return
+    const credits = Math.max(1, Math.round(Number(value) || 1))
+    selected.value.data.max_run_credits = credits
+    selected.value.data.max_output_tokens = maxOutputTokensFromCredits(selected.value, credits)
+  }
+})
 const selectedRequestJson = computed({
   get: () => selected.value?.data.request_json || '',
   set: (value: string) => {
@@ -232,6 +247,7 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
     data: {
       label: item.label,
       complexity: type === 'prompt' ? 'simple_text' : undefined,
+      max_output_tokens: type === 'prompt' ? 8000 : undefined,
       instructions: type === 'prompt' ? '' : undefined,
       output_format: type === 'prompt' ? '' : undefined,
       request_json: type === 'http_request' ? DEFAULT_HTTP_REQUEST_JSON : undefined,
@@ -369,7 +385,7 @@ const run = async () => {
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <span class="editor-cost"><UIcon name="i-lucide-coins" />≈ {{ formatCredits(estimatedCost) }} credits</span>
+        <span class="editor-cost"><UIcon name="i-lucide-coins" />до {{ formatCredits(estimatedCost) }} credits</span>
         <UButton label="Проверить" icon="i-lucide-circle-check" color="neutral" variant="ghost" class="text-white/80" @click="checkGraph" />
         <UButton label="Опубликовать" color="neutral" variant="outline" class="border-white/15 bg-white/5 text-white" @click="publish" />
         <UButton label="Запустить" icon="i-lucide-play" @click="run" />
@@ -526,6 +542,10 @@ const run = async () => {
                 />
               </UFormField>
               <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его.</p>
+              <UFormField label="Максимальная стоимость запуска">
+                <UInput v-model="selectedMaxRunCredits" type="number" min="1" step="1" class="w-full" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">По умолчанию лимит ответа — 8000 токенов, пересчитанный в credits. Меньший лимит может обрезать длинный ответ. Списывается только фактический расход.</p>
             </template>
             <template v-if="selected.type === 'http_request'">
               <UFormField label="Данные запроса">
@@ -575,9 +595,9 @@ const run = async () => {
           <h2 class="mb-2 text-lg font-extrabold text-white">Ничего не выбрано</h2>
           <p class="text-sm leading-6 text-white/45">Кликните узел, чтобы настроить его. Соединяйте выход (справа) со входом (слева).</p>
           <div class="editor-cost-card">
-            <p class="mb-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/35">Оценка запуска</p>
-            <p class="mb-0 text-3xl font-extrabold text-white">≈ {{ formatCredits(estimatedCost) }}</p>
-            <p class="mb-0 mt-1 text-xs text-white/40">предварительная оценка стоимости запуска</p>
+            <p class="mb-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/35">Максимум запуска</p>
+            <p class="mb-0 text-3xl font-extrabold text-white">до {{ formatCredits(estimatedCost) }}</p>
+            <p class="mb-0 mt-1 text-xs text-white/40">верхняя граница; списывается фактический расход</p>
           </div>
         </div>
         <div v-if="validationErrors.length" class="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">

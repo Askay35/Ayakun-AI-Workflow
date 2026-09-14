@@ -78,7 +78,7 @@ const formatCost = (value?: number) => `${formatCredits(value)} credits`
             <UIcon name="i-lucide-workflow" class="size-5" />
           </button>
           <div class="flex items-center gap-1">
-            <span class="cost-pill"><UIcon name="i-lucide-coins" />{{ formatCost(workflow.estimated_run_cost) }} / запуск</span>
+            <span class="cost-pill"><UIcon name="i-lucide-coins" />до {{ formatCost(workflow.estimated_run_cost) }} / запуск</span>
             <UButton
               icon="i-lucide-trash-2"
               color="error"

@@ -147,8 +147,9 @@ class WorkflowRunExecutor:
         billing = BillingService(db)
         await billing.ensure_initial_credit(user)
         reservation_request_id = f"run:{run.id}"
+        estimate = await PricingService(db).estimate_graph(graph)
         try:
-            await billing.reserve_run(user, run.id, reservation_request_id)
+            await billing.reserve_run(user, run.id, reservation_request_id, amount=estimate)
         except HTTPException as exc:
             run.status = RunStatus.failed
             run.error = str(exc.detail)
@@ -389,17 +390,18 @@ class WorkflowRunExecutor:
         context["nodes"][node.id] = {"type": node_type_value(node.type), "output": output}
         remaining = await self.billing.reservation_remaining(self.reservation_request_id)
         cost, units, details = await node_cost(self.pricing, node, output)
-        await self.billing.charge_reservation(
-            self.user,
-            self.reservation_request_id,
-            cost,
-            f"charge:{self.run.id}:{node.id}",
-            units=units,
-            workflow_run_id=self.run.id,
-            details=details,
-        )
-        if cost > remaining:
-            raise ValueError("Фактическая стоимость превысила остаток credits")
+        if cost > 0:
+            await self.billing.charge_reservation(
+                self.user,
+                self.reservation_request_id,
+                cost,
+                f"charge:{self.run.id}:{node.id}",
+                units=units,
+                workflow_run_id=self.run.id,
+                details=details,
+            )
+            if cost > remaining:
+                raise ValueError("Фактическая стоимость превысила остаток credits")
         extra = self.log_fields(
             event="node.succeeded",
             node_id=node.id,

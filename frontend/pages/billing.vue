@@ -80,7 +80,7 @@ const onEmailModalOpen = (open: boolean) => {
       <div class="panel metric-card" style="--card-accent:#c9f169"><p class="mb-0 text-sm font-bold muted">На балансе</p><p class="metric-value">{{ formatCredits(summary?.balance) }}</p><p class="mb-0 mt-1 text-xs muted">credits для запусков</p></div>
       <div class="panel metric-card" style="--card-accent:#ffb681"><p class="mb-0 text-sm font-bold muted">Потрачено за месяц</p><p class="metric-value">{{ formatCredits(summary?.usage_this_month) }}</p><p class="mb-0 mt-1 text-xs muted">credits</p></div>
     </div>
-    <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold">Выберите запас credits</h2><p class="mb-0 muted">Списывается фактическая стоимость; оценка запуска приблизительная.</p></div>
+    <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold">Выберите запас credits</h2><p class="mb-0 muted">Списывается фактическая стоимость; в редакторе показан максимум запуска.</p></div>
     <div class="grid-cards">
       <div v-for="plan in orderedPlans" :key="plan.id" class="panel flex flex-col p-6" :class="{ 'border-violet-500': plan.code === 'starter' }">
         <div class="flex justify-between gap-3">

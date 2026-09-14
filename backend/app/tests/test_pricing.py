@@ -11,8 +11,8 @@ from services.billing import BillingService
 from services.pricing import (
     CREDIT_PROVIDER_COST_USD,
     CREDIT_SALE_PRICE_USD,
+    DEFAULT_MAX_OUTPUT_TOKENS,
     DEFAULT_PRICES,
-    ESTIMATED_SIMPLE_OUTPUT_TOKENS,
     INPUT_TOKEN_PADDING,
     INPUT_TOKEN_SAFETY_RATIO,
     MARGIN_MULTIPLIER,
@@ -151,10 +151,18 @@ def test_prompt_estimate_includes_tokenizer_input_and_output() -> None:
     node = PromptNode(id="prompt", prompt="Сделай вывод")
     price = DEFAULT_PRICES[("deepseek", "deepseek-flash")]
     input_tokens = _estimated_prompt_input_tokens(node)
-    expected = billed_credits(price, 0, input_tokens, ESTIMATED_SIMPLE_OUTPUT_TOKENS)
+    expected = billable_credits(billed_credits(price, 0, input_tokens, DEFAULT_MAX_OUTPUT_TOKENS))
     assert node_estimate(node) == expected
     assert expected > billed_credits(price, 0, input_tokens, 0)
     assert input_tokens > 0
+    assert node.max_output_tokens == DEFAULT_MAX_OUTPUT_TOKENS
+
+
+def test_prompt_max_output_tokens_changes_max_cost() -> None:
+    short = PromptNode(id="prompt", prompt="Сделай вывод", max_output_tokens=100)
+    full = PromptNode(id="prompt", prompt="Сделай вывод", max_output_tokens=8000)
+    assert node_estimate(short) < node_estimate(full)
+    assert node_estimate(short) >= 1
 
 
 def test_search_plus_prompt_estimate_uses_tokens_not_one_per_node() -> None:
@@ -237,6 +245,23 @@ async def test_charge_reservation_clips_to_remaining() -> None:
     ledger = next(item for item in db.added if isinstance(item, WalletLedger))
     assert ledger.amount == Decimal("-2")
     assert ledger.metadata_["capped"] is True
+
+
+@pytest.mark.asyncio
+async def test_charge_reservation_skips_zero_cost_nodes() -> None:
+    db = ChargeFakeDB()
+    wallet = await BillingService(db).charge_reservation(
+        SimpleNamespace(id=1),
+        "run:1",
+        Decimal("0"),
+        "charge:run:1:telegram",
+        workflow_run_id=db.reservation.workflow_run_id,
+        details={"provider": "telegram", "model": "send"},
+    )
+    assert wallet.balance == Decimal("10")
+    assert wallet.reserved == Decimal("4")
+    assert db.reservation.charged == Decimal("2")
+    assert not any(isinstance(item, WalletLedger) for item in db.added)
 
 
 @pytest.mark.asyncio

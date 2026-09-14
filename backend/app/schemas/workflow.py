@@ -48,6 +48,7 @@ class PromptNode(Node):
     provider: LLMProviderId | None = None
     model: str | None = None
     complexity: Literal["simple_text", "complex_text"] = "simple_text"
+    max_output_tokens: int = Field(default=8000, ge=16, le=128000)
     position: dict[str, float] | None = None
 
 

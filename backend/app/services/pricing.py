@@ -23,8 +23,7 @@ MARGIN_MULTIPLIER = Decimal("2")
 ESTIMATED_SEARCH_CONTEXT_TOKENS = 800
 # Типичный ответ предыдущего prompt-узла во входе следующего.
 ESTIMATED_PROMPT_CONTEXT_TOKENS = 400
-ESTIMATED_SIMPLE_OUTPUT_TOKENS = 8_000
-ESTIMATED_COMPLEX_OUTPUT_TOKENS = 8_000
+DEFAULT_MAX_OUTPUT_TOKENS = 8_000
 INPUT_TOKEN_PADDING = 32
 INPUT_TOKEN_SAFETY_RATIO = Decimal("0.15")
 
@@ -166,12 +165,13 @@ def _prompt_model(node: object) -> str:
     )
 
 
-def _estimated_prompt_output_tokens(node: object) -> int:
-    complexity = getattr(node, "complexity", "simple_text")
-    model = str(getattr(node, "model", None) or "")
-    if complexity == "complex_text" or "pro" in model:
-        return ESTIMATED_COMPLEX_OUTPUT_TOKENS
-    return ESTIMATED_SIMPLE_OUTPUT_TOKENS
+def _prompt_max_output_tokens(node: object) -> int:
+    raw = getattr(node, "max_output_tokens", None)
+    try:
+        tokens = int(raw) if raw is not None else DEFAULT_MAX_OUTPUT_TOKENS
+    except (TypeError, ValueError):
+        tokens = DEFAULT_MAX_OUTPUT_TOKENS
+    return max(1, tokens)
 
 
 def _estimated_prompt_input_tokens(node: object, graph: WorkflowGraph | None = None) -> int:
@@ -198,11 +198,13 @@ def _estimated_prompt_input_tokens(node: object, graph: WorkflowGraph | None = N
 
 
 def _prompt_estimate_credits(price: Price, node: object, graph: WorkflowGraph | None = None) -> Decimal:
-    return billed_credits(
-        price,
-        0,
-        _estimated_prompt_input_tokens(node, graph),
-        _estimated_prompt_output_tokens(node),
+    return billable_credits(
+        billed_credits(
+            price,
+            0,
+            _estimated_prompt_input_tokens(node, graph),
+            _prompt_max_output_tokens(node),
+        )
     )
 
 
@@ -219,7 +221,7 @@ def node_estimate(node: object, graph: WorkflowGraph | None = None) -> Decimal:
 
 
 def estimate_run_cost(graph: WorkflowGraph | dict | None) -> Decimal:
-    """Приблизительная стоимость; фактическое списание всегда строится по usage."""
+    """Максимальная стоимость запуска при полном лимите ответа; списание — по usage."""
     if graph is None:
         return Decimal("0")
     if isinstance(graph, dict):
