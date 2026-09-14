@@ -44,17 +44,6 @@ async def ledger(user: CurrentUser, service: BillingService = Depends(get_billin
 async def usage(user: CurrentUser, service: BillingService = Depends(get_billing_service)):
     return ApiResponse(success=True, data=await service.usage(user))
 
-
-@router.post("/payments", response_model=ApiResponse[ApiPaymentResponse], status_code=status.HTTP_201_CREATED)
-async def create_payment(
-    data: PaymentCreate, user: CurrentUser, service: BillingService = Depends(get_billing_service)
-):
-    payment = await service.create_payment(user, data.amount, "RUB", data.idempotency_key)
-    if not payment.confirmation_url:
-        raise HTTPException(400, "Не удалось создать платеж: " + (payment.cancellation_details.reason if payment.cancellation_details else "причина неизвестна"))
-    return RedirectResponse(url=payment.confirmation_url)
-
-
 @router.post("/subscription/checkout", response_model=ApiResponse[ApiPaymentResponse], status_code=status.HTTP_201_CREATED)
 async def subscription_checkout(
     data: PlanCheckout,
