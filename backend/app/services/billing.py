@@ -365,10 +365,15 @@ class BillingService:
         if not existing or email_attached:
             try:
                 await self.db.commit()
-            except IntegrityError:
+            except IntegrityError as exc:
                 await self.db.rollback()
-                if email_attached:
-                    raise HTTPException(409, "Этот email уже занят другим аккаунтом")
+                if existing:
+                    raise HTTPException(409, "Не удалось сохранить email") from exc
+                # Повтор с тем же idempotency_key: платёж уже есть — отдаём URL.
+                replay = await self.db.scalar(select(Payment).where(Payment.idempotency_key == idempotency_key))
+                if replay and replay.user_id == user.id and replay.plan_id == plan_id:
+                    return payment.confirmation.confirmation_url
+                raise HTTPException(409, "Конфликт при создании платежа") from exc
 
         return payment.confirmation.confirmation_url
 
@@ -378,9 +383,13 @@ class BillingService:
         current = (getattr(user, "email", None) or "").strip().lower()
         if current:
             return False
+        # При повторном/параллельном checkout в БД почта уже может быть у этого же user.
         taken = await self.db.scalar(select(User).where(User.email == receipt_email))
-        if taken is not None:
+        if taken is not None and taken.id != user.id:
             raise HTTPException(409, "Этот email уже занят другим аккаунтом")
+        if taken is not None:
+            user.email = receipt_email
+            return False
         user.email = receipt_email
         return True
 

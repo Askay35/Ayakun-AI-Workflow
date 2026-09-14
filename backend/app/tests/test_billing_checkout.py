@@ -200,6 +200,21 @@ async def test_checkout_rejects_email_taken_by_another_user() -> None:
 
 
 @pytest.mark.asyncio
+async def test_checkout_allows_email_already_on_same_user() -> None:
+    """Параллельный/повторный checkout: в БД email уже у этого же user_id."""
+    db = FakeDB()
+    db.plans[2] = paid_plan()
+    db.user_by_email = SimpleNamespace(id=1, email="mine@example.com")
+    user = SimpleNamespace(id=1, email=None)
+    url = await BillingService(db, FakeProvider()).create_plan_checkout(
+        user, 2, "client-key-same-user", customer_email="mine@example.com"
+    )
+    assert url == "https://yookassa.test/confirm"
+    assert user.email == "mine@example.com"
+    assert db.commits == 1  # только Payment, email уже был в БД
+
+
+@pytest.mark.asyncio
 async def test_checkout_replay_returns_same_url_without_second_insert() -> None:
     db = FakeDB()
     plan = paid_plan()
