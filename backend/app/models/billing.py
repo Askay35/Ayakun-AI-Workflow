@@ -8,8 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.base import Base
-from models.user import User, utcnow
-
+from helper import utcnow
 
 class LedgerKind(str, enum.Enum):
     credit = "credit"
@@ -156,4 +155,4 @@ class Payment(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
-    user: Mapped[User] = relationship(back_populates="payments", lazy="selectin")
+    user: Mapped["User"] = relationship(back_populates="payments", lazy="selectin")

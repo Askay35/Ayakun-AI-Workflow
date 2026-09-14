@@ -2,13 +2,8 @@ import datetime
 import enum
 from sqlalchemy import BigInteger, Boolean, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from models.billing import Payment
+from helper import utcnow
 from db.base import Base
-
-
-def utcnow() -> datetime.datetime:
-    return datetime.datetime.now(datetime.UTC)
-
 
 class IdentityProvider(str, enum.Enum):
     email = "email"

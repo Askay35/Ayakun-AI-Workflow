@@ -396,3 +396,6 @@ def evaluate_condition(condition: str, json_root: Any) -> bool:
         if message.startswith("IF ELSE:"):
             raise
         raise ValueError(f"IF ELSE: {message}") from exc
+
+def utcnow() -> datetime.datetime:
+    return datetime.datetime.now(datetime.UTC)
