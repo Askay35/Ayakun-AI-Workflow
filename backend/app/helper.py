@@ -217,6 +217,24 @@ def escape_telegram_markdown(value: Any) -> str:
     return _TELEGRAM_MARKDOWN_SPECIALS.sub(r"\\\1", _stringify_resolved(value))
 
 
+_TELEGRAM_UNESCAPE_RE = re.compile(r"\\([_*\[\]()~`>#+\-=|{}.!\\])")
+
+
+def unescape_telegram_markdown(value: str) -> str:
+    """Убирает экранирование MarkdownV2 для показа текста пользователю."""
+    return _TELEGRAM_UNESCAPE_RE.sub(r"\1", value)
+
+
+def display_telegram_output(output: dict | list | None) -> dict | list | None:
+    """Копия output telegram_send без MarkdownV2-экранирования в text."""
+    if not isinstance(output, dict):
+        return output
+    text = output.get("text")
+    if not isinstance(text, str) or "\\" not in text:
+        return output
+    return {**output, "text": unescape_telegram_markdown(text)}
+
+
 def _substitute_placeholders(
     value: Any,
     json_root: Any,

@@ -1,6 +1,6 @@
 import pytest
 
-from helper import render_telegram_message, render_template
+from helper import display_telegram_output, render_telegram_message, render_template, unescape_telegram_markdown
 from schemas.workflow import TelegramSendNode
 from services.execution import DefaultExecutors
 
@@ -31,6 +31,15 @@ def test_render_telegram_message_escapes_values_and_keeps_markup() -> None:
     ) == "[Открыть](https://example.com/a.b)"
     assert render_telegram_message("Привет, {{name}}", {}, {"name": "O_Neal"}) == "Привет, O\\_Neal"
     assert render_telegram_message("`{{code}}`", {}, {"code": "a.b"}) == "`a.b`"
+
+
+def test_unescape_telegram_markdown_for_run_page() -> None:
+    assert unescape_telegram_markdown("A \\=\\= B") == "A == B"
+    assert unescape_telegram_markdown("*Цена:* 12\\.5 руб\\.") == "*Цена:* 12.5 руб."
+    assert display_telegram_output({"sent": True, "text": "A \\=\\= B"}) == {
+        "sent": True,
+        "text": "A == B",
+    }
 
 
 class FakeNotifications:

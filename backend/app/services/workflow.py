@@ -32,6 +32,7 @@ from schemas.workflow import (
     WorkflowNode,
     WorkflowUpdate,
 )
+from helper import display_telegram_output
 from services.billing import BillingService
 from services.pricing import PricingService
 from services.schedule import (
@@ -493,7 +494,10 @@ class WorkflowService:
             steps.append(self._run_step(node, node_runs.pop(node.id, None)))
         # Узлы, которых уже нет в снимке, всё равно показываем в конце.
         for node_run in node_runs.values():
-            steps.append(RunStepResponse.model_validate(node_run, from_attributes=True))
+            step = RunStepResponse.model_validate(node_run, from_attributes=True)
+            if step.node_type == NodeType.TELEGRAM_SEND.value:
+                step.output = display_telegram_output(step.output)
+            steps.append(step)
         return steps
 
     @staticmethod
@@ -505,13 +509,16 @@ class WorkflowService:
                 label=node.label,
                 status=NodeRunStatus.pending,
             )
+        output = node_run.output
+        if node.type == NodeType.TELEGRAM_SEND:
+            output = display_telegram_output(output)
         return RunStepResponse(
             node_id=node_run.node_id,
             node_type=str(node.type.value),
             label=node.label,
             status=node_run.status,
             attempt=node_run.attempt,
-            output=node_run.output,
+            output=output,
             error=node_run.error,
             started_at=node_run.started_at,
             finished_at=node_run.finished_at,
