@@ -529,7 +529,7 @@ const runSelectedNode = async () => {
               <UInput v-model="selected.data.label" class="w-full" />
             </UFormField>
             <UFormField v-if="selected.type === 'web_search'" label="Что найти">
-              <UTextarea v-model="selected.data.query" :rows="7" class="w-full bg-[#232433]" placeholder="Главные новости рынка за последние сутки" />
+              <UTextarea v-model="selected.data.query" :rows="7" class="w-full" placeholder="Главные новости рынка за последние сутки" />
             </UFormField>
             <UFormField v-if="selected.type === 'web_search'" label="Период">
               <USelect v-model="selectedPeriod" :items="searchPeriods" value-key="value" class="w-full" />

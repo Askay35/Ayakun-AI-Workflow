@@ -1118,6 +1118,22 @@ a { color: inherit; text-decoration: none; }
 }
 .editor-pane-left { border-right: 1px solid rgba(255,255,255,.08); }
 .editor-pane-right { border-left: 1px solid rgba(255,255,255,.08); }
+.workflow-editor input:not([type="checkbox"]):not([type="radio"]),
+.workflow-editor textarea {
+  background: #21222a !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  border: 1px solid #2e3043 !important;
+}
+.workflow-editor input:not([type="checkbox"]):not([type="radio"])::placeholder,
+.workflow-editor textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+.workflow-editor input:not([type="checkbox"]):not([type="radio"]):focus,
+.workflow-editor textarea:focus {
+  outline: none;
+  border-color: #3d4160 !important;
+}
 .editor-kicker {
   margin-bottom: 6px;
   color: rgba(255,255,255,.38);
@@ -1216,11 +1232,7 @@ a { color: inherit; text-decoration: none; }
   border-top: 1px solid rgba(255,255,255,.08);
 }
 .editor-schedule input[type="time"] {
-  color: rgba(255,255,255,.88) !important;
   color-scheme: dark;
-  border-color: rgba(255,255,255,.1) !important;
-  background: #171820 !important;
-  box-shadow: none !important;
 }
 .schedule-every:is(input[type="number"]),
 .schedule-every input[type="number"] {
