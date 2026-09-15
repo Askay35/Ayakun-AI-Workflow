@@ -13,6 +13,8 @@ from core.config import settings
 
 password_hash = PasswordHash.recommended()
 _PLACEHOLDER_RE = re.compile(r"\{\{\$([^}]+)\}\}")
+_VAR_PLACEHOLDER_RE = re.compile(r"\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}")
+_NUMERIC_STRING_RE = re.compile(r"-?\d+(?:\.\d+)?")
 _MISSING = object()
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 _PATH_TOKEN_RE = re.compile(r"\[(-?\d+)\]|([A-Za-z_][\w]*)|(\d+)")
@@ -188,37 +190,62 @@ def _missing_expression_error(path: str) -> ValueError:
     )
 
 
-def _substitute_placeholders(value: Any, json_root: Any) -> Any:
+def _missing_variable_error(name: str) -> ValueError:
+    return ValueError(f"Переменная {name} пока не определена")
+
+
+def _lookup_variable(name: str, variables: dict | None, *, missing_as_null: bool = False) -> Any:
+    vars_map = variables if isinstance(variables, dict) else {}
+    if name in vars_map:
+        return vars_map[name]
+    if missing_as_null:
+        return None
+    raise _missing_variable_error(name)
+
+
+def _stringify_resolved(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _substitute_placeholders(value: Any, json_root: Any, variables: dict | None = None) -> Any:
     if isinstance(value, dict):
-        return {key: _substitute_placeholders(item, json_root) for key, item in value.items()}
+        return {key: _substitute_placeholders(item, json_root, variables) for key, item in value.items()}
     if isinstance(value, list):
-        return [_substitute_placeholders(item, json_root) for item in value]
+        return [_substitute_placeholders(item, json_root, variables) for item in value]
     if not isinstance(value, str):
         return value
 
-    full_match = _PLACEHOLDER_RE.fullmatch(value.strip())
+    stripped = value.strip()
+    full_match = _PLACEHOLDER_RE.fullmatch(stripped)
     if full_match:
         path = full_match.group(1).strip()
         resolved = _resolve_json_path(json_root, path)
         if resolved is _MISSING:
             raise _missing_expression_error(path)
         return resolved
+    var_match = _VAR_PLACEHOLDER_RE.fullmatch(stripped)
+    if var_match:
+        return _lookup_variable(var_match.group(1), variables)
 
-    def replace(match: re.Match[str]) -> str:
+    def replace_path(match: re.Match[str]) -> str:
         path = match.group(1).strip()
         resolved = _resolve_json_path(json_root, path)
         if resolved is _MISSING:
             raise _missing_expression_error(path)
-        if resolved is None:
-            return ""
-        return str(resolved)
+        return _stringify_resolved(resolved)
 
-    return _PLACEHOLDER_RE.sub(replace, value)
+    def replace_var(match: re.Match[str]) -> str:
+        return _stringify_resolved(_lookup_variable(match.group(1), variables))
+
+    replaced = _PLACEHOLDER_RE.sub(replace_path, value)
+    return _VAR_PLACEHOLDER_RE.sub(replace_var, replaced)
 
 
-def render_template(template: str, data: Any) -> str:
-    """Подставляет {{$path}} в строку. path считается от корня входных данных."""
-    result = _substitute_placeholders(template, data)
+def render_template(template: str, data: Any, variables: dict | None = None) -> str:
+    """Подставляет {{$path}} и {{variable}} в строку."""
+    result = _substitute_placeholders(template, data, variables)
     return "" if result is None else str(result)
 
 
@@ -249,11 +276,15 @@ def _parse_request_input(value: str | dict | list | None) -> Any:
         raise ValueError(f"Входные данные узла содержат некорректный JSON: {exc.msg}") from exc
 
 
-def form_request_body(body: str | dict, input: str | dict | list | None = None) -> dict:
-    """Подставляет {{$path}} из input в JSON-шаблон body и возвращает dict."""
+def form_request_body(
+    body: str | dict,
+    input: str | dict | list | None = None,
+    variables: dict | None = None,
+) -> dict:
+    """Подставляет {{$path}} и {{variable}} в JSON-шаблон body и возвращает dict."""
     template = _parse_request_template(body)
     payload = _parse_request_input(input)
-    result = _substitute_placeholders(template, payload)
+    result = _substitute_placeholders(template, payload, variables)
     if not isinstance(result, dict):
         raise ValueError("Данные запроса должны быть JSON-объектом")
     return result
@@ -283,7 +314,13 @@ def _parse_literal(token: str) -> Any:
     return raw
 
 
-def resolve_operand(token: str, json_root: Any, *, missing_as_null: bool = False) -> Any:
+def resolve_operand(
+    token: str,
+    json_root: Any,
+    *,
+    missing_as_null: bool = False,
+    variables: dict | None = None,
+) -> Any:
     stripped = token.strip()
     full_match = _PLACEHOLDER_RE.fullmatch(stripped)
     if full_match:
@@ -294,8 +331,11 @@ def resolve_operand(token: str, json_root: Any, *, missing_as_null: bool = False
                 return None
             raise _missing_expression_error(path)
         return resolved
-    if _PLACEHOLDER_RE.search(stripped):
-        substituted = _substitute_placeholders(stripped, json_root)
+    var_match = _VAR_PLACEHOLDER_RE.fullmatch(stripped)
+    if var_match:
+        return _lookup_variable(var_match.group(1), variables, missing_as_null=missing_as_null)
+    if _PLACEHOLDER_RE.search(stripped) or _VAR_PLACEHOLDER_RE.search(stripped):
+        substituted = _substitute_placeholders(stripped, json_root, variables)
         return _parse_literal(str(substituted))
     return _parse_literal(stripped)
 
@@ -335,19 +375,30 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def _coerce_number(value: Any) -> float | None:
+    if _is_number(value):
+        return float(value)
+    if isinstance(value, str) and _NUMERIC_STRING_RE.fullmatch(value.strip()):
+        return float(value.strip())
+    return None
+
+
 def _values_equal(left: Any, right: Any) -> bool:
     if left is None or right is None:
         return left is right
     if isinstance(left, bool) and isinstance(right, bool):
         return left is right
-    if _is_number(left) and _is_number(right):
-        return float(left) == float(right)
+    left_number = _coerce_number(left)
+    right_number = _coerce_number(right)
+    if left_number is not None and right_number is not None:
+        return left_number == right_number
     return left == right
 
 
 def _as_number(value: Any, operator: str) -> float:
-    if _is_number(value):
-        return float(value)
+    coerced = _coerce_number(value)
+    if coerced is not None:
+        return coerced
     raise ValueError(f"IF ELSE: нельзя сравнить значение {value!r} через {operator}")
 
 
@@ -365,17 +416,17 @@ def _as_bool(value: Any) -> bool:
     return bool(value)
 
 
-def evaluate_condition(condition: str, json_root: Any) -> bool:
+def evaluate_condition(condition: str, json_root: Any, variables: dict | None = None) -> bool:
     expression = (condition or "").strip()
     if not expression:
         raise ValueError("IF ELSE: условие не задано")
     try:
         parts = _split_condition(expression)
         if parts is None:
-            return _as_bool(resolve_operand(expression, json_root, missing_as_null=True))
+            return _as_bool(resolve_operand(expression, json_root, missing_as_null=True, variables=variables))
         left_token, operator, right_token = parts
-        left = resolve_operand(left_token, json_root, missing_as_null=True)
-        right = resolve_operand(right_token, json_root, missing_as_null=True)
+        left = resolve_operand(left_token, json_root, missing_as_null=True, variables=variables)
+        right = resolve_operand(right_token, json_root, missing_as_null=True, variables=variables)
         if operator == "==":
             return _values_equal(left, right)
         if operator == "!=":
@@ -396,6 +447,39 @@ def evaluate_condition(condition: str, json_root: Any) -> bool:
         if message.startswith("IF ELSE:"):
             raise
         raise ValueError(f"IF ELSE: {message}") from exc
+
+
+def resolve_assignment_value(raw: str, json_root: Any, variables: dict | None = None) -> Any:
+    stripped = (raw or "").strip()
+    if not stripped:
+        return ""
+    if _PLACEHOLDER_RE.search(stripped) or _VAR_PLACEHOLDER_RE.search(stripped):
+        return _substitute_placeholders(stripped, json_root, variables)
+    return _parse_literal(stripped)
+
+
+def apply_variable_assignments(assignments: Any, output: Any, context: dict) -> None:
+    items: list[tuple[str, str]] = []
+    if not assignments:
+        return
+    if isinstance(assignments, dict):
+        items = [(str(key), "" if value is None else str(value)) for key, value in assignments.items()]
+    else:
+        for item in assignments:
+            if hasattr(item, "key"):
+                items.append((str(item.key), "" if item.value is None else str(item.value)))
+            elif isinstance(item, dict) and item.get("key"):
+                items.append((str(item["key"]), "" if item.get("value") is None else str(item.get("value"))))
+    variables = context.setdefault("variables", {})
+    if not isinstance(variables, dict):
+        variables = {}
+        context["variables"] = variables
+    root = expression_root(output)
+    for key, raw in items:
+        name = key.strip()
+        if not name:
+            continue
+        variables[name] = resolve_assignment_value(raw, root, variables)
 
 def utcnow() -> datetime.datetime:
     return datetime.datetime.now(datetime.UTC)

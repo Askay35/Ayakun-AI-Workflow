@@ -52,6 +52,7 @@ export interface WorkflowNode {
     condition?: string
     chat_id?: string
     message?: string
+    assignments?: Array<{ key: string; value: string }>
     status?: RunStatus
     output?: string
   }
@@ -69,6 +70,7 @@ export interface Workflow {
   schedule_timezone?: string
   next_run_at?: string | null
   estimated_run_cost?: number
+  variables?: Record<string, string | number | boolean | null>
   draft_graph: { nodes: WorkflowNode[] }
 }
 

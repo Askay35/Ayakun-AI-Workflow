@@ -24,6 +24,7 @@ class DefaultExecutors:
         client: httpx.AsyncClient,
         pricing: PricingService,
         available_budget: BudgetProvider,
+        variables: dict | None = None,
     ):
         self.model_router = ModelRouter()
         self.search_router = WebSearchRouter(client)
@@ -31,21 +32,26 @@ class DefaultExecutors:
         self.pricing = pricing
         self.available_budget = available_budget
         self.client = client
+        self.variables = dict(variables or {})
+
+    def prepare(self, context: dict) -> dict:
+        context.setdefault("variables", dict(getattr(self, "variables", None) or {}))
+        return context
 
     async def web_search(self, node: WebSearchNode, context: dict) -> list:
-        return await WebSearchAction(self.search_router, self.pricing, self.available_budget).execute(node, context)
+        return await WebSearchAction(self.search_router, self.pricing, self.available_budget).execute(node, self.prepare(context))
 
     async def prompt(self, node: PromptNode, context: dict) -> dict:
-        return await PromptAction(self.model_router, self.pricing, self.available_budget).execute(node, context)
+        return await PromptAction(self.model_router, self.pricing, self.available_budget).execute(node, self.prepare(context))
 
     async def http_request(self, node: HttpRequestNode, context: dict) -> dict | list:
-        return await HttpRequestAction(self.client).execute(node, context)
+        return await HttpRequestAction(self.client).execute(node, self.prepare(context))
 
     async def telegram_send(self, node: TelegramSendNode, context: dict) -> dict:
-        return await TelegramSendAction(self.notifications).execute(node, context)
+        return await TelegramSendAction(self.notifications).execute(node, self.prepare(context))
 
     async def if_else(self, node: IfElseNode, context: dict) -> dict | list:
-        return await IfElseAction().execute(node, context)
+        return await IfElseAction().execute(node, self.prepare(context))
 
     def registry(self) -> NodeRegistry:
         registry = NodeRegistry()

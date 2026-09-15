@@ -19,7 +19,11 @@ class TelegramSendAction(NodeAction):
         template = (node.message or "").strip()
         if template:
             parent_output = records[0].get("output") if records else None
-            message = render_template(template, expression_root(parent_output))
+            message = render_template(
+                template,
+                expression_root(parent_output),
+                context.setdefault("variables", {}),
+            )
         else:
             texts = parent_output_texts(node, context)
             message = texts[0] if texts else ""

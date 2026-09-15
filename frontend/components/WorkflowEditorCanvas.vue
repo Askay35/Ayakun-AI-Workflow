@@ -7,6 +7,13 @@ import { formatCredits } from '~/utils/credits'
 import { maxOutputTokensFromCredits, promptMaxCredits } from '~/utils/prompt-max-cost'
 import { slotsFromWorkflow, type ScheduleSlot } from '~/utils/schedule'
 import {
+  definedVariableNames,
+  nodeVariableHints,
+  recordFromVariables,
+  variablesFromRecord,
+  type VariableRow
+} from '~/utils/workflow-variables'
+import {
   NODE_META,
   DEFAULT_HTTP_REQUEST_JSON,
   IF_ELSE_CONDITION_PLACEHOLDER,
@@ -53,6 +60,7 @@ const scheduleEnabled = ref(Boolean(workflow.value.schedule_cron || workflow.val
 const scheduleSlots = ref<ScheduleSlot[]>(slotsFromWorkflow(workflow.value))
 const scheduleTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 const scheduleValid = computed(() => !scheduleEnabled.value || scheduleSlots.value.length > 0)
+const workflowVariables = ref<VariableRow[]>(variablesFromRecord(workflow.value.variables))
 const selectedId = ref<string>()
 const selectedEdgeId = ref<string>()
 const selected = computed(() => nodes.value.find(node => node.id === selectedId.value))
@@ -93,6 +101,7 @@ const JSON_EXPRESSION_EXAMPLE = '{{$data[0].price}}'
 const IF_ELSE_HELP_EXAMPLES = [
   { code: '{{$data[0].price}} != null', note: 'поле есть и не null' },
   { code: '{{$status}} == "active"', note: 'строка' },
+  { code: '{{count}} == 12', note: 'переменная; строка «12» и число 12 равны' },
   { code: '{{$score}} >= 0.8', note: 'число' },
   { code: '{{$flag}}', note: 'truthy-проверка' }
 ] as const
@@ -151,6 +160,19 @@ const selectedTelegramMessage = computed({
     selected.value.data.message = value
   }
 })
+const selectedAssignments = computed({
+  get: () => selected.value?.data.assignments || [],
+  set: (value: Array<{ key: string; value: string }>) => {
+    if (!selected.value) return
+    selected.value.data.assignments = value
+  }
+})
+const definedNames = computed(() => definedVariableNames(workflowVariables.value, nodes.value))
+const selectedVariableHints = computed(() => selected.value ? nodeVariableHints(selected.value, definedNames.value) : [])
+const hintsFor = (nodeId: string) => {
+  const node = nodes.value.find(item => item.id === nodeId)
+  return node ? nodeVariableHints(node, definedNames.value) : []
+}
 const defaultEdgeOptions = {
   type: 'default',
   markerEnd: MarkerType.ArrowClosed,
@@ -171,7 +193,8 @@ const save = async () => {
     const saved = await api.workflows.save(id, graphForSave(), {
       schedule_slots: scheduleSlots.value.map(({ next_at: _next, ...slot }) => slot),
       schedule_enabled: scheduleEnabled.value,
-      schedule_timezone: scheduleTimezone
+      schedule_timezone: scheduleTimezone,
+      variables: recordFromVariables(workflowVariables.value)
     })
     workflow.value = saved
     estimatedCost.value = Number(saved.estimated_run_cost || 0)
@@ -184,7 +207,7 @@ const save = async () => {
   }
 }
 const hydrated = ref(false)
-watch([nodes, links, scheduleEnabled, scheduleSlots], () => {
+watch([nodes, links, scheduleEnabled, scheduleSlots, workflowVariables], () => {
   if (!hydrated.value) return
   saveState.value = 'dirty'
   clearTimeout(saveTimer)
@@ -223,7 +246,8 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       output_format: type === 'prompt' ? '' : undefined,
       request_json: type === 'http_request' ? DEFAULT_HTTP_REQUEST_JSON : undefined,
       condition: type === 'if_else' ? '' : undefined,
-      message: type === 'telegram_send' ? '' : undefined
+      message: type === 'telegram_send' ? '' : undefined,
+      assignments: type === 'prompt' || type === 'http_request' ? [] : undefined
     }
   }
   nodes.value = [...nodes.value, node]
@@ -383,6 +407,7 @@ const run = async () => {
             <span class="text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">{{ item.caption }}</span>
           </span>
         </button>
+        <WorkflowVariablesPanel v-model:items="workflowVariables" />
         <WorkflowSchedulePanel
           v-model:enabled="scheduleEnabled"
           v-model:slots="scheduleSlots"
@@ -413,19 +438,19 @@ const run = async () => {
             @edge-click="selectedEdgeId = $event.edge.id; selectedId = undefined"
           >
             <template #node-web_search="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="web_search" :data="data" :selected="active" />
+              <WorkflowNodeCard :node-id="nodeId" kind="web_search" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
             <template #node-prompt="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="prompt" :data="data" :selected="active" />
+              <WorkflowNodeCard :node-id="nodeId" kind="prompt" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
             <template #node-http_request="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="http_request" :data="data" :selected="active" />
+              <WorkflowNodeCard :node-id="nodeId" kind="http_request" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
             <template #node-if_else="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="if_else" :data="data" :selected="active" />
+              <WorkflowNodeCard :node-id="nodeId" kind="if_else" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
             <template #node-telegram_send="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="telegram_send" :data="data" :selected="active" />
+              <WorkflowNodeCard :node-id="nodeId" kind="telegram_send" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
           </VueFlow>
           <template #fallback>
@@ -488,23 +513,25 @@ const run = async () => {
                   :placeholder="OUTPUT_FORMAT_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его.</p>
+              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его. Переменные: <code>{{ '{{name}}' }}</code>.</p>
               <UFormField label="Максимальная стоимость запуска">
                 <UInput v-model="selectedMaxRunCredits" type="number" min="1" step="1" class="w-full" />
               </UFormField>
               <p class="text-xs leading-5 text-white/40">Меньший лимит может обрезать длинный ответ. Списывается только фактический расход.</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'http_request'">
               <UFormField label="Данные запроса">
                 <UTextarea v-model="selectedRequestJson" :rows="14" class="w-full font-mono text-xs" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи (можно без родителей). Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня вывода предыдущего узла. После подстановки значение должно остаться валидным JSON.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи (можно без родителей). Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня вывода предыдущего узла, <code>{{ '{{name}}' }}</code> — из переменных. После подстановки значение должно остаться валидным JSON.</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'if_else'">
               <UFormField label="Условие">
                 <UTextarea v-model="selectedCondition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
               </UFormField>
-              <p class="mb-0 text-xs leading-5 text-white/40">Одна входящая связь, выходы TRUE и FALSE. Дальше уходит та же ветка данных, без изменений.</p>
+              <p class="mb-0 text-xs leading-5 text-white/40">Одна входящая связь, выходы TRUE и FALSE. Дальше уходит та же ветка данных, без изменений. Переменные: <code>{{ '{{count}} == 12' }}</code> — число и строка «12» считаются равными.</p>
               <details class="editor-help mt-1! text-xs leading-5 text-white/40">
                 <summary class="text-[15px]">Как писать условие</summary>
                 <div class="editor-help-body">
@@ -533,8 +560,13 @@ const run = async () => {
                   :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится вывод предыдущего узла. Если задан — подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня входных данных; отсутствующее поле останавливает запуск. Исходящие можно вести дальше, но текст детям не передаётся.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится вывод предыдущего узла. Если задан — подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня входных данных, <code>{{ '{{name}}' }}</code> — из переменных; отсутствующее поле останавливает запуск. Исходящие можно вести дальше, но текст детям не передаётся.</p>
             </template>
+            <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="mb-0 mt-3 space-y-1 text-xs text-amber-200">
+              <li v-for="hint in selectedVariableHints.filter(item => item.mark === 'undefined')" :key="hint.name">
+                <code>{{ '{{' + hint.name + '}}' }}</code> — Переменная пока не определена
+              </li>
+            </ul>
           </div>
         </template>
         <div v-else>

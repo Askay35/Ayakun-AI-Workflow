@@ -63,6 +63,15 @@ def test_form_request_body_raises_on_malformed_json() -> None:
         form_request_body("{not json", {"userId": 1})
 
 
+def test_form_request_body_substitutes_workflow_variables() -> None:
+    result = form_request_body(
+        '{"method":"GET","url":"https://api.example.com/{{userId}}"}',
+        {},
+        {"userId": 42},
+    )
+    assert result["url"] == "https://api.example.com/42"
+
+
 def test_json_root_from_prompt_text() -> None:
     output = {
         "text": json.dumps({
@@ -162,3 +171,22 @@ async def test_http_request_executor_resolves_parent_output() -> None:
     assert call["method"] == "GET"
     assert call["url"] == "https://api.example.com/users/123"
     assert call["json"] == {"email": "user@example.com"}
+
+
+@pytest.mark.asyncio
+async def test_http_request_substitutes_workflow_variable_and_assigns() -> None:
+    from schemas.workflow import NodeVariableAssignment
+
+    executors = object.__new__(DefaultExecutors)
+    client = FakeHttpClient()
+    executors.client = client
+    node = HttpRequestNode(
+        id="http",
+        request_json='{"method":"GET","url":"https://api.example.com/{{userId}}"}',
+        assignments=[NodeVariableAssignment(key="user_pk", value="{{$id}}")],
+    )
+    context = {"nodes": {}, "variables": {"userId": 7}}
+    result = await executors.http_request(node, context)
+    assert result == {"id": 123, "ok": True}
+    assert client.calls[0]["url"] == "https://api.example.com/7"
+    assert context["variables"]["user_pk"] == 123

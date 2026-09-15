@@ -49,6 +49,7 @@ class Workflow(Base):
     schedule_timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     next_run_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     estimated_run_cost: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)
+    variables: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

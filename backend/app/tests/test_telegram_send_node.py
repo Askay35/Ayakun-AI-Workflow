@@ -11,6 +11,11 @@ def test_render_template_reads_from_payload_root() -> None:
     assert render_template("Цена: {{$data.0.price}}", payload) == "Цена: 123"
 
 
+def test_render_template_substitutes_workflow_variable() -> None:
+    assert render_template("Привет, {{name}}", {}, {"name": "Амир"}) == "Привет, Амир"
+    assert render_template("Цена: {{price}}", {"data": [{"price": 1}]}, {"price": 123}) == "Цена: 123"
+
+
 def test_render_template_keeps_legacy_json_prefix() -> None:
     assert render_template("id={{$json.userId}}", {"userId": 7}) == "id=7"
     assert render_template("id={{$json.userId}}", {"json": {"userId": 7}}) == "id=7"

@@ -1,15 +1,40 @@
 import datetime
 from enum import Enum
 import json
+import re
 import uuid
 from decimal import Decimal
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from models.workflow import NodeRunStatus, RunStatus, WorkflowStatus
 from schemas.common import SearchPeriod
 from core.config import LLMProviderId
+
+
+_VAR_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def normalize_workflow_variables(value: object) -> dict[str, Any]:
+    if not value:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError("Переменные должны быть объектом")
+    if len(value) > 50:
+        raise ValueError("Не больше 50 переменных")
+    cleaned: dict[str, Any] = {}
+    for raw_key, raw_val in value.items():
+        key = str(raw_key).strip()
+        if not _VAR_KEY_RE.fullmatch(key):
+            raise ValueError(f"Некорректное имя переменной: {raw_key}")
+        cleaned[key] = raw_val
+    return cleaned
+
+
+class NodeVariableAssignment(BaseModel):
+    key: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    value: str = Field(default="", max_length=8000)
 
 
 class NodeType(str, Enum):
@@ -49,6 +74,7 @@ class PromptNode(Node):
     model: str | None = None
     complexity: Literal["simple_text", "complex_text"] = "simple_text"
     max_output_tokens: int = Field(default=8000, ge=16, le=128000)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
     position: dict[str, float] | None = None
 
 
@@ -62,6 +88,7 @@ class TelegramSendNode(Node):
 class HttpRequestNode(Node):
     type: Literal[NodeType.HTTP_REQUEST] = NodeType.HTTP_REQUEST
     request_json: str = Field(default="", max_length=20000)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
     position: dict[str, float] | None = None
 
     @field_validator("request_json", mode="before")
@@ -90,6 +117,12 @@ WorkflowNode = Annotated[
 
 class WorkflowGraph(BaseModel):
     nodes: list[WorkflowNode] = Field(default_factory=list, max_length=100)
+    variables: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("variables", mode="before")
+    @classmethod
+    def clean_graph_variables(cls, value: object) -> dict[str, Any]:
+        return normalize_workflow_variables(value)
 
     @model_validator(mode="before")
     @classmethod
@@ -126,7 +159,10 @@ class WorkflowGraph(BaseModel):
                     if source and source not in parents:
                         parents.append(source)
                     node["parents"] = parents
-        return {"nodes": nodes}
+        payload: dict = {"nodes": nodes}
+        if "variables" in data:
+            payload["variables"] = data.get("variables") or {}
+        return payload
 
     @model_validator(mode="after")
     def sync_adjacency(self) -> Self:
@@ -204,17 +240,33 @@ class WorkflowCreate(BaseModel):
     schedule_enabled: bool | None = None
     schedule_cron: str | None = None
     schedule_timezone: str = "UTC"
+    variables: dict[str, Any] | None = None
+
+    @field_validator("variables")
+    @classmethod
+    def clean_create_variables(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        if value is None:
+            return value
+        return normalize_workflow_variables(value)
 
 
 class WorkflowUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=160)
     description: str | None = None
+    variables: dict[str, Any] | None = None
     graph: WorkflowGraph | None = None
     schedule: WorkflowSchedule | None = None
     schedule_slots: list[ScheduleSlot] | None = None
     schedule_enabled: bool | None = None
     schedule_cron: str | None = None
     schedule_timezone: str | None = None
+
+    @field_validator("variables")
+    @classmethod
+    def clean_update_variables(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        if value is None:
+            return value
+        return normalize_workflow_variables(value)
 
 
 class WorkflowResponse(BaseModel):
@@ -224,6 +276,7 @@ class WorkflowResponse(BaseModel):
     description: str | None
     status: WorkflowStatus
     draft_graph: dict
+    variables: dict[str, Any] = Field(default_factory=dict)
     published_version_id: uuid.UUID | None
     schedule_cron: str | None
     schedule_slots: list[dict] = Field(default_factory=list)

@@ -182,11 +182,16 @@ class WorkflowRunExecutor:
 
     async def execute(self) -> None:
         context = self.build_context()
+        if not context["variables"]:
+            workflow = await self.db.get(Workflow, self.run.workflow_id)
+            if workflow and workflow.variables:
+                context["variables"] = dict(workflow.variables)
         async with httpx.AsyncClient() as client:
             registry = DefaultExecutors(
                 client,
                 self.pricing,
                 lambda: self.billing.reservation_remaining(self.reservation_request_id),
+                context.get("variables"),
             ).registry()
             try:
                 blocked_edges: set[tuple[str, str]] = set()
@@ -228,7 +233,12 @@ class WorkflowRunExecutor:
         run_input = dict(self.run.input)
         if self.user.chat_id and "chat_id" not in run_input:
             run_input["chat_id"] = self.user.chat_id
-        return {"input": run_input, "nodes": {}, "taken_branches": {}}
+        return {
+            "input": run_input,
+            "nodes": {},
+            "taken_branches": {},
+            "variables": dict(self.graph.variables or {}),
+        }
 
     def _is_reachable(
         self,

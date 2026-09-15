@@ -106,11 +106,17 @@ export const useApi = () => {
               instructions: node.data.instructions || '',
               output_format: node.data.output_format || '',
               complexity: node.data.complexity || 'simple_text',
-              max_output_tokens: Number(node.data.max_output_tokens) || 8000
+              max_output_tokens: Number(node.data.max_output_tokens) || 8000,
+              assignments: (node.data.assignments || [])
+                .map(item => ({ key: item.key?.trim() || '', value: item.value || '' }))
+                .filter(item => /^[A-Za-z_][A-Za-z0-9_]*$/.test(item.key))
             }
           : node.type === 'http_request'
             ? {
-                request_json: node.data.request_json || ''
+                request_json: node.data.request_json || '',
+                assignments: (node.data.assignments || [])
+                  .map(item => ({ key: item.key?.trim() || '', value: item.value || '' }))
+                  .filter(item => /^[A-Za-z_][A-Za-z0-9_]*$/.test(item.key))
               }
             : node.type === 'if_else'
               ? {
@@ -137,7 +143,8 @@ export const useApi = () => {
           false_children: [...(node.false_children || node.data.false_children || [])],
           data: {
             ...node.data,
-            max_output_tokens: Number(node.data.max_output_tokens ?? node.max_output_tokens) || 8000
+            max_output_tokens: Number(node.data.max_output_tokens ?? node.max_output_tokens) || 8000,
+            assignments: node.data.assignments || node.assignments || []
           }
         }
       }
@@ -166,7 +173,8 @@ export const useApi = () => {
               : undefined,
           condition: node.condition,
           chat_id: node.chat_id ? String(node.chat_id) : undefined,
-          message: node.message || ''
+          message: node.message || '',
+          assignments: node.assignments || []
         }
       }
     })
@@ -178,6 +186,7 @@ export const useApi = () => {
     }
     return {
       ...workflow,
+      variables: workflow.variables && typeof workflow.variables === 'object' ? workflow.variables : {},
       estimated_run_cost: Number(workflow.estimated_run_cost || 0),
       draft_graph: { nodes }
     }
@@ -222,6 +231,7 @@ export const useApi = () => {
           schedule_enabled?: boolean
           schedule_cron?: string | null
           schedule_timezone?: string
+          variables?: Record<string, string | number | boolean | null>
         } = {}
       ) => request<Workflow>(`/workflows/${id}`, {
         method: 'PATCH',

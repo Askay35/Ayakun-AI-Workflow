@@ -11,7 +11,7 @@ class IfElseAction(NodeAction):
             raise ValueError("IF ELSE принимает ровно одну входящую связь")
         parent_output = records[0].get("output")
         payload = expression_root(parent_output)
-        taken = evaluate_condition(node.condition, payload)
+        taken = evaluate_condition(node.condition, payload, context.setdefault("variables", {}))
         context.setdefault("taken_branches", {})[node.id] = "true" if taken else "false"
         if isinstance(parent_output, dict):
             return dict(parent_output)

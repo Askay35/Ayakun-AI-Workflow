@@ -1165,6 +1165,59 @@ a { color: inherit; text-decoration: none; }
   border-radius: 16px;
   background: #1d1e28;
 }
+.editor-vars {
+  margin-top: 22px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  background: #1d1e28;
+}
+.editor-vars code,
+.editor-assign code {
+  color: #c4c0ff;
+}
+.editor-var-list,
+.editor-assign-row {
+  display: grid;
+  gap: 6px;
+}
+.editor-var-row,
+.editor-assign-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 28px;
+  gap: 6px;
+  align-items: start;
+  margin-bottom: 8px;
+}
+.editor-assign-row {
+  grid-template-columns: 1fr 1fr 28px;
+}
+.editor-var-error,
+.editor-var-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.editor-var-error { color: #fca5a5; }
+.editor-var-hint.is-write { color: #93c5fd; }
+.editor-var-hint.is-undefined { color: #fbbf24; }
+.editor-var-remove {
+  display: grid;
+  width: 28px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: rgba(255,255,255,.45);
+  background: transparent;
+  cursor: pointer;
+}
+.editor-var-remove:hover { color: #fecaca; background: rgba(248,113,113,.12); }
+.editor-assign {
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
 .editor-schedule input[type="time"] {
   color: rgba(255,255,255,.88) !important;
   color-scheme: dark;
@@ -1400,6 +1453,47 @@ a { color: inherit; text-decoration: none; }
   line-height: 1.45;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+.n8n-node-vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.var-chip {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 7px;
+  border: 1px solid rgba(161,161,170,.35);
+  border-radius: 999px;
+  color: #a1a1aa;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.var-chip.is-write {
+  border-color: rgba(59,130,246,.45);
+  color: #60a5fa;
+  background: rgba(59,130,246,.12);
+}
+.var-chip.is-read {
+  border-color: rgba(161,161,170,.35);
+  color: #a1a1aa;
+  background: rgba(161,161,170,.08);
+}
+.var-chip.is-undefined {
+  border-color: rgba(251,191,36,.45);
+  color: #fbbf24;
+  background: rgba(251,191,36,.1);
+}
+.n8n-node-var-warning {
+  margin: 6px 0 0;
+  color: #fbbf24;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
 }
 .if-else-outputs {
   display: flex;

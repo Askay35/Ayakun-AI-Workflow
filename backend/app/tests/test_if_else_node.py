@@ -135,3 +135,32 @@ def test_unselected_branch_is_not_reachable() -> None:
     blocked = {("iff", "tg_false")}
     assert executor._is_reachable(TelegramSendNode(id="tg_true", parents=["iff"]), context, blocked) is True
     assert executor._is_reachable(TelegramSendNode(id="tg_false", parents=["iff"]), context, blocked) is False
+
+
+def test_condition_variable_equals_number_with_coercion() -> None:
+    assert evaluate_condition("{{count}} == 12", {}, {"count": "12"}) is True
+    assert evaluate_condition("{{count}} == 12", {}, {"count": 12}) is True
+    assert evaluate_condition("{{count}} >= 12", {}, {"count": "12"}) is True
+    assert evaluate_condition("{{count}} == 12", {}, {"count": "11"}) is False
+    assert evaluate_condition("{{missing}} == 12", {}, {}) is False
+
+
+@pytest.mark.asyncio
+async def test_if_else_reads_workflow_variable() -> None:
+    executors = object.__new__(DefaultExecutors)
+    node = IfElseNode(
+        id="iff",
+        condition="{{threshold}} == 12",
+        parents=["prompt"],
+        true_children=["a"],
+        false_children=["b"],
+    )
+    context = {
+        "nodes": {
+            "prompt": {"type": "prompt", "output": {"text": "{}"}},
+        },
+        "taken_branches": {},
+        "variables": {"threshold": "12"},
+    }
+    await executors.if_else(node, context)
+    assert context["taken_branches"]["iff"] == "true"

@@ -1,7 +1,8 @@
 from core.config import settings
+from helper import apply_variable_assignments, expression_root, render_template
 from schemas.workflow import PromptNode
 from services.execution.actions.base import NodeAction
-from services.execution.context import parent_output_texts
+from services.execution.context import parent_output_texts, parent_records
 from services.pricing import PricingService, billed_credits, maximum_output_tokens, padded_input_tokens
 from services.providers import ModelRouter, llm_instructions
 from utils.deepseek_tokenizer import count_prompt_tokens
@@ -25,10 +26,21 @@ class PromptAction(NodeAction):
         )
         setting_key = "complex_llm_model" if node.complexity == "complex_text" else "simple_llm_model"
         model = node.model or await self.pricing.setting(setting_key, default_model)
-        composed_instructions = llm_instructions(node.instructions or None, node.output_format or None)
+        records = parent_records(node, context)
+        parent_output = records[0].get("output") if records else None
+        root = expression_root(parent_output) if parent_output is not None else {}
+        variables = context.setdefault("variables", {})
+        prompt = render_template(node.prompt, root, variables) if "{{" in (node.prompt or "") else node.prompt
+        instructions = node.instructions or ""
+        output_format = node.output_format or ""
+        if "{{" in instructions:
+            instructions = render_template(instructions, root, variables)
+        if "{{" in output_format:
+            output_format = render_template(output_format, root, variables)
+        composed_instructions = llm_instructions(instructions or None, output_format or None)
         input_data = parent_output_texts(node, context) or None
         input_tokens = padded_input_tokens(count_prompt_tokens(
-            node.prompt,
+            prompt,
             instructions=composed_instructions,
             input_data=input_data,
         ))
@@ -48,11 +60,13 @@ class PromptAction(NodeAction):
         if max_tokens < 1:
             raise ValueError("Недостаточно credits даже для входных токенов LLM-запроса")
         result = await provider.prompt(
-            node.prompt,
-            instructions=node.instructions or None,
-            output_format=node.output_format or None,
+            prompt,
+            instructions=instructions or None,
+            output_format=output_format or None,
             input_data=input_data,
             model=model,
             max_tokens=max_tokens,
         )
-        return result.model_dump(mode="json")
+        payload = result.model_dump(mode="json")
+        apply_variable_assignments(node.assignments, payload, context)
+        return payload

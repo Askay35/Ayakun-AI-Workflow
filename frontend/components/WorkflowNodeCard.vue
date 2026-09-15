@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
 import type { NodeKind, WorkflowNode } from '~/types/api'
+import type { VariableHint } from '~/utils/workflow-variables'
 import { NODE_META } from '~/utils/workflow-graph'
 
 const props = defineProps<{
@@ -8,6 +9,7 @@ const props = defineProps<{
   kind: NodeKind
   data: WorkflowNode['data']
   selected?: boolean
+  hints?: VariableHint[]
 }>()
 
 const meta = computed(() => NODE_META[props.kind])
@@ -45,6 +47,18 @@ const preview = computed(() => {
         </div>
       </div>
       <p class="n8n-node-preview">{{ preview }}</p>
+      <div v-if="hints?.length" class="n8n-node-vars">
+        <span
+          v-for="hint in hints"
+          :key="hint.name"
+          class="var-chip"
+          :class="`is-${hint.mark}`"
+          :title="hint.mark === 'undefined' ? 'Переменная пока не определена' : hint.mark === 'write' ? 'Создаётся или обновляется этим блоком' : 'Используется, не изменяется'"
+        >
+          {{ hint.name }}
+        </span>
+      </div>
+      <p v-if="hints?.some(hint => hint.mark === 'undefined')" class="n8n-node-var-warning">Переменная пока не определена</p>
       <div v-if="kind === 'if_else'" class="if-else-outputs">
         <div class="if-else-row">
           <span class="if-else-label is-true">TRUE</span>

@@ -19,7 +19,7 @@ export const DEFAULT_HTTP_REQUEST_JSON = `{
   }
 }`
 
-export const IF_ELSE_CONDITION_PLACEHOLDER = '{{$status}} == "active"'
+export const IF_ELSE_CONDITION_PLACEHOLDER = '{{count}} == 12'
 export const TELEGRAM_MESSAGE_PLACEHOLDER = 'Цена: {{$data[0].price}}'
 
 export type GraphLink = { source: string; target: string; sourceHandle?: 'true' | 'false' }

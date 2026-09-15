@@ -212,6 +212,7 @@ class WorkflowService:
             draft_graph=data.graph.model_dump(mode="json"),
             schedule_timezone=data.schedule_timezone,
             estimated_run_cost=await PricingService(self.db).estimate_graph(data.graph),
+            variables=dict(data.variables or data.graph.variables or {}),
         )
         slots, enabled = incoming_slots(data)
         apply_workflow_schedule(
@@ -271,6 +272,7 @@ class WorkflowService:
         """Фиксирует снимок draft_graph в WorkflowVersion — дальше runs идут по этому снимку."""
         workflow = await self._owned(workflow_id, user)
         graph = WorkflowGraph.model_validate(workflow.draft_graph)
+        graph.variables = dict(workflow.variables or {})
         errors = validate_graph(graph, strict=True)
         # chat_id в узле можно не указывать, если у пользователя привязан Telegram.
         if any(node.type == NodeType.TELEGRAM_SEND and node.chat_id is None for node in graph.nodes):

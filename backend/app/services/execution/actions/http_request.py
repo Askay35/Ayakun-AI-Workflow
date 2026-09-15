@@ -3,7 +3,7 @@ import json
 import httpx
 
 from core.config import settings
-from helper import form_request_body, json_root_from_output
+from helper import apply_variable_assignments, form_request_body, json_root_from_output
 from schemas.workflow import HttpRequestNode
 from services.execution.actions.base import NodeAction
 from services.execution.context import parent_records
@@ -21,6 +21,7 @@ class HttpRequestAction(NodeAction):
         request_data = form_request_body(
             node.request_json,
             json_root_from_output(parent_output) if parent_output is not None else {},
+            context.setdefault("variables", {}),
         )
         method = str(request_data.get("method") or "GET").upper()
         url = request_data.get("url")
@@ -43,11 +44,18 @@ class HttpRequestAction(NodeAction):
             snippet = (response.text or "")[:500]
             raise ValueError(f"HTTP {response.status_code}: {snippet or 'ошибка запроса'}")
         if not response.content:
-            return {"status": response.status_code}
+            empty = {"status": response.status_code}
+            apply_variable_assignments(node.assignments, empty, context)
+            return empty
         try:
             payload = response.json()
         except json.JSONDecodeError:
-            return {"status": response.status_code, "text": response.text}
+            text_payload = {"status": response.status_code, "text": response.text}
+            apply_variable_assignments(node.assignments, text_payload, context)
+            return text_payload
         if isinstance(payload, (dict, list)):
+            apply_variable_assignments(node.assignments, payload, context)
             return payload
-        return {"data": payload}
+        wrapped = {"data": payload}
+        apply_variable_assignments(node.assignments, wrapped, context)
+        return wrapped
