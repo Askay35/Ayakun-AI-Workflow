@@ -972,16 +972,13 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 10px 28px;
   font-size: 26px;
   color: inherit;
   text-decoration: none;
 }
 .app-logo-mark {
-  width: 32px;
-  height: 32px;
+  height: 45px;
   flex-shrink: 0;
-  border-radius: 8px;
   object-fit: cover;
 }
 .app-nav { display: grid; gap: 5px; }
