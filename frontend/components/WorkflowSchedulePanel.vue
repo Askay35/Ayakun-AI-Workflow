@@ -113,7 +113,7 @@ const removeSlot = (id: string) => {
       <template v-else>
         <div class="grid grid-cols-[1fr_1.2fr] gap-2">
           <UFormField label="Каждые">
-            <UInput v-model.number="draftEvery" type="number" min="1" class="w-full" />
+            <UInput v-model.number="draftEvery" type="number" min="1" class="schedule-every w-full" />
           </UFormField>
           <UFormField label="Единица">
             <USelect v-model="draftUnit" :items="INTERVAL_UNITS" value-key="value" class="w-full" />

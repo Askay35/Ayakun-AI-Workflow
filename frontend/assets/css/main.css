@@ -1154,6 +1154,22 @@ a { color: inherit; text-decoration: none; }
   background: #171820 !important;
   box-shadow: none !important;
 }
+.schedule-every:is(input[type="number"]),
+.schedule-every input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+  text-align: center;
+  padding: 14px 0;
+}
+.schedule-every:is(input[type="number"])::-webkit-outer-spin-button,
+.schedule-every:is(input[type="number"])::-webkit-inner-spin-button,
+.schedule-every input[type="number"]::-webkit-outer-spin-button,
+.schedule-every input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  display: none;
+}
 .schedule-day {
   min-height: 30px;
   border: 1px solid rgba(255,255,255,.08);
