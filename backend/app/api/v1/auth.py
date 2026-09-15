@@ -6,6 +6,7 @@ from deps.auth import CurrentUser
 from deps.services import get_auth_service
 from schemas.auth import (
     EmailLoginRequest,
+    EmailRegisterConfirmRequest,
     EmailRegisterRequest,
     GoogleAuthorizeRequest,
     GoogleCodeRequest,
@@ -24,11 +25,17 @@ from core.config import settings
 router = APIRouter()
 
 
-@router.post("/register", response_model=ApiResponse[TokenPair], status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=ApiResponse[dict])
 async def register(data: EmailRegisterRequest, service: AuthService = Depends(get_auth_service)):
+    await service.request_email_register(data.email, data.password, data.name)
+    return ApiResponse(success=True, data={})
+
+
+@router.post("/register/confirm", response_model=ApiResponse[TokenPair], status_code=status.HTTP_201_CREATED)
+async def confirm_register(data: EmailRegisterConfirmRequest, service: AuthService = Depends(get_auth_service)):
     return ApiResponse(
         success=True,
-        data=await service.register_email(data.email, data.password, data.name),
+        data=await service.confirm_email_register(data.email, data.code),
     )
 
 

@@ -45,27 +45,60 @@ class AuthService:
         )
         return TokenPair(access_token=helper.generate_token(user.id), refresh_token=raw, user=loaded)
 
-    async def register_email(self, email: str, password: str, name: str) -> TokenPair:
+    async def request_email_register(self, email: str, password: str, name: str) -> None:
         email = email.lower()
+        if not self.email_provider:
+            raise HTTPException(503, "Email provider не настроен")
         if await self.db.scalar(select(User).where(User.email == email)):
             raise HTTPException(409, "Email уже используется")
-        user = User(name=name, email=email, password_hash=helper.hash_password(password))
+        rate_key = f"email_register_rate:{email}"
+        attempts = await self.redis.incr(rate_key)
+        if attempts == 1:
+            await self.redis.expire(rate_key, 60)
+        if attempts > 5:
+            raise HTTPException(429, "Слишком много запросов кода")
+        code = helper.generate_login_code()
+        ttl = 60 * settings.login_code_expiration_time
+        await self.redis.set(
+            f"email_register_pending:{email}",
+            json.dumps({
+                "name": name,
+                "password_hash": helper.hash_password(password),
+                "code_hash": helper.hash_token(code),
+            }),
+            ex=ttl,
+        )
+        await self.email_provider.send(
+            email,
+            "Код подтверждения Ayakun",
+            (
+                f"Ваш код для регистрации: {code}\n\n"
+                f"Он действителен в течение {settings.login_code_expiration_time} минут."
+            ),
+        )
+
+    async def confirm_email_register(self, email: str, code: str) -> TokenPair:
+        email = email.lower()
+        pending_key = f"email_register_pending:{email}"
+        pending_raw = await self.redis.get(pending_key)
+        if not pending_raw:
+            raise HTTPException(401, "Неверный код")
+        pending = json.loads(pending_raw)
+        code_hash = helper.hash_token(code.strip().upper())
+        if not secrets.compare_digest(str(pending.get("code_hash") or ""), code_hash):
+            raise HTTPException(401, "Неверный код")
+        await self.redis.delete(pending_key)
+        if await self.db.scalar(select(User).where(User.email == email)):
+            raise HTTPException(409, "Email уже используется")
+        user = User(
+            name=pending["name"],
+            email=email,
+            password_hash=pending["password_hash"],
+            email_verified=True,
+        )
         self.db.add(user)
         await self.db.flush()
         self.db.add(AuthIdentity(user_id=user.id, provider=IdentityProvider.email, subject=email))
-        verification = helper.create_purpose_token(user.id, "email_verify", 24 * 60)
-        await self.redis.set(
-            f"purpose:email_verify:{helper.hash_token(verification)}",
-            user.id,
-            ex=24 * 60 * 60,
-        )
-        if not self.email_provider:
-            raise HTTPException(503, "Email provider не настроен")
-        await self.email_provider.send(
-            email,
-            "Подтверждение email в Ayakun",
-            f"{settings.frontend_url}/auth/verify-email?token={verification}",
-        )
         return await self._tokens(user)
 
     async def login_email(self, email: str, password: str) -> TokenPair:

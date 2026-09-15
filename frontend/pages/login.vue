@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { apiErrorMessage } from '~/composables/useApi'
+
 const api = useApi()
 const auth = useAuth()
 const toast = useToast()
 const mode = ref<'login' | 'register'>('login')
-const telegramStep = ref<'button' | 'code'>('button')
-const form = reactive({ name: '', email: '', password: '', telegramCode: '' })
+const authStep = ref<'form' | 'telegram' | 'email'>('form')
+const form = reactive({ name: '', email: '', password: '', telegramCode: '', emailCode: '' })
 const loading = ref(false)
 
 const finish = async (action: () => Promise<any>) => {
@@ -13,16 +15,32 @@ const finish = async (action: () => Promise<any>) => {
     await auth.accept(await action())
     await navigateTo('/dashboard')
   } catch (error: any) {
-    toast.add({ title: 'Не удалось войти', description: error?.data?.detail || 'Проверьте данные и повторите.', color: 'error' })
+    toast.add({ title: 'Не удалось войти', description: apiErrorMessage(error, 'Проверьте данные и повторите.'), color: 'error' })
   } finally { loading.value = false }
 }
 
-const emailAuth = () => finish(() => api.auth.email(form.email, form.password, mode.value, form.name))
+const requestEmailCode = async () => {
+  loading.value = true
+  try {
+    await api.auth.requestEmailRegister(form.email, form.password, form.name)
+    form.emailCode = ''
+    authStep.value = 'email'
+  } catch (error: any) {
+    toast.add({ title: 'Не удалось отправить код', description: apiErrorMessage(error, 'Проверьте данные и повторите.'), color: 'error' })
+  } finally { loading.value = false }
+}
+
+const emailAuth = () => {
+  if (mode.value === 'register') return requestEmailCode()
+  return finish(() => api.auth.email(form.email, form.password, 'login'))
+}
+const confirmEmailCode = () => finish(() => api.auth.confirmEmailRegister(form.email, form.emailCode.trim().toUpperCase()))
 const telegramAuth = () => finish(() => api.auth.telegram(form.telegramCode))
 const toggleMode = (value?: 'login' | 'register') => {
   mode.value = value || (mode.value === 'login' ? 'register' : 'login')
-  telegramStep.value = 'button'
+  authStep.value = 'form'
   form.telegramCode = ''
+  form.emailCode = ''
 }
 const googleAuth = async () => {
   const bytes = crypto.getRandomValues(new Uint8Array(64))
@@ -64,7 +82,7 @@ const googleAuth = async () => {
         {{ mode === 'login' ? 'Выберите удобный способ входа.' : 'Начните бесплатно — платёжные данные не нужны.' }}
       </p>
 
-      <template v-if="telegramStep === 'button'">
+      <template v-if="authStep === 'form'">
         <div class="auth-providers">
           <button class="auth-provider" type="button" @click="googleAuth">
             <UIcon name="i-simple-icons-google" class="size-5" />
@@ -75,7 +93,7 @@ const googleAuth = async () => {
             target="_blank"
             rel="noopener noreferrer"
             class="auth-provider telegram"
-            @click="telegramStep = 'code'"
+            @click="authStep = 'telegram'"
           >
             <UIcon name="i-simple-icons-telegram" class="size-5" />
             Telegram
@@ -104,13 +122,13 @@ const googleAuth = async () => {
             />
           </UFormField>
           <button class="site-button large w-full" type="button" :disabled="loading" @click="emailAuth">
-            {{ loading ? 'Подождите…' : mode === 'login' ? 'Войти в кабинет' : 'Создать аккаунт' }}
+            {{ loading ? 'Подождите…' : mode === 'login' ? 'Войти в кабинет' : 'Получить код' }}
             <UIcon v-if="!loading" name="i-lucide-arrow-right" />
           </button>
         </div>
       </template>
 
-      <template v-else>
+      <template v-else-if="authStep === 'telegram'">
         <div class="telegram-code-box">
           <div class="telegram-code-head">
             <div>
@@ -132,7 +150,7 @@ const googleAuth = async () => {
             {{ loading ? 'Проверяем код…' : 'Войти по коду' }}
           </button>
           <div class="mt-4 flex items-center justify-between">
-            <button class="text-button" type="button" @click="telegramStep = 'button'">Другой способ входа</button>
+            <button class="text-button" type="button" @click="authStep = 'form'">Другой способ входа</button>
             <a href="https://t.me/aiyakun_bot?start=logincode" target="_blank" rel="noopener noreferrer" class="text-button">
               Получить новый код
             </a>
@@ -143,7 +161,41 @@ const googleAuth = async () => {
         </p>
       </template>
 
-      <p v-if="telegramStep === 'button'" class="mb-0 mt-6 text-center text-xs leading-5 muted">
+      <template v-else>
+        <div class="email-code-box">
+          <div class="email-code-head">
+            <div>
+              <p class="font-extrabold text-[var(--violet)]">Код отправлен на почту</p>
+              <p class="muted">Проверьте {{ form.email }} и введите код подтверждения.</p>
+            </div>
+            <UIcon name="i-lucide-mail" class="mt-1 size-7 shrink-0 text-[var(--violet)]" />
+          </div>
+          <UInput
+            v-model="form.emailCode"
+            icon="i-lucide-key-round"
+            placeholder="Код из письма"
+            autocomplete="one-time-code"
+            maxlength="6"
+            size="xl"
+            class="w-full tracking-[0.18em] uppercase"
+            @keyup.enter="confirmEmailCode"
+          />
+          <button class="site-button large mt-3 w-full" type="button" :disabled="loading || form.emailCode.trim().length !== 6" @click="confirmEmailCode">
+            {{ loading ? 'Проверяем код…' : 'Подтвердить и создать аккаунт' }}
+          </button>
+          <div class="mt-4 flex items-center justify-between">
+            <button class="text-button" type="button" @click="authStep = 'form'">Назад к форме</button>
+            <button class="text-button" type="button" :disabled="loading" @click="requestEmailCode">
+              Получить новый код
+            </button>
+          </div>
+        </div>
+        <p class="mb-0 mt-4 text-center text-xs leading-5 muted">
+          Код одноразовый и действует ограниченное время.
+        </p>
+      </template>
+
+      <p v-if="authStep === 'form'" class="mb-0 mt-6 text-center text-xs leading-5 muted">
         Продолжая, вы соглашаетесь с
         <NuxtLink to="/terms" class="legal-link">публичной офертой</NuxtLink>.
       </p>

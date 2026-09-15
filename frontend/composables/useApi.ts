@@ -194,6 +194,10 @@ export const useApi = () => {
           method: 'POST',
           body: mode === 'login' ? { email, password } : { email, password, name }
         }),
+      requestEmailRegister: (email: string, password: string, name: string) =>
+        request<void>('/auth/register', { method: 'POST', body: { email, password, name } }),
+      confirmEmailRegister: (email: string, code: string) =>
+        request<AuthTokens>('/auth/register/confirm', { method: 'POST', body: { email, code } }),
       telegram: (code: string) => request<AuthTokens>('/auth/login/telegram', { method: 'POST', body: { code } }),
       googleStart: (redirectUri: string, codeChallenge: string) => request<{ authorization_url: string; state: string }>('/auth/google/authorize', {
         method: 'POST', body: { redirect_uri: redirectUri, code_challenge: codeChallenge }

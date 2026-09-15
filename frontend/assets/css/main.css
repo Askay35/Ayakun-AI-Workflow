@@ -294,6 +294,9 @@ a { color: inherit; text-decoration: none; }
 .telegram-code-box { padding: 18px; border: 1px solid rgba(34,158,217,.22); border-radius: 16px; background: #f2faff; }
 .telegram-code-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .telegram-code-head p { margin-bottom: 0; font-size: 13px; line-height: 1.55; }
+.email-code-box { padding: 18px; border: 1px solid rgba(103,88,238,.22); border-radius: 16px; background: #f7f5ff; }
+.email-code-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.email-code-head p { margin-bottom: 0; font-size: 13px; line-height: 1.55; }
 .text-button { border: 0; color: var(--violet); font: inherit; font-size: 13px; font-weight: 800; background: transparent; cursor: pointer; }
 .text-button:hover { text-decoration: underline; }
 .legal-link {
@@ -965,7 +968,22 @@ a { color: inherit; text-decoration: none; }
   background: #171822;
   box-shadow: 0 20px 60px rgba(18,19,26,.18);
 }
-.app-logo { margin: 0 10px 28px; font-size: 26px; }
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 10px 28px;
+  font-size: 26px;
+  color: inherit;
+  text-decoration: none;
+}
+.app-logo-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+}
 .app-nav { display: grid; gap: 5px; }
 .app-user { margin-top: auto; padding: 16px 10px 0; border-top: 1px solid rgba(255,255,255,.1); }
 .app-main { min-height: 100vh; margin-left: 276px; }
