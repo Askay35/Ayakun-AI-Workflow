@@ -209,11 +209,28 @@ def _stringify_resolved(value: Any) -> str:
     return str(value)
 
 
-def _substitute_placeholders(value: Any, json_root: Any, variables: dict | None = None) -> Any:
+_TELEGRAM_MARKDOWN_SPECIALS = re.compile(r"([_*\[\]()~`>#+\-=|{}.!\\])")
+
+
+def escape_telegram_markdown(value: Any) -> str:
+    """Экранирует динамическое значение для Telegram MarkdownV2, не трогая разметку шаблона."""
+    return _TELEGRAM_MARKDOWN_SPECIALS.sub(r"\\\1", _stringify_resolved(value))
+
+
+def _substitute_placeholders(
+    value: Any,
+    json_root: Any,
+    variables: dict | None = None,
+    stringify: Any | None = None,
+) -> Any:
+    format_value = stringify or _stringify_resolved
     if isinstance(value, dict):
-        return {key: _substitute_placeholders(item, json_root, variables) for key, item in value.items()}
+        return {
+            key: _substitute_placeholders(item, json_root, variables, stringify)
+            for key, item in value.items()
+        }
     if isinstance(value, list):
-        return [_substitute_placeholders(item, json_root, variables) for item in value]
+        return [_substitute_placeholders(item, json_root, variables, stringify) for item in value]
     if not isinstance(value, str):
         return value
 
@@ -234,19 +251,101 @@ def _substitute_placeholders(value: Any, json_root: Any, variables: dict | None 
         resolved = _resolve_json_path(json_root, path)
         if resolved is _MISSING:
             raise _missing_expression_error(path)
-        return _stringify_resolved(resolved)
+        return format_value(resolved)
 
     def replace_var(match: re.Match[str]) -> str:
-        return _stringify_resolved(_lookup_variable(match.group(1), variables))
+        return format_value(_lookup_variable(match.group(1), variables))
 
     replaced = _PLACEHOLDER_RE.sub(replace_path, value)
     return _VAR_PLACEHOLDER_RE.sub(replace_var, replaced)
 
 
-def render_template(template: str, data: Any, variables: dict | None = None) -> str:
+def render_template(
+    template: str,
+    data: Any,
+    variables: dict | None = None,
+    *,
+    stringify: Any | None = None,
+) -> str:
     """Подставляет {{$path}} и {{variable}} в строку."""
-    result = _substitute_placeholders(template, data, variables)
-    return "" if result is None else str(result)
+    result = _substitute_placeholders(template, data, variables, stringify)
+    if result is None:
+        return ""
+    if stringify is not None:
+        return result if isinstance(result, str) else stringify(result)
+    return str(result)
+
+
+_TELEGRAM_TOKEN_RE = re.compile(
+    r"```[\s\S]*?```"
+    r"|`[^`]+`"
+    r"|\[[^]]*\]\([^)]*\)"
+    r"|\|\|.+?\|\|"
+    r"|__.+?__"
+    r"|\*.+?\*"
+    r"|_.+?_"
+    r"|~.+?~"
+    r"|\{\{\$[^}]+\}\}"
+    r"|\{\{[A-Za-z_][A-Za-z0-9_]*\}\}"
+)
+_TELEGRAM_PLACEHOLDER_RE = re.compile(r"\{\{\$[^}]+\}\}|\{\{[A-Za-z_][A-Za-z0-9_]*\}\}")
+
+
+def _escape_telegram_link_url(value: Any) -> str:
+    return _stringify_resolved(value).replace("\\", "\\\\").replace(")", "\\)")
+
+
+def _render_telegram_url(segment: str, data: Any, variables: dict | None) -> str:
+    parts: list[str] = []
+    last = 0
+    for match in _TELEGRAM_PLACEHOLDER_RE.finditer(segment):
+        if match.start() > last:
+            parts.append(_escape_telegram_link_url(segment[last:match.start()]))
+        parts.append(_escape_telegram_link_url(render_template(match.group(0), data, variables)))
+        last = match.end()
+    if last < len(segment):
+        parts.append(_escape_telegram_link_url(segment[last:]))
+    return "".join(parts)
+
+
+def _render_telegram_token(token: str, data: Any, variables: dict | None) -> str:
+    if token.startswith("{{"):
+        return escape_telegram_markdown(render_template(token, data, variables))
+    if token.startswith("```") and token.endswith("```"):
+        return "```" + render_template(token[3:-3], data, variables) + "```"
+    if token.startswith("`") and token.endswith("`"):
+        return "`" + render_template(token[1:-1], data, variables) + "`"
+    if token.startswith("[") and "](" in token and token.endswith(")"):
+        label, url = token[1:-1].split("](", 1)
+        return (
+            f"[{_render_telegram_segment(label, data, variables)}]"
+            f"({_render_telegram_url(url, data, variables)})"
+        )
+    for opener in ("||", "__"):
+        if token.startswith(opener) and token.endswith(opener) and len(token) >= 2 * len(opener):
+            inner = token[len(opener):-len(opener)]
+            return opener + _render_telegram_segment(inner, data, variables) + opener
+    if len(token) >= 2 and token[0] == token[-1] and token[0] in "*_~":
+        return token[0] + _render_telegram_segment(token[1:-1], data, variables) + token[0]
+    return escape_telegram_markdown(token)
+
+
+def _render_telegram_segment(segment: str, data: Any, variables: dict | None) -> str:
+    parts: list[str] = []
+    last = 0
+    for match in _TELEGRAM_TOKEN_RE.finditer(segment):
+        if match.start() > last:
+            parts.append(escape_telegram_markdown(segment[last:match.start()]))
+        parts.append(_render_telegram_token(match.group(0), data, variables))
+        last = match.end()
+    if last < len(segment):
+        parts.append(escape_telegram_markdown(segment[last:]))
+    return "".join(parts)
+
+
+def render_telegram_message(template: str, data: Any, variables: dict | None = None) -> str:
+    """Подставляет переменные и экранирует MarkdownV2, сохраняя разметку шаблона."""
+    return _render_telegram_segment(template, data, variables)
 
 
 def _parse_request_template(body: str | dict) -> dict:

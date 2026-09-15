@@ -24,8 +24,26 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
-      meta: [{ name: 'description', content: 'Ayakun — визуальный конструктор AI-цепочек: поиск, обработка и доставка результата в Telegram без кода.' }],
+      title: 'Ayakun — визуальная автоматизация с ИИ без кода',
+      meta: [
+        {
+          name: 'description',
+          content: 'Соберите на холсте цепочку: поиск данных → анализ нейросетью → нужное действие. Результат приходит туда, куда вы укажете. Просто, наглядно и быстро. Соберите первую цепочку бесплатно — 200 credits уже ждут вас.'
+        },
+        {
+          property: 'og:title',
+          content: 'Ayakun — визуальная автоматизация с ИИ без кода'
+        },
+        {
+          property: 'og:description',
+          content: 'Соберите на холсте цепочку: поиск данных → анализ нейросетью → нужное действие. Результат приходит туда, куда вы укажете. Просто, наглядно и быстро. Соберите первую цепочку бесплатно — 200 credits уже ждут вас.'
+        },
+        { property: 'og:type', content: 'website' }
+      ],
       link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'shortcut icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'apple-touch-icon', href: '/logo.ico' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {

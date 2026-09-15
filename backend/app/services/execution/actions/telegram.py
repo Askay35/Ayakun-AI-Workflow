@@ -1,4 +1,4 @@
-from helper import expression_root, render_template
+from helper import escape_telegram_markdown, expression_root, render_telegram_message
 from schemas.workflow import TelegramSendNode
 from services.execution.actions.base import NodeAction
 from services.execution.context import parent_output_texts, parent_records
@@ -19,14 +19,14 @@ class TelegramSendAction(NodeAction):
         template = (node.message or "").strip()
         if template:
             parent_output = records[0].get("output") if records else None
-            message = render_template(
+            message = render_telegram_message(
                 template,
                 expression_root(parent_output),
                 context.setdefault("variables", {}),
             )
         else:
             texts = parent_output_texts(node, context)
-            message = texts[0] if texts else ""
+            message = escape_telegram_markdown(texts[0]) if texts else ""
         if not message:
             return {"sent": False, "text": ""}
         if not chat_id:

@@ -1,12 +1,16 @@
 import json
+import logging
 
 import httpx
 
 from core.config import settings
+from core.user_errors import ERROR_HTTP
 from helper import apply_variable_assignments, form_request_body, json_root_from_output
 from schemas.workflow import HttpRequestNode
 from services.execution.actions.base import NodeAction
 from services.execution.context import parent_records
+
+logger = logging.getLogger(__name__)
 
 
 class HttpRequestAction(NodeAction):
@@ -39,10 +43,17 @@ class HttpRequestAction(NodeAction):
         }
         if body is not None:
             kwargs["json"] = body
-        response = await self.client.request(**kwargs)
+        try:
+            response = await self.client.request(**kwargs)
+        except httpx.RequestError:
+            logger.warning("HTTP request node failed", extra={"event": "http_request.failed"})
+            raise ValueError(ERROR_HTTP) from None
         if response.is_error:
-            snippet = (response.text or "")[:500]
-            raise ValueError(f"HTTP {response.status_code}: {snippet or 'ошибка запроса'}")
+            logger.warning(
+                "HTTP request node rejected",
+                extra={"event": "http_request.failed", "status_code": response.status_code},
+            )
+            raise ValueError(ERROR_HTTP)
         if not response.content:
             empty = {"status": response.status_code}
             apply_variable_assignments(node.assignments, empty, context)

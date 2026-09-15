@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -48,9 +49,21 @@ logger = logging.getLogger("ayakun.http")
 _HTTP_LOGGING_INSTALLED = False
 
 
+_BOT_PATH_RE = re.compile(r"/bot[^/\s]+", re.I)
+_BOT_TOKEN_RE = re.compile(r"\b\d{8,12}:[A-Za-z0-9_-]{20,}\b")
+
+
+def redact_secrets(value: str) -> str:
+    """Убирает токен бота из строк логов и сообщений об ошибках."""
+    text = _BOT_PATH_RE.sub("/bot[redacted]", value)
+    return _BOT_TOKEN_RE.sub("[redacted]", text)
+
+
 def jsonable(value: Any) -> Any:
-    if value is None or isinstance(value, (bool, int, float, str)):
+    if value is None or isinstance(value, (bool, int, float)):
         return value
+    if isinstance(value, str):
+        return redact_secrets(value)
     if isinstance(value, Decimal):
         return format(value, "f")
     if isinstance(value, UUID):
@@ -61,7 +74,7 @@ def jsonable(value: Any) -> Any:
         return {str(key): jsonable(item) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [jsonable(item) for item in value]
-    return str(value)
+    return redact_secrets(str(value))
 
 
 class JsonFormatter(logging.Formatter):
@@ -75,10 +88,10 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname.lower(),
             "service": self.service,
             "logger": record.name,
-            "msg": record.getMessage(),
+            "msg": redact_secrets(record.getMessage()),
         }
         if record.exc_info:
-            payload["exc"] = self.formatException(record.exc_info)
+            payload["exc"] = redact_secrets(self.formatException(record.exc_info))
         for key, value in record.__dict__.items():
             if key in RESERVED or key.startswith("_"):
                 continue
@@ -118,10 +131,11 @@ def output_preview(output: object, limit: int = 2000) -> str:
 
 
 def sanitize_url(url: object) -> str:
-    """Хост + path без query (там могут быть токены)."""
+    """Хост + path без query и без токена бота в path."""
     raw = str(getattr(url, "url", None) or url or "")
     parts = urlsplit(raw)
-    return urlunsplit((parts.scheme, parts.netloc, parts.path or "/", "", ""))
+    path = _BOT_PATH_RE.sub("/bot[redacted]", parts.path or "/")
+    return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
 
 
 def _log_outbound(

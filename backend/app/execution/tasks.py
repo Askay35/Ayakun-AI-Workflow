@@ -33,6 +33,7 @@ from models.workflow import (
 from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode
 from services.billing import BillingService
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
+from services.execution.errors import user_visible_error
 from services.pricing import PricingService, billable_credits, billed_credits, provider_cost_usd
 from services.schedule import advance_due_slots, dump_slots, earliest_next, load_slots, slots_from_legacy
 from services.workflow import topological_nodes
@@ -97,6 +98,19 @@ def jsonable_output(output: object) -> dict | list:
     return output
 
 
+def unselected_if_else_children(node: WorkflowNode, branch: str | None) -> list[str]:
+    """Потомки IF ELSE, которые не на выбранной ветке — их нельзя выполнять."""
+    true_children = list(getattr(node, "true_children", None) or [])
+    false_children = list(getattr(node, "false_children", None) or [])
+    if branch == "true":
+        chosen = set(true_children)
+    elif branch == "false":
+        chosen = set(false_children)
+    else:
+        chosen = set()
+    return [child_id for child_id in node.children if child_id not in chosen]
+
+
 async def release_unused_reserve(
     db: AsyncSession,
     billing: BillingService,
@@ -153,7 +167,7 @@ class WorkflowRunExecutor:
             await billing.reserve_run(user, run.id, reservation_request_id, amount=estimate)
         except HTTPException as exc:
             run.status = RunStatus.failed
-            run.error = str(exc.detail)
+            run.error = user_visible_error(exc)
             run.finished_at = datetime.datetime.now(datetime.UTC)
             await db.commit()
             logger.error(
@@ -204,12 +218,10 @@ class WorkflowRunExecutor:
                     await self.execute_node(node, context, registry)
                     if node.type == NodeType.IF_ELSE:
                         branch = (context.get("taken_branches") or {}).get(node.id)
-                        skipped_children = (
-                            getattr(node, "false_children", [])
-                            if branch == "true"
-                            else getattr(node, "true_children", [])
+                        blocked_edges.update(
+                            (node.id, child_id)
+                            for child_id in unselected_if_else_children(node, branch)
                         )
-                        blocked_edges.update((node.id, child_id) for child_id in skipped_children)
                 self.run.output = context["nodes"]
                 self.run.status = RunStatus.succeeded
                 logger.info(
@@ -218,7 +230,7 @@ class WorkflowRunExecutor:
                 )
             except Exception as exc:
                 self.run.status = RunStatus.failed
-                self.run.error = str(exc)[:4000]
+                self.run.error = user_visible_error(exc)
                 logger.exception(
                     "Запуск цепочки завершился ошибкой",
                     extra=self.log_fields(event="run.failed", error=str(exc)[:4000], credits=self.run.cost),
@@ -295,7 +307,7 @@ class WorkflowRunExecutor:
 
     async def fail(self, error: BaseException) -> None:
         self.run.status = RunStatus.failed
-        self.run.error = str(error)[:4000]
+        self.run.error = user_visible_error(error)
         self.run.finished_at = datetime.datetime.now(datetime.UTC)
         await self.db.commit()
         await release_unused_reserve(
@@ -369,7 +381,7 @@ class WorkflowRunExecutor:
                 return
             except Exception as exc:
                 last_error = exc
-                node_run.error = str(exc)[:4000]
+                node_run.error = user_visible_error(exc, node.type)
                 node_run.status = NodeRunStatus.failed
                 await self.db.commit()
                 logger.exception(

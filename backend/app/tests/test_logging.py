@@ -51,6 +51,15 @@ def test_sanitize_url_strips_query() -> None:
     assert sanitize_url("https://api.example.com/v1/x?token=secret") == "https://api.example.com/v1/x"
 
 
+def test_sanitize_url_redacts_telegram_bot_token() -> None:
+    raw = "https://api.telegram.org/bot123456789:SECRET_BOT_TOKEN_VALUE/sendMessage"
+    assert sanitize_url(raw) == "https://api.telegram.org/bot[redacted]/sendMessage"
+    from core.logging import redact_secrets
+    assert "SECRET_BOT_TOKEN_VALUE" not in redact_secrets(
+        "Client error '400 Bad Request' for url 'https://api.telegram.org/bot123456789:SECRET_BOT_TOKEN_VALUE/sendMessage'"
+    )
+
+
 def test_install_outbound_http_logging_is_idempotent() -> None:
     install_outbound_http_logging()
     install_outbound_http_logging()

@@ -1,6 +1,6 @@
 import pytest
 
-from helper import render_template
+from helper import render_telegram_message, render_template
 from schemas.workflow import TelegramSendNode
 from services.execution import DefaultExecutors
 
@@ -19,6 +19,18 @@ def test_render_template_substitutes_workflow_variable() -> None:
 def test_render_template_keeps_legacy_json_prefix() -> None:
     assert render_template("id={{$json.userId}}", {"userId": 7}) == "id=7"
     assert render_template("id={{$json.userId}}", {"json": {"userId": 7}}) == "id=7"
+
+
+def test_render_telegram_message_escapes_values_and_keeps_markup() -> None:
+    assert render_telegram_message("Цена: {{price}}.", {}, {"price": 12.5}) == "Цена: 12\\.5\\."
+    assert render_telegram_message("*Скидка:* {{price}}!", {}, {"price": "50%"}) == "*Скидка:* 50%\\!"
+    assert render_telegram_message(
+        "[Открыть]({{url}})",
+        {},
+        {"url": "https://example.com/a.b"},
+    ) == "[Открыть](https://example.com/a.b)"
+    assert render_telegram_message("Привет, {{name}}", {}, {"name": "O_Neal"}) == "Привет, O\\_Neal"
+    assert render_telegram_message("`{{code}}`", {}, {"code": "a.b"}) == "`a.b`"
 
 
 class FakeNotifications:
@@ -74,6 +86,28 @@ async def test_telegram_send_raises_when_path_missing() -> None:
 
 
 @pytest.mark.asyncio
+async def test_telegram_send_escapes_interpolated_markdown() -> None:
+    executors = object.__new__(DefaultExecutors)
+    executors.notifications = FakeNotifications()
+    node = TelegramSendNode(
+        id="tg",
+        chat_id=42,
+        message="*Цена:* {{$data[0].price}} руб.",
+        parents=["http"],
+    )
+    result = await executors.telegram_send(node, {
+        "nodes": {
+            "http": {
+                "type": "http_request",
+                "output": {"data": [{"price": 12.5}]},
+            }
+        }
+    })
+    assert result == {"sent": True, "text": "*Цена:* 12\\.5 руб\\."}
+    assert executors.notifications.sent == [("42", "*Цена:* 12\\.5 руб\\.")]
+
+
+@pytest.mark.asyncio
 async def test_telegram_send_uses_parent_text_when_message_empty() -> None:
     executors = object.__new__(DefaultExecutors)
     executors.notifications = FakeNotifications()
@@ -88,3 +122,33 @@ async def test_telegram_send_uses_parent_text_when_message_empty() -> None:
     })
     assert result == {"sent": True, "text": "Готовый отчёт"}
     assert executors.notifications.sent == [("42", "Готовый отчёт")]
+
+
+@pytest.mark.asyncio
+async def test_telegram_provider_uses_markdown_and_hides_http_errors(monkeypatch) -> None:
+    import json
+    import httpx
+
+    from core.config import settings
+    from services.execution.errors import ERROR_TELEGRAM
+    from services.providers import TelegramNotificationProvider
+
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["url"] = str(request.url)
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(400, json={"ok": False, "description": "Bad Request: can't parse entities"})
+
+    monkeypatch.setattr(settings, "telegram_bot_token", "123456789:SECRET_BOT_TOKEN_VALUE")
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        provider = TelegramNotificationProvider(client)
+        with pytest.raises(ValueError, match=ERROR_TELEGRAM) as raised:
+            await provider.send("42", "Цена: 12.5 — {{value}}")
+    assert raised.value.__cause__ is None
+    assert captured["body"]["parse_mode"] == "MarkdownV2"
+    assert captured["body"]["text"] == "Цена: 12.5 — {{value}}"
+    assert "SECRET_BOT_TOKEN_VALUE" not in str(raised.value)
+    assert "400" not in str(raised.value)
+    assert "api.telegram.org" not in str(raised.value)

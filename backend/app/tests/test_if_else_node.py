@@ -3,8 +3,8 @@ import json
 import pytest
 
 from helper import evaluate_condition
-from schemas.workflow import IfElseNode, PromptNode, TelegramSendNode, WorkflowGraph
-from execution.tasks import WorkflowRunExecutor
+from schemas.workflow import HttpRequestNode, IfElseNode, NodeVariableAssignment, PromptNode, TelegramSendNode, WorkflowGraph
+from execution.tasks import WorkflowRunExecutor, unselected_if_else_children
 from services.execution import DefaultExecutors
 from services.workflow import validate_graph
 
@@ -163,4 +163,64 @@ async def test_if_else_reads_workflow_variable() -> None:
         "variables": {"threshold": "12"},
     }
     await executors.if_else(node, context)
+    assert context["taken_branches"]["iff"] == "true"
+
+
+def test_unselected_children_include_nodes_missing_from_handle_lists() -> None:
+    node = IfElseNode(
+        id="iff",
+        condition="{{count}} == 12",
+        true_children=["tg_true"],
+        false_children=[],
+        children=["tg_true", "tg_false"],
+    )
+    assert unselected_if_else_children(node, "true") == ["tg_false"]
+    assert set(unselected_if_else_children(node, "false")) == {"tg_true", "tg_false"}
+    both = IfElseNode(
+        id="iff",
+        condition="{{count}} == 12",
+        true_children=["tg_true"],
+        false_children=["tg_false"],
+        children=["tg_true", "tg_false"],
+    )
+    assert unselected_if_else_children(both, "true") == ["tg_false"]
+    assert unselected_if_else_children(both, "false") == ["tg_true"]
+
+
+@pytest.mark.asyncio
+async def test_http_assignment_feeds_if_else_variable() -> None:
+    class FakeHttpResponse:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+            self.status_code = 200
+            self.content = json.dumps(payload).encode()
+            self.text = json.dumps(payload)
+            self.is_error = False
+
+        def json(self) -> dict:
+            return self._payload
+
+    class FakeHttpClient:
+        async def request(self, **kwargs):
+            return FakeHttpResponse({"count": 12})
+
+    executors = object.__new__(DefaultExecutors)
+    executors.client = FakeHttpClient()
+    http = HttpRequestNode(
+        id="http",
+        request_json='{"method":"GET","url":"https://example.com/stats"}',
+        assignments=[NodeVariableAssignment(key="count", value="{{$count}}")],
+    )
+    iff = IfElseNode(
+        id="iff",
+        condition="{{count}} == 12",
+        parents=["http"],
+        true_children=["tg_true"],
+        false_children=["tg_false"],
+    )
+    context = {"nodes": {}, "variables": {}, "taken_branches": {}}
+    http_output = await executors.http_request(http, context)
+    context["nodes"]["http"] = {"type": "http_request", "output": http_output}
+    await executors.if_else(iff, context)
+    assert context["variables"]["count"] == 12
     assert context["taken_branches"]["iff"] == "true"

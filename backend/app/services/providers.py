@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import logging
 import smtplib
 
 from email.message import EmailMessage
@@ -25,6 +26,9 @@ from schemas.billing import PaymentEvent
 from models.billing import Payment, PaymentStatus
 from schemas.common import SearchPeriod
 from core.config import LLMProviderId, Settings, WebSearchProviderId, settings
+from core.user_errors import ERROR_SEARCH, ERROR_TELEGRAM
+
+logger = logging.getLogger(__name__)
 
 
 class LLMUsage(BaseModel):
@@ -342,10 +346,18 @@ class SerperWebSearchProvider:
             json=search_params,
             headers={"X-API-KEY": self.config.serper_key, "Content-Type": "application/json"},
         )
-        response.raise_for_status()
-        data = response.json()
-        if not data["organic"]:
-            raise HTTPException(500, "Ошибка web search (Serper) API: поле результатов не найдено")
+        if response.is_error:
+            logger.warning(
+                "Serper search rejected",
+                extra={"event": "search.failed", "status_code": response.status_code},
+            )
+            raise ValueError(ERROR_SEARCH)
+        try:
+            data = response.json()
+        except ValueError:
+            raise ValueError(ERROR_SEARCH) from None
+        if not data.get("organic"):
+            raise ValueError(ERROR_SEARCH)
         return [SearchResult(title=item["title"], url=item["link"], snippet=item["snippet"], date=item.get("date")) for item in data["organic"]]
 
 
@@ -356,13 +368,22 @@ class TelegramNotificationProvider:
 
     async def send(self, destination: str, text: str) -> None:
         if not self.config.telegram_bot_token:
-            raise HTTPException(503, "Telegram bot не настроен")
-        response = await self.client.post(
-            f"https://api.telegram.org/bot{self.config.telegram_bot_token}/sendMessage",
-            json={"chat_id": destination, "text": text, "parse_mode": "MarkdownV2"},
-            timeout=self.config.provider_timeout_seconds,
-        )
-        response.raise_for_status()
+            raise ValueError(ERROR_TELEGRAM)
+        try:
+            response = await self.client.post(
+                f"https://api.telegram.org/bot{self.config.telegram_bot_token}/sendMessage",
+                json={"chat_id": destination, "text": text, "parse_mode": "MarkdownV2"},
+                timeout=self.config.provider_timeout_seconds,
+            )
+        except httpx.RequestError:
+            logger.warning("Telegram send failed", extra={"event": "telegram.send_failed"})
+            raise ValueError(ERROR_TELEGRAM) from None
+        if response.is_error:
+            logger.warning(
+                "Telegram send rejected",
+                extra={"event": "telegram.send_failed", "status_code": response.status_code},
+            )
+            raise ValueError(ERROR_TELEGRAM)
 
 
 class YooKassaProvider:

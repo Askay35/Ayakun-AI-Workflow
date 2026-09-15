@@ -190,3 +190,20 @@ async def test_http_request_substitutes_workflow_variable_and_assigns() -> None:
     assert result == {"id": 123, "ok": True}
     assert client.calls[0]["url"] == "https://api.example.com/7"
     assert context["variables"]["user_pk"] == 123
+
+
+@pytest.mark.asyncio
+async def test_http_request_error_is_generic() -> None:
+    from services.execution.errors import ERROR_HTTP
+
+    class ErrorClient:
+        async def request(self, **kwargs):
+            return FakeHttpResponse({"error": "nope"}, status=400)
+
+    executors = object.__new__(DefaultExecutors)
+    executors.client = ErrorClient()
+    node = HttpRequestNode(id="http", request_json='{"method":"GET","url":"https://example.com"}')
+    with pytest.raises(ValueError, match=ERROR_HTTP) as raised:
+        await executors.http_request(node, {"nodes": {}, "variables": {}})
+    assert "400" not in str(raised.value)
+    assert "nope" not in str(raised.value)

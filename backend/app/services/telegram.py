@@ -7,6 +7,9 @@ from services.user import UserService
 from schemas.common import ApiResponse, TelegramWebhookRequest
 import redis.asyncio as redis
 from core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 class TelegramService:
 
@@ -20,16 +23,24 @@ class TelegramService:
     async def send_message(self, chat_id: int, text: str):
         if not settings.telegram_bot_token:
             raise RuntimeError("Telegram bot is not configured")
-        response = await self.http_client.post(
-            f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": "MarkdownV2" 
-            },
-        )
-
-        response.raise_for_status()
+        try:
+            response = await self.http_client.post(
+                f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage",
+                json={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": "MarkdownV2"
+                },
+            )
+        except httpx.RequestError:
+            logger.warning("Telegram login message failed", extra={"event": "telegram.send_failed"})
+            raise RuntimeError("Ошибка запроса к telegram") from None
+        if response.is_error:
+            logger.warning(
+                "Telegram login message rejected",
+                extra={"event": "telegram.send_failed", "status_code": response.status_code},
+            )
+            raise RuntimeError("Ошибка запроса к telegram")
         return response.json()
 
     async def processUpdate(self, data: TelegramWebhookRequest):
