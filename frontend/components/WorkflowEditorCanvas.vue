@@ -563,14 +563,14 @@ const runSelectedNode = async () => {
               <UFormField label="Данные запроса">
                 <UTextarea v-model="selectedRequestJson" :rows="14" class="w-full font-mono text-xs" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи (можно без родителей). Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня вывода предыдущего узла, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — из переменных. После подстановки значение должно остаться валидным JSON.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня вывода предыдущего узла, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — из переменных. После подстановки значение должно остаться валидным JSON.</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'if_else'">
               <UFormField label="Условие">
                 <UTextarea v-model="selectedCondition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
               </UFormField>
-              <p class="mb-0 text-xs leading-5 text-white/40">Одна входящая связь, выходы TRUE и FALSE. Дальше уходит та же ветка данных, без изменений. Переменные: <code>{{ VARIABLE_COMPARE_EXAMPLE }}</code> — число и строка «12» считаются равными.</p>
+              <p class="mb-0 text-xs leading-5 text-white/40">Одна входящая связь, выходы TRUE (Условие выполнено) и FALSE (Условие не выполнено). Передает данные дальше, без изменений. Условие с переменной: <code>{{ VARIABLE_COMPARE_EXAMPLE }}</code> (число и строка «12» считаются равными). Условия с входными данными: <code>{{ IF_ELSE_CONDITION_PLACEHOLDER }}</code>.</p>
               <details class="editor-help mt-1! text-xs leading-5 text-white/40">
                 <summary class="text-[15px]">Как писать условие</summary>
                 <div class="editor-help-body">

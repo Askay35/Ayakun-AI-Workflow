@@ -71,7 +71,7 @@ const removeSlot = (id: string) => {
       <p class="mb-0 text-sm font-extrabold text-white">Автозапуск</p>
       <USwitch :model-value="enabled" @update:model-value="emit('update:enabled', $event)" />
     </div>
-    <p class="mb-0 text-[11px] leading-5 text-white/40">Допустимо несколько слотов: дни недели и интервалы.</p>
+    <p class="mb-0 text-[11px] leading-5 text-white/40">Можно добавить несколько слотов: по дням недели и интервалу.</p>
 
     <div v-if="slots.length" class="schedule-slot-list">
       <div v-for="slot in slots" :key="slot.id" class="schedule-slot">

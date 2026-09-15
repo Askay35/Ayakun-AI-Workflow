@@ -27,7 +27,6 @@ const keyInvalid = (key: string) => {
 }
 
 const assignmentExample = '{{total}} = {{$data[0].price}}'
-const assignmentValuePlaceholder = '{{$ai_generated_field[0].field}}'
 </script>
 
 <template>
@@ -37,7 +36,7 @@ const assignmentValuePlaceholder = '{{$ai_generated_field[0].field}}'
     <div v-for="(item, index) in items" :key="index" class="editor-assign-row">
       <UInput
         :model-value="item.key"
-        placeholder="ключ"
+        placeholder="переменная"
         size="sm"
         class="w-full"
         :color="keyInvalid(item.key) ? 'error' : undefined"
@@ -45,7 +44,7 @@ const assignmentValuePlaceholder = '{{$ai_generated_field[0].field}}'
       />
       <UInput
         :model-value="item.value"
-        :placeholder="assignmentValuePlaceholder"
+        placeholder="значение"
         size="sm"
         class="w-full font-mono"
         @update:model-value="updateRow(index, { value: String($event) })"
