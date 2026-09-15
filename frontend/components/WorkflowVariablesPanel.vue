@@ -27,12 +27,14 @@ const keyError = (key: string) => {
   if (!VARIABLE_NAME_RE.test(trimmed)) return 'Только латиница, цифры и _'
   return ''
 }
+
+const variableNameExample = '{{name}}'
 </script>
 
 <template>
   <div class="editor-vars">
     <p class="mb-1 text-sm font-extrabold text-white">Переменные</p>
-    <p class="mb-3 text-[11px] leading-5 text-white/40">Доступны в звеньях как <code>{{ '{{name}}' }}</code>. Значение можно перезаписать в HTTP или ИИ.</p>
+    <p class="mb-3 text-[11px] leading-5 text-white/40">Доступны в звеньях как <code>{{ variableNameExample }}</code>. Значение можно перезаписать в HTTP или ИИ.</p>
     <div v-if="items.length" class="editor-var-list">
       <div v-for="(item, index) in items" :key="index" class="editor-var-row">
         <UInput

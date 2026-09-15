@@ -98,6 +98,9 @@ const selectedPeriod = computed({
   }
 })
 const JSON_EXPRESSION_EXAMPLE = '{{$data[0].price}}'
+const VARIABLE_NAME_EXAMPLE = '{{name}}'
+const VARIABLE_COMPARE_EXAMPLE = '{{count}} == 12'
+const formatVariableToken = (name: string) => `{{${name}}}`
 const IF_ELSE_HELP_EXAMPLES = [
   { code: '{{$data[0].price}} != null', note: 'поле есть и не null' },
   { code: '{{$status}} == "active"', note: 'строка' },
@@ -513,7 +516,7 @@ const run = async () => {
                   :placeholder="OUTPUT_FORMAT_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его. Переменные: <code>{{ '{{name}}' }}</code>.</p>
+              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его. Переменные: <code>{{ VARIABLE_NAME_EXAMPLE }}</code>.</p>
               <UFormField label="Максимальная стоимость запуска">
                 <UInput v-model="selectedMaxRunCredits" type="number" min="1" step="1" class="w-full" />
               </UFormField>
@@ -524,14 +527,14 @@ const run = async () => {
               <UFormField label="Данные запроса">
                 <UTextarea v-model="selectedRequestJson" :rows="14" class="w-full font-mono text-xs" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи (можно без родителей). Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня вывода предыдущего узла, <code>{{ '{{name}}' }}</code> — из переменных. После подстановки значение должно остаться валидным JSON.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи (можно без родителей). Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня вывода предыдущего узла, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — из переменных. После подстановки значение должно остаться валидным JSON.</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'if_else'">
               <UFormField label="Условие">
                 <UTextarea v-model="selectedCondition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
               </UFormField>
-              <p class="mb-0 text-xs leading-5 text-white/40">Одна входящая связь, выходы TRUE и FALSE. Дальше уходит та же ветка данных, без изменений. Переменные: <code>{{ '{{count}} == 12' }}</code> — число и строка «12» считаются равными.</p>
+              <p class="mb-0 text-xs leading-5 text-white/40">Одна входящая связь, выходы TRUE и FALSE. Дальше уходит та же ветка данных, без изменений. Переменные: <code>{{ VARIABLE_COMPARE_EXAMPLE }}</code> — число и строка «12» считаются равными.</p>
               <details class="editor-help mt-1! text-xs leading-5 text-white/40">
                 <summary class="text-[15px]">Как писать условие</summary>
                 <div class="editor-help-body">
@@ -560,11 +563,11 @@ const run = async () => {
                   :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится вывод предыдущего узла. Если задан — подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня входных данных, <code>{{ '{{name}}' }}</code> — из переменных; отсутствующее поле останавливает запуск. Исходящие можно вести дальше, но текст детям не передаётся.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится вывод предыдущего узла. Если задан — подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня входных данных, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — из переменных; отсутствующее поле останавливает запуск. Исходящие можно вести дальше, но текст детям не передаётся.</p>
             </template>
             <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="mb-0 mt-3 space-y-1 text-xs text-amber-200">
               <li v-for="hint in selectedVariableHints.filter(item => item.mark === 'undefined')" :key="hint.name">
-                <code>{{ '{{' + hint.name + '}}' }}</code> — Переменная пока не определена
+                <code>{{ formatVariableToken(hint.name) }}</code> — Переменная пока не определена
               </li>
             </ul>
           </div>

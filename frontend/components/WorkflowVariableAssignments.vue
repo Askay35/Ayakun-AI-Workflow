@@ -27,6 +27,7 @@ const keyInvalid = (key: string) => {
 }
 
 const assignmentExample = '{{total}} = {{$data[0].price}}'
+const assignmentValuePlaceholder = '{{$ai_generated_field[0].field}}'
 </script>
 
 <template>
@@ -44,7 +45,7 @@ const assignmentExample = '{{total}} = {{$data[0].price}}'
       />
       <UInput
         :model-value="item.value"
-        placeholder="{{$ai_generated_field[0].field}}"
+        :placeholder="assignmentValuePlaceholder"
         size="sm"
         class="w-full font-mono"
         @update:model-value="updateRow(index, { value: String($event) })"
