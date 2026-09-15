@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import datetime
 import json
 import logging
 import uuid
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from croniter import croniter
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,14 +25,23 @@ from models.user import AuthIdentity, IdentityProvider, User
 from schemas.workflow import (
     NodeType,
     RunStepResponse,
+    ScheduleSlot,
+    WeeklyScheduleSlot,
     WorkflowCreate,
     WorkflowGraph,
     WorkflowNode,
-    WorkflowSchedule,
     WorkflowUpdate,
 )
 from services.billing import BillingService
 from services.pricing import PricingService
+from services.schedule import (
+    derived_cron,
+    dump_slots,
+    earliest_next,
+    load_slots,
+    prepare_slots,
+    slots_from_legacy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -151,26 +157,34 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
     return errors
 
 
-def next_schedule(cron: str | None, timezone: str) -> datetime.datetime | None:
-    """Следующий запуск по cron в указанной TZ, результат в UTC для хранения в БД."""
-    if not cron:
-        return None
-    try:
-        tz = ZoneInfo(timezone)
-        return croniter(cron, datetime.datetime.now(tz)).get_next(datetime.datetime).astimezone(datetime.UTC)
-    except (ValueError, ZoneInfoNotFoundError) as exc:
-        raise HTTPException(422, f"Некорректное расписание: {exc}") from exc
+def incoming_slots(data: WorkflowCreate | WorkflowUpdate) -> tuple[list[ScheduleSlot] | None, bool | None]:
+    if "schedule_slots" in data.model_fields_set:
+        return list(data.schedule_slots or []), data.schedule_enabled
+    if "schedule" in data.model_fields_set:
+        if data.schedule is None:
+            return [], False
+        return [WeeklyScheduleSlot(time=data.schedule.time, weekdays=data.schedule.weekdays)], True
+    if getattr(data, "schedule_cron", None) and "schedule_cron" in data.model_fields_set:
+        return slots_from_legacy(data.schedule_cron), data.schedule_enabled
+    return None, data.schedule_enabled if "schedule_enabled" in data.model_fields_set else None
 
 
-def schedule_to_cron(schedule: WorkflowSchedule | None) -> str | None:
-    """Преобразует локальное время и ISO-дни недели (1=Пн, 7=Вс) в cron."""
-    if schedule is None:
-        return None
-    hour, minute = map(int, schedule.time.split(":"))
-    days = "*" if len(schedule.weekdays) == 7 else ",".join(
-        "0" if day == 7 else str(day) for day in schedule.weekdays
-    )
-    return f"{minute} {hour} * * {days}"
+def apply_workflow_schedule(
+    workflow,
+    *,
+    slots: list[ScheduleSlot] | None,
+    enabled: bool | None,
+    timezone: str | None = None,
+) -> None:
+    if timezone:
+        workflow.schedule_timezone = timezone
+    current = load_slots(workflow.schedule_slots) or slots_from_legacy(workflow.schedule_cron)
+    resolved = current if slots is None else slots
+    is_enabled = bool(resolved) if enabled is None else bool(enabled)
+    prepared = prepare_slots(resolved, workflow.schedule_timezone, enabled=is_enabled, previous=current)
+    workflow.schedule_slots = dump_slots(prepared)
+    workflow.schedule_cron = derived_cron(prepared, is_enabled)
+    workflow.next_run_at = earliest_next(prepared) if is_enabled else None
 
 
 class WorkflowService:
@@ -191,16 +205,20 @@ class WorkflowService:
         errors = validate_graph(data.graph)
         if errors:
             raise HTTPException(422, errors)
-        schedule_cron = schedule_to_cron(data.schedule) if data.schedule is not None else data.schedule_cron
         workflow = Workflow(
             owner_id=user.id,
             name=data.name,
             description=data.description,
             draft_graph=data.graph.model_dump(mode="json"),
-            schedule_cron=schedule_cron,
             schedule_timezone=data.schedule_timezone,
-            next_run_at=next_schedule(schedule_cron, data.schedule_timezone),
             estimated_run_cost=await PricingService(self.db).estimate_graph(data.graph),
+        )
+        slots, enabled = incoming_slots(data)
+        apply_workflow_schedule(
+            workflow,
+            slots=slots or [],
+            enabled=True if enabled is None and slots else enabled,
+            timezone=data.schedule_timezone,
         )
         self.db.add(workflow)
         await self.db.commit()
@@ -216,9 +234,10 @@ class WorkflowService:
     async def update(self, workflow_id: uuid.UUID, data: WorkflowUpdate, user: User) -> Workflow:
         """Сохраняет черновик (draft_graph). Опубликованная версия не меняется, пока не publish."""
         workflow = await self._owned(workflow_id, user)
-        values = data.model_dump(exclude_unset=True, exclude={"graph", "schedule"})
-        if "schedule" in data.model_fields_set:
-            values["schedule_cron"] = schedule_to_cron(data.schedule)
+        values = data.model_dump(
+            exclude_unset=True,
+            exclude={"graph", "schedule", "schedule_slots", "schedule_enabled", "schedule_cron"},
+        )
         if "graph" in data.model_fields_set and data.graph is not None:
             graph = data.graph
             errors = validate_graph(graph)
@@ -228,7 +247,14 @@ class WorkflowService:
             workflow.estimated_run_cost = await PricingService(self.db).estimate_graph(graph)
         for key, value in values.items():
             setattr(workflow, key, value)
-        workflow.next_run_at = next_schedule(workflow.schedule_cron, workflow.schedule_timezone)
+        slots, enabled = incoming_slots(data)
+        if slots is not None or enabled is not None or "schedule_timezone" in data.model_fields_set:
+            apply_workflow_schedule(
+                workflow,
+                slots=slots,
+                enabled=enabled,
+                timezone=data.schedule_timezone,
+            )
         await self.db.commit()
         return workflow
 

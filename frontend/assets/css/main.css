@@ -1006,6 +1006,31 @@ a { color: inherit; text-decoration: none; }
   gap: 8px;
   margin-left: auto;
 }
+.app-header-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #d9d4ff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  background: rgba(139, 124, 255, .16);
+}
+.app-header-balance:hover {
+  color: #efeaff;
+  background: rgba(139, 124, 255, .24);
+}
+.app-header-balance-unit {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: lowercase;
+  opacity: .7;
+}
 .editor-shell-main {
   display: flex;
   min-height: 0;
@@ -1149,6 +1174,73 @@ a { color: inherit; text-decoration: none; }
   border-color: rgba(139,124,255,.5);
   color: #d8d4ff;
   background: rgba(139,124,255,.18);
+}
+.schedule-slot-list {
+  display: grid;
+  gap: 8px;
+}
+.schedule-slot {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 8px 8px 8px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+}
+.schedule-slot-kind {
+  grid-column: 1;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(217,212,255,.62);
+}
+.schedule-slot-title {
+  grid-column: 1;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.schedule-slot-remove {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: rgba(255,255,255,.45);
+  background: rgba(255,255,255,.04);
+}
+.schedule-slot-remove:hover {
+  color: #ffb4b4;
+  background: rgba(255, 90, 90, .12);
+}
+.schedule-kind {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.04);
+}
+.schedule-kind-btn {
+  min-height: 30px;
+  border-radius: 9px;
+  color: rgba(255,255,255,.5);
+  font-size: 11px;
+  font-weight: 800;
+}
+.schedule-kind-btn.is-active {
+  color: #fff;
+  background: rgba(139,124,255,.22);
+  box-shadow: inset 0 0 0 1px rgba(139,124,255,.28);
+}
+.schedule-add {
+  margin-top: 2px;
 }
 .editor-canvas {
   position: relative;

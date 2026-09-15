@@ -171,11 +171,37 @@ class WorkflowSchedule(BaseModel):
         return self
 
 
+class WeeklyScheduleSlot(BaseModel):
+    id: str = Field(default="", max_length=40)
+    kind: Literal["weekly"] = "weekly"
+    time: str = Field(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    weekdays: list[Annotated[int, Field(ge=1, le=7)]] = Field(min_length=1)
+    next_at: datetime.datetime | None = None
+
+    @model_validator(mode="after")
+    def normalize_weekdays(self) -> Self:
+        self.weekdays = sorted(set(self.weekdays))
+        return self
+
+
+class IntervalScheduleSlot(BaseModel):
+    id: str = Field(default="", max_length=40)
+    kind: Literal["interval"] = "interval"
+    every: int = Field(ge=1, le=1440)
+    unit: Literal["minutes", "hours", "days"]
+    next_at: datetime.datetime | None = None
+
+
+ScheduleSlot = Annotated[WeeklyScheduleSlot | IntervalScheduleSlot, Field(discriminator="kind")]
+
+
 class WorkflowCreate(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     description: str | None = None
     graph: WorkflowGraph = Field(default_factory=lambda: WorkflowGraph(nodes=[]))
     schedule: WorkflowSchedule | None = None
+    schedule_slots: list[ScheduleSlot] | None = None
+    schedule_enabled: bool | None = None
     schedule_cron: str | None = None
     schedule_timezone: str = "UTC"
 
@@ -185,6 +211,8 @@ class WorkflowUpdate(BaseModel):
     description: str | None = None
     graph: WorkflowGraph | None = None
     schedule: WorkflowSchedule | None = None
+    schedule_slots: list[ScheduleSlot] | None = None
+    schedule_enabled: bool | None = None
     schedule_cron: str | None = None
     schedule_timezone: str | None = None
 
@@ -198,12 +226,18 @@ class WorkflowResponse(BaseModel):
     draft_graph: dict
     published_version_id: uuid.UUID | None
     schedule_cron: str | None
+    schedule_slots: list[dict] = Field(default_factory=list)
     schedule_timezone: str
     next_run_at: datetime.datetime | None
     estimated_run_cost: Decimal = Decimal("0")
     created_at: datetime.datetime
     updated_at: datetime.datetime
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("schedule_slots", mode="before")
+    @classmethod
+    def default_slots(cls, value: object) -> object:
+        return value or []
 
     @field_serializer("draft_graph")
     def dump_draft_graph(self, value: dict | None) -> dict:

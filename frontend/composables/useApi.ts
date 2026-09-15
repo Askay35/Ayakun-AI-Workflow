@@ -3,6 +3,7 @@ import type {
   User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
 } from '~/types/api'
 import { visibleLedgerEntries } from '~/utils/ledger'
+import type { ScheduleSlot } from '~/utils/schedule'
 
 let refreshRequest: Promise<string | null> | null = null
 
@@ -213,6 +214,8 @@ export const useApi = () => {
         graph: Workflow['draft_graph'],
         extras: {
           schedule?: { time: string; weekdays: number[] } | null
+          schedule_slots?: ScheduleSlot[]
+          schedule_enabled?: boolean
           schedule_cron?: string | null
           schedule_timezone?: string
         } = {}
@@ -249,6 +252,7 @@ export const useApi = () => {
     },
     billing: {
       plans: () => request<Plan[]>('/billing/plans'),
+      wallet: () => request<{ balance: number }>('/billing/wallet'),
       summary: async (): Promise<BillingSummary> => {
         const [wallet, ledger, usage] = await Promise.all([
           request<{ balance: number }>('/billing/wallet'),

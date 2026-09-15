@@ -5,6 +5,7 @@ import { useAuthAsyncData } from '~/composables/useAuthAsyncData'
 import type { NodeKind, SearchPeriod, Workflow, WorkflowNode } from '~/types/api'
 import { formatCredits } from '~/utils/credits'
 import { maxOutputTokensFromCredits, promptMaxCredits } from '~/utils/prompt-max-cost'
+import { slotsFromWorkflow, type ScheduleSlot } from '~/utils/schedule'
 import {
   NODE_META,
   DEFAULT_HTTP_REQUEST_JSON,
@@ -48,25 +49,10 @@ const nodes = ref<WorkflowNode[]>(structuredClone(toRaw(workflow.value.draft_gra
 })))
 const links = ref<GraphLink[]>(linksFromNodes(nodes.value))
 const edges = ref<Edge[]>(flowEdgesFromLinks(links.value))
-const scheduleEnabled = ref(Boolean(workflow.value.schedule_cron))
-const parseSchedule = (cron?: string | null) => {
-  const [minute = '0', hour = '9', , , rawDays = '*'] = (cron || '').split(/\s+/)
-  const weekdays = rawDays === '*'
-    ? [1, 2, 3, 4, 5, 6, 7]
-    : rawDays.split(',').map(Number).map(day => day === 0 ? 7 : day).filter(day => day >= 1 && day <= 7)
-  return {
-    time: `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`,
-    weekdays: weekdays.length ? weekdays : [1, 2, 3, 4, 5, 6, 7]
-  }
-}
-const initialSchedule = parseSchedule(workflow.value.schedule_cron)
-const scheduleTime = ref(initialSchedule.time)
-const scheduleDays = ref(initialSchedule.weekdays)
+const scheduleEnabled = ref(Boolean(workflow.value.schedule_cron || workflow.value.next_run_at))
+const scheduleSlots = ref<ScheduleSlot[]>(slotsFromWorkflow(workflow.value))
 const scheduleTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-const scheduleValid = computed(() => (
-  !scheduleEnabled.value
-  || (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(scheduleTime.value) && scheduleDays.value.length > 0)
-))
+const scheduleValid = computed(() => !scheduleEnabled.value || scheduleSlots.value.length > 0)
 const selectedId = ref<string>()
 const selectedEdgeId = ref<string>()
 const selected = computed(() => nodes.value.find(node => node.id === selectedId.value))
@@ -83,15 +69,6 @@ const {
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 
 const palette = (Object.keys(NODE_META) as NodeKind[]).map(type => ({ type, ...NODE_META[type] }))
-const weekdayOptions = [
-  { label: 'Пн', value: 1 },
-  { label: 'Вт', value: 2 },
-  { label: 'Ср', value: 3 },
-  { label: 'Чт', value: 4 },
-  { label: 'Пт', value: 5 },
-  { label: 'Сб', value: 6 },
-  { label: 'Вс', value: 7 }
-]
 const qualityModes = [
   { label: 'Быстрый', value: 'simple_text' },
   { label: 'Точный', value: 'complex_text' }
@@ -181,11 +158,6 @@ const defaultEdgeOptions = {
   interactionWidth: 28,
   animated: false
 }
-const toggleScheduleDay = (day: number) => {
-  scheduleDays.value = scheduleDays.value.includes(day)
-    ? scheduleDays.value.filter(value => value !== day)
-    : [...scheduleDays.value, day].sort((a, b) => a - b)
-}
 
 const graphForSave = () => ({ nodes: applyLinks(nodes.value, links.value) })
 
@@ -197,9 +169,8 @@ const save = async () => {
   saveState.value = 'saving'
   try {
     const saved = await api.workflows.save(id, graphForSave(), {
-      schedule: scheduleEnabled.value
-        ? { time: scheduleTime.value, weekdays: scheduleDays.value }
-        : null,
+      schedule_slots: scheduleSlots.value.map(({ next_at: _next, ...slot }) => slot),
+      schedule_enabled: scheduleEnabled.value,
       schedule_timezone: scheduleTimezone
     })
     workflow.value = saved
@@ -213,7 +184,7 @@ const save = async () => {
   }
 }
 const hydrated = ref(false)
-watch([nodes, links, scheduleEnabled, scheduleTime, scheduleDays], () => {
+watch([nodes, links, scheduleEnabled, scheduleSlots], () => {
   if (!hydrated.value) return
   saveState.value = 'dirty'
   clearTimeout(saveTimer)
@@ -412,35 +383,11 @@ const run = async () => {
             <span class="text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">{{ item.caption }}</span>
           </span>
         </button>
-        <div class="editor-schedule">
-          <div class="flex items-center justify-between gap-2">
-            <p class="mb-0 text-sm font-extrabold text-white">Автозапуск</p>
-            <USwitch v-model="scheduleEnabled" />
-          </div>
-          <p class="mb-0 text-[11px] leading-5 text-white/40">Цепочка стартует сама. Списание только за фактический запуск.</p>
-          <template v-if="scheduleEnabled">
-            <UFormField label="Время">
-              <UInput v-model="scheduleTime" type="time" class="w-full" />
-            </UFormField>
-            <div>
-              <p class="mb-2 text-[11px] font-bold text-white/60">Дни недели</p>
-              <div class="grid grid-cols-4 gap-1.5">
-                <button
-                  v-for="day in weekdayOptions"
-                  :key="day.value"
-                  type="button"
-                  class="schedule-day"
-                  :class="{ 'is-active': scheduleDays.includes(day.value) }"
-                  @click="toggleScheduleDay(day.value)"
-                >
-                  {{ day.label }}
-                </button>
-              </div>
-              <p v-if="!scheduleValid" class="mb-0 mt-2 text-[11px] text-red-300">Укажите время и выберите хотя бы один день</p>
-            </div>
-            <p class="mb-0 text-[10px] text-white/35">Часовой пояс: {{ scheduleTimezone }}</p>
-          </template>
-        </div>
+        <WorkflowSchedulePanel
+          v-model:enabled="scheduleEnabled"
+          v-model:slots="scheduleSlots"
+          :timezone="scheduleTimezone"
+        />
       </aside>
       <div class="editor-canvas" @dragover.prevent @drop="onDrop">
         <ClientOnly>
@@ -545,7 +492,7 @@ const run = async () => {
               <UFormField label="Максимальная стоимость запуска">
                 <UInput v-model="selectedMaxRunCredits" type="number" min="1" step="1" class="w-full" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">По умолчанию лимит ответа — 8000 токенов, пересчитанный в credits. Меньший лимит может обрезать длинный ответ. Списывается только фактический расход.</p>
+              <p class="text-xs leading-5 text-white/40">Меньший лимит может обрезать длинный ответ. Списывается только фактический расход.</p>
             </template>
             <template v-if="selected.type === 'http_request'">
               <UFormField label="Данные запроса">

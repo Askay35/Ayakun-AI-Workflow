@@ -45,6 +45,7 @@ class Workflow(Base):
     draft_graph: Mapped[dict] = mapped_column(JSONB, default=dict)
     published_version_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     schedule_cron: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    schedule_slots: Mapped[list] = mapped_column(JSONB, default=list)
     schedule_timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     next_run_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     estimated_run_cost: Mapped[Decimal] = mapped_column(Numeric(18, 6), default=0)

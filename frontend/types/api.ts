@@ -1,3 +1,5 @@
+import type { ScheduleSlot } from '~/utils/schedule'
+
 export type Id = string
 export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 export type NodeRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled'
@@ -63,6 +65,7 @@ export interface Workflow {
   updated_at: string
   version?: number
   schedule_cron?: string | null
+  schedule_slots?: ScheduleSlot[]
   schedule_timezone?: string
   next_run_at?: string | null
   estimated_run_cost?: number

@@ -92,7 +92,7 @@ const formatCost = (value?: number) => `${formatCredits(value)} credits`
         </div>
         <button type="button" class="block w-full cursor-pointer text-left" @click="openWorkflow(workflow.id)">
           <h2 class="mb-2 mt-5 text-xl font-extrabold">{{ workflow.name }}</h2>
-          <p class="mb-5 text-sm muted">{{ workflow.schedule_cron ? 'Запускается автоматически' : 'Запуск вручную' }}</p>
+          <p class="mb-5 text-sm muted">{{ workflow.next_run_at || workflow.schedule_cron ? 'Запускается автоматически' : 'Запуск вручную' }}</p>
           <div class="workflow-card-footer">
             <div class="flex items-center gap-2"><span class="status-dot" :class="{ online: workflow.status === 'published' }" /><span class="text-xs font-bold">{{ workflow.status === 'published' ? 'Активна' : 'Черновик' }}</span></div>
             <span class="text-xs muted">Изменена {{ new Date(workflow.updated_at).toLocaleDateString('ru') }}</span>

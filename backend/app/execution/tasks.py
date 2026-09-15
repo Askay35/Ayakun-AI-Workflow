@@ -34,7 +34,8 @@ from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode
 from services.billing import BillingService
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
 from services.pricing import PricingService, billable_credits, billed_credits, provider_cost_usd
-from services.workflow import next_schedule, topological_nodes
+from services.schedule import advance_due_slots, dump_slots, earliest_next, load_slots, slots_from_legacy
+from services.workflow import topological_nodes
 from core.logging import output_preview
 
 logger = logging.getLogger(__name__)
@@ -469,7 +470,10 @@ async def _poll_scheduled() -> list[str]:
                 db.add(run)
                 await db.flush()
                 run_ids.append(str(run.id))
-                workflow.next_run_at = next_schedule(workflow.schedule_cron, workflow.schedule_timezone)
+                slots = load_slots(workflow.schedule_slots) or slots_from_legacy(workflow.schedule_cron)
+                slots = advance_due_slots(slots, workflow.schedule_timezone, now)
+                workflow.schedule_slots = dump_slots(slots)
+                workflow.next_run_at = earliest_next(slots)
                 logger.info(
                     "Запланированный запуск поставлен в очередь",
                     extra={
