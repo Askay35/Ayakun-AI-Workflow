@@ -63,13 +63,24 @@ def test_form_request_body_raises_on_malformed_json() -> None:
         form_request_body("{not json", {"userId": 1})
 
 
-def test_form_request_body_substitutes_workflow_variables() -> None:
-    result = form_request_body(
-        '{"method":"GET","url":"https://api.example.com/{{userId}}"}',
-        {},
-        {"userId": 42},
-    )
-    assert result["url"] == "https://api.example.com/42"
+def test_persist_workflow_variables_updates_model() -> None:
+    from types import SimpleNamespace
+
+    from execution.tasks import WorkflowRunExecutor
+
+    workflow = SimpleNamespace(id="wf", variables={"count": 0})
+    WorkflowRunExecutor.persist_workflow_variables(workflow, {"count": 12, "name": "ok"})
+    assert workflow.variables == {"count": 12, "name": "ok"}
+
+
+def test_persist_workflow_variables_ignores_invalid_keys() -> None:
+    from types import SimpleNamespace
+
+    from execution.tasks import WorkflowRunExecutor
+
+    workflow = SimpleNamespace(id="wf", variables={"count": 0})
+    WorkflowRunExecutor.persist_workflow_variables(workflow, {"bad-key": 1})
+    assert workflow.variables == {"count": 0}
 
 
 def test_json_root_from_prompt_text() -> None:

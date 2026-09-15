@@ -30,7 +30,7 @@ from models.workflow import (
     WorkflowStatus,
     WorkflowVersion,
 )
-from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode
+from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode, normalize_workflow_variables
 from services.billing import BillingService
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
 from services.execution.errors import user_visible_error
@@ -38,6 +38,7 @@ from services.pricing import PricingService, billable_credits, billed_credits, p
 from services.schedule import advance_due_slots, dump_slots, earliest_next, load_slots, slots_from_legacy
 from services.workflow import topological_nodes
 from core.logging import output_preview
+from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
 
@@ -196,10 +197,10 @@ class WorkflowRunExecutor:
 
     async def execute(self) -> None:
         context = self.build_context()
-        if not context["variables"]:
-            workflow = await self.db.get(Workflow, self.run.workflow_id)
-            if workflow and workflow.variables:
-                context["variables"] = dict(workflow.variables)
+        workflow = await self.db.get(Workflow, self.run.workflow_id)
+        if workflow and isinstance(workflow.variables, dict) and workflow.variables:
+            # Актуальные значения на workflow перекрывают снимок на момент publish.
+            context["variables"] = {**(context.get("variables") or {}), **dict(workflow.variables)}
         async with httpx.AsyncClient() as client:
             registry = DefaultExecutors(
                 client,
@@ -224,6 +225,8 @@ class WorkflowRunExecutor:
                         )
                 self.run.output = context["nodes"]
                 self.run.status = RunStatus.succeeded
+                if workflow is not None:
+                    self.persist_workflow_variables(workflow, context.get("variables") or {})
                 logger.info(
                     "Запуск цепочки успешно завершён",
                     extra=self.log_fields(event="run.succeeded", credits=self.run.cost),
@@ -240,6 +243,21 @@ class WorkflowRunExecutor:
             await release_unused_reserve(
                 self.db, self.billing, self.user, self.run, self.reservation_request_id
             )
+
+    @staticmethod
+    def persist_workflow_variables(workflow: Workflow, variables: dict) -> None:
+        """Сохраняет значения после HTTP/ИИ-присваиваний в workflow.variables."""
+        try:
+            cleaned = normalize_workflow_variables(variables)
+        except ValueError:
+            logger.warning(
+                "Не удалось сохранить переменные запуска",
+                extra={"event": "variables.persist_failed", "workflow_id": str(workflow.id)},
+            )
+            return
+        workflow.variables = cleaned
+        if hasattr(workflow, "_sa_instance_state"):
+            flag_modified(workflow, "variables")
 
     def build_context(self) -> dict:
         run_input = dict(self.run.input)
