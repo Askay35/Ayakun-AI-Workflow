@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     allowed_llm_models: str = "deepseek-flash,deepseek-v4-flash,deepseek-v4-pro,qwen-turbo,qwen-plus"
     provider_timeout_seconds: float = 60
     provider_max_retries: int = 3
-    llm_timeout_seconds: float = 30
+    llm_timeout_seconds: float = 180
     llm_max_retries: int = 3
     llm_max_output_tokens: int = 8192
     initial_token_balance: Decimal = Decimal("100")

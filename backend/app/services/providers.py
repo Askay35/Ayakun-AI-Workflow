@@ -360,7 +360,7 @@ class TelegramNotificationProvider:
             raise HTTPException(503, "Telegram bot не настроен")
         response = await self.client.post(
             f"https://api.telegram.org/bot{self.config.telegram_bot_token}/sendMessage",
-            json={"chat_id": destination, "text": text},
+            json={"chat_id": destination, "text": text, "parse_mode": "MarkdownV2"},
             timeout=self.config.provider_timeout_seconds,
         )
         response.raise_for_status()
