@@ -18,10 +18,15 @@ let poll: ReturnType<typeof setInterval> | undefined
 const done = (value?: WorkflowRun | null) => ['succeeded', 'failed', 'cancelled'].includes(value?.status || '')
 
 const steps = computed(() => run.value?.node_runs || [])
-const completedCount = computed(() => steps.value.filter(step => statusKey(step.status) === 'succeeded').length)
+const isStepDone = (step: NodeRun) => {
+  const key = statusKey(step.status)
+  return key === 'succeeded' || key === 'cancelled' || key === 'failed'
+}
+const completedCount = computed(() => steps.value.filter(isStepDone).length)
 const currentStep = computed(() => steps.value.find(step => statusKey(step.status) === 'running'))
 const progress = computed(() => {
   if (!steps.value.length) return 0
+  if (statusKey(run.value?.status) === 'succeeded') return 100
   return Math.round((completedCount.value / steps.value.length) * 100)
 })
 const stepMeta = (step: NodeRun) => NODE_META[step.node_type] || NODE_META.prompt
@@ -39,12 +44,20 @@ const stepDuration = (step: NodeRun) => {
   const seconds = (new Date(step.finished_at).getTime() - new Date(step.started_at).getTime()) / 1000
   return seconds < 1 ? '< 1 с' : `${seconds.toFixed(seconds < 10 ? 1 : 0)} с`
 }
-const formatOutput = (output?: NodeRun['output']) => {
+const formatOutput = (step: NodeRun) => {
+  const output = step.output
   if (!output) return ''
   if (Array.isArray(output)) return ''
+  if (step.node_type === 'if_else') {
+    const condition = typeof output.condition === 'string' ? output.condition : ''
+    const branch = typeof output.branch === 'string' ? output.branch : ''
+    if (condition || branch) {
+      return [condition, branch].filter(Boolean).join('\n')
+    }
+  }
   return output.text || output.answer || JSON.stringify(output, null, 2)
 }
-const stepHasBody = (step: NodeRun) => Boolean(formatOutput(step.output) || step.error || step.citations?.length)
+const stepHasBody = (step: NodeRun) => Boolean(formatOutput(step) || step.error || step.citations?.length)
 const expanded = ref<Record<string, boolean>>({})
 const isStepExpanded = (step: NodeRun) => {
   if (!stepHasBody(step)) return false
@@ -171,7 +184,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
             </div>
           </button>
           <div v-if="isStepExpanded(step)" class="mt-4 space-y-4">
-            <pre v-if="formatOutput(step.output)" class="overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step.output) }}</pre>
+            <pre v-if="formatOutput(step)" class="overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step) }}</pre>
             <p v-if="step.error" class="rounded-xl bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
             <div v-if="step.citations?.length" class="border-t border-default pt-3">
               <p class="text-xs font-semibold uppercase muted">Источники</p>

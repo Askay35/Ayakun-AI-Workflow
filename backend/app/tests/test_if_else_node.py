@@ -93,13 +93,18 @@ async def test_if_else_executor_passes_input_through() -> None:
         "taken_branches": {},
     }
     result = await executors.if_else(node, context)
-    assert result == parent_output
+    assert result["condition"] == '{{$json.score}} >= 0.8'
+    assert result["result"] is True
+    assert result["branch"] == "TRUE"
+    assert result["passthrough"] == parent_output
     assert context["taken_branches"]["iff"] == "true"
 
     false_output = {"text": json.dumps({**payload, "score": 0.5}), "usage": {"output_tokens": 4}}
     context["nodes"]["prompt"]["output"] = false_output
     result = await executors.if_else(node, context)
-    assert result == false_output
+    assert result["result"] is False
+    assert result["branch"] == "FALSE"
+    assert result["passthrough"] == false_output
     assert context["taken_branches"]["iff"] == "false"
 
 
@@ -124,8 +129,9 @@ async def test_if_else_passes_http_payload_unchanged() -> None:
         "taken_branches": {},
     }
     result = await executors.if_else(node, context)
-    assert result == parent_output
-    assert result is not parent_output
+    assert result["branch"] == "TRUE"
+    assert result["passthrough"] == parent_output
+    assert result["passthrough"] is not parent_output
     assert context["taken_branches"]["iff"] == "true"
 
 

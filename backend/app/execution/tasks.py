@@ -407,10 +407,19 @@ class WorkflowRunExecutor:
         context: dict,
         output: dict | list,
     ) -> None:
-        node_run.output = output
+        display_output = output
+        context_output = output
+        if (
+            node.type == NodeType.IF_ELSE
+            and isinstance(output, dict)
+            and "passthrough" in output
+        ):
+            context_output = output.get("passthrough")
+            display_output = {key: value for key, value in output.items() if key != "passthrough"}
+        node_run.output = display_output
         node_run.status = NodeRunStatus.succeeded
         node_run.finished_at = datetime.datetime.now(datetime.UTC)
-        context["nodes"][node.id] = {"type": node_type_value(node.type), "output": output}
+        context["nodes"][node.id] = {"type": node_type_value(node.type), "output": context_output}
         remaining = await self.billing.reservation_remaining(self.reservation_request_id)
         cost, units, details = await node_cost(self.pricing, node, output)
         if cost > 0:
@@ -430,7 +439,7 @@ class WorkflowRunExecutor:
             node_id=node.id,
             node_type=node_type_value(node.type),
             credits=cost,
-            output=output_preview(output),
+            output=output_preview(display_output),
             **{key: details[key] for key in (
                 "provider",
                 "model",
