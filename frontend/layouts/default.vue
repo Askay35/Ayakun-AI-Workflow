@@ -9,8 +9,8 @@ useAppTitle()
   <div class="public-wrap">
     <header class="public-header">
       <div class="shell public-header-inner">
-        <NuxtLink to="/" class="brand public-logo">
-          <span class="logo-mark">Y</span>
+        <NuxtLink to="/dashboard" class="brand app-logo">
+          <img src="~/assets/images/logo.png" alt="" class="app-logo-mark" width="32" height="32" />
           Ayakun
         </NuxtLink>
         <nav class="public-nav">

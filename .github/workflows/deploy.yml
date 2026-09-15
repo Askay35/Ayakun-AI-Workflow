@@ -37,7 +37,6 @@ jobs:
           push: true
           tags: |
             ${{ env.FRONTEND_IMAGE }}
-            ghcr.io/${{ env.OWNER_NAME }}/${{ env.REPO_NAME }}-frontend:${{ github.sha }}
       - name: Build and Push Backend
         uses: docker/build-push-action@v6
         with:
@@ -46,7 +45,6 @@ jobs:
           push: true
           tags: |
             ${{ env.BACKEND_IMAGE }}
-            ghcr.io/${{ env.OWNER_NAME }}/${{ env.REPO_NAME }}-backend:${{ github.sha }}
 
   deploy:
     runs-on: ubuntu-latest
