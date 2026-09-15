@@ -187,6 +187,9 @@ export const useApi = () => {
     return {
       ...workflow,
       variables: workflow.variables && typeof workflow.variables === 'object' ? workflow.variables : {},
+      solo_run_blocked_node_types: Array.isArray(workflow.solo_run_blocked_node_types)
+        ? workflow.solo_run_blocked_node_types
+        : ['if_else'],
       estimated_run_cost: Number(workflow.estimated_run_cost || 0),
       draft_graph: { nodes }
     }
@@ -240,6 +243,8 @@ export const useApi = () => {
       validate: (id: string) => request<ValidationResult>(`/workflows/${id}/validate`, { method: 'POST' }),
       publish: (id: string) => request<Workflow>(`/workflows/${id}/publish`, { method: 'POST' }).then(normalizeWorkflow),
       run: (id: string) => request<WorkflowRun>(`/workflows/${id}/runs`, { method: 'POST', body: { input: {} } }),
+      runNode: (id: string, nodeId: string) =>
+        request<WorkflowRun>(`/workflows/${id}/nodes/${nodeId}/runs`, { method: 'POST', body: { input: {} } }),
       delete: (id: string) => request<void>(`/workflows/${id}`, { method: 'DELETE' })
     },
     runs: {

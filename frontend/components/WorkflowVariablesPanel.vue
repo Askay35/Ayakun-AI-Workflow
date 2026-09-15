@@ -34,7 +34,7 @@ const variableNameExample = '{{name}}'
 <template>
   <div class="editor-vars">
     <p class="mb-1 text-sm font-extrabold text-white">Переменные</p>
-    <p class="mb-3 text-[11px] leading-5 text-white/40">Доступны в звеньях как <code>{{ variableNameExample }}</code>. Значение можно перезаписать в HTTP или ИИ.</p>
+    <p class="mb-3 text-[11px] leading-5 text-white/40">Доступны в звеньях как <code>{{ variableNameExample }}</code>. Значение можно перезаписать.</p>
     <div v-if="items.length" class="editor-var-list">
       <div v-for="(item, index) in items" :key="index" class="editor-var-row">
         <UInput

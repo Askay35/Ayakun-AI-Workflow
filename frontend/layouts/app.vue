@@ -9,8 +9,7 @@ useAppTitle()
 <template>
   <div class="app-shell">
     <aside class="app-sidebar">
-      <NuxtLink to="/dashboard" class="brand app-logo">
-        <img src="~/assets/images/logo.png" alt="" class="app-logo-mark" width="32" height="32" />
+      <NuxtLink to="/dashboard" class="brand app-logo mb-7 mx-2.5">
         Ayakun
       </NuxtLink>
       <nav class="app-nav">

@@ -368,6 +368,32 @@ const run = async () => {
   const result = await api.workflows.run(id)
   await navigateTo(`/runs/${result.id}`)
 }
+const soloRunBlocked = computed(() => new Set(workflow.value?.solo_run_blocked_node_types || ['if_else']))
+const canSoloRunSelected = computed(() => {
+  if (!selected.value) return false
+  return !soloRunBlocked.value.has(selected.value.type)
+})
+const nodeRunLoading = ref(false)
+const runSelectedNode = async () => {
+  if (!selected.value || !canSoloRunSelected.value) return
+  if (!(await save())) {
+    toast.add({ title: 'Проверьте настройки автозапуска', color: 'warning' })
+    return
+  }
+  nodeRunLoading.value = true
+  try {
+    const result = await api.workflows.runNode(id, selected.value.id)
+    await navigateTo(`/runs/${result.id}`)
+  } catch (error) {
+    toast.add({
+      title: 'Не удалось запустить узел',
+      description: apiErrorMessage(error),
+      color: 'error'
+    })
+  } finally {
+    nodeRunLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -486,7 +512,17 @@ const run = async () => {
               <p class="editor-kicker">Узел</p>
               <h2 class="mb-0 text-lg font-extrabold text-white">{{ NODE_META[selected.type].label }}</h2>
             </div>
-            <UButton icon="i-lucide-trash-2" color="error" variant="ghost" @click="deleteSelected" />
+            <div class="flex items-center gap-1">
+              <UButton
+                v-if="canSoloRunSelected"
+                icon="i-lucide-play"
+                label="Запустить"
+                size="sm"
+                :loading="nodeRunLoading"
+                @click="runSelectedNode"
+              />
+              <UButton icon="i-lucide-trash-2" color="error" variant="ghost" @click="deleteSelected" />
+            </div>
           </div>
           <div class="mt-5 space-y-4">
             <UFormField label="Название">

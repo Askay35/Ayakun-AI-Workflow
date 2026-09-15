@@ -95,7 +95,6 @@ class SMTPEmailProvider:
                     smtp.login(self.config.smtp_username, self.config.smtp_password or "")
                 smtp.send_message(message)
 
-        # smtplib синхронный — уводим в thread, чтобы не блокировать event loop.
         await asyncio.to_thread(deliver)
 
 def llm_instructions(instructions: str | None = None, output_format: str | None = None) -> str | None:

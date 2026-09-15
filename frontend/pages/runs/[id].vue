@@ -12,6 +12,7 @@ const config = useRuntimeConfig()
 const id = String(route.params.id)
 const { data: run, refresh } = await useAuthAsyncData(`run-${id}`, () => api.runs.get(id))
 useAppTitle(computed(() => run.value?.workflow_name || 'Запуск'))
+const isSoloRun = computed(() => Boolean(run.value?.input?._solo))
 let stream: AbortController | undefined
 let poll: ReturnType<typeof setInterval> | undefined
 const done = (value?: WorkflowRun | null) => ['succeeded', 'failed', 'cancelled'].includes(value?.status || '')
@@ -102,7 +103,10 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
         <UButton to="/runs" label="Назад к истории" icon="i-lucide-arrow-left" color="neutral" variant="ghost" class="mb-3 px-2" />
         <p class="eyebrow">Результат выполнения</p>
         <h1 class="page-title">{{ run?.workflow_name || 'Запуск цепочки' }}</h1>
-        <p class="text-sm muted">ID {{ id }}</p>
+        <p class="text-sm muted">
+          ID {{ id }}
+          <span v-if="isSoloRun"> · один узел</span>
+        </p>
       </div>
       <div class="flex items-center gap-2">
         <UBadge :color="statusColor(run?.status)" size="lg" variant="soft">{{ statusLabel(run?.status) }}</UBadge>

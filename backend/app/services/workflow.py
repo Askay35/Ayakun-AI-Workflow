@@ -187,6 +187,36 @@ def apply_workflow_schedule(
     workflow.next_run_at = earliest_next(prepared) if is_enabled else None
 
 
+def solo_graph_for_node(node: WorkflowNode) -> WorkflowGraph:
+    """Копия узла без родителей/детей — для одиночного запуска из черновика."""
+    payload = node.model_dump(mode="json")
+    payload["parents"] = []
+    payload["children"] = []
+    if payload.get("type") == NodeType.IF_ELSE.value:
+        payload["true_children"] = []
+        payload["false_children"] = []
+    return WorkflowGraph.model_validate({"nodes": [payload]})
+
+
+def validate_solo_node(node: WorkflowNode) -> list[str]:
+    errors: list[str] = []
+    blocked = settings.solo_run_blocked_types()
+    node_type = node.type.value if isinstance(node.type, NodeType) else str(node.type)
+    if node_type in blocked:
+        errors.append(f"Узел типа {node_type} нельзя запускать отдельно")
+        return errors
+    if node.type == NodeType.WEB_SEARCH and not node.query.strip():
+        errors.append("Укажите поисковый запрос")
+    elif node.type == NodeType.PROMPT and not node.prompt.strip():
+        errors.append("Укажите промпт")
+    elif node.type == NodeType.HTTP_REQUEST:
+        if not node.request_json.strip():
+            errors.append("Укажите данные запроса")
+        else:
+            _validate_request_json(node.id, node.request_json, errors)
+    return errors
+
+
 class WorkflowService:
     def __init__(self, db: AsyncSession, billing: BillingService | None = None):
         self.db = db
@@ -335,6 +365,86 @@ class WorkflowService:
                 "run_id": str(run.id),
                 "workflow_id": str(workflow.id),
                 "owner_id": user.id,
+            },
+        )
+        return run
+
+    async def run_node(
+        self,
+        workflow_id: uuid.UUID,
+        node_id: str,
+        user: User,
+        input_data: dict | None = None,
+    ) -> WorkflowRun:
+        """Запускает один узел из текущего черновика, без публикации всей цепочки."""
+        workflow = await self._owned(workflow_id, user)
+        graph = WorkflowGraph.model_validate(workflow.draft_graph or {"nodes": []})
+        graph.variables = dict(workflow.variables or {})
+        node = next((item for item in graph.nodes if item.id == node_id), None)
+        if node is None:
+            raise HTTPException(404, "Узел не найден")
+        errors = validate_solo_node(node)
+        if node.type == NodeType.TELEGRAM_SEND and node.chat_id is None:
+            has_telegram = await self.db.scalar(
+                select(AuthIdentity.id).where(
+                    AuthIdentity.user_id == user.id,
+                    AuthIdentity.provider == IdentityProvider.telegram,
+                )
+            )
+            if not has_telegram:
+                errors.append("Для telegram_send необходимо привязать Telegram или указать chat_id")
+        if errors:
+            raise HTTPException(422, errors)
+        solo_graph = solo_graph_for_node(node)
+        solo_graph.variables = dict(workflow.variables or {})
+        if self.billing:
+            wallet = await self.billing.ensure_initial_credit(user)
+            estimate = await PricingService(self.db).estimate_graph(solo_graph)
+            available = wallet.balance - wallet.reserved
+            if available < estimate:
+                raise HTTPException(402, "Недостаточно credits для запуска")
+        else:
+            estimate = await PricingService(self.db).estimate_graph(solo_graph)
+        number = (await self.db.scalar(select(func.max(WorkflowVersion.version)).where(
+            WorkflowVersion.workflow_id == workflow.id
+        )) or 0) + 1
+        version = WorkflowVersion(
+            workflow_id=workflow.id,
+            version=number,
+            graph_snapshot=solo_graph.model_dump(mode="json"),
+        )
+        self.db.add(version)
+        await self.db.flush()
+        payload = dict(input_data or {})
+        payload["_solo"] = True
+        payload["_solo_node_id"] = node.id
+        payload["_solo_node_type"] = node.type.value
+        run = WorkflowRun(
+            id=uuid.uuid4(),
+            workflow_id=workflow.id,
+            workflow_version_id=version.id,
+            owner_id=user.id,
+            input=payload,
+        )
+        run.workflow = workflow
+        self.db.add(run)
+        await self.db.flush()
+        if self.billing:
+            await self.billing.reserve_run(user, run.id, f"run:{run.id}", amount=estimate)
+        else:
+            await self.db.commit()
+        from execution.tasks import execute_workflow
+        execute_workflow.delay(str(run.id))
+        logger.info(
+            "Одиночный запуск узла поставлен в очередь",
+            extra={
+                "event": "run.queued",
+                "run_id": str(run.id),
+                "workflow_id": str(workflow.id),
+                "owner_id": user.id,
+                "node_id": node.id,
+                "node_type": node.type.value,
+                "solo": True,
             },
         )
         return run

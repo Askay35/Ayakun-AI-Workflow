@@ -283,9 +283,17 @@ class WorkflowResponse(BaseModel):
     schedule_timezone: str
     next_run_at: datetime.datetime | None
     estimated_run_cost: Decimal = Decimal("0")
+    solo_run_blocked_node_types: list[str] = Field(default_factory=list)
     created_at: datetime.datetime
     updated_at: datetime.datetime
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def fill_solo_run_policy(self) -> Self:
+        from core.config import settings
+
+        self.solo_run_blocked_node_types = sorted(settings.solo_run_blocked_types())
+        return self
 
     @field_validator("schedule_slots", mode="before")
     @classmethod
@@ -298,6 +306,10 @@ class WorkflowResponse(BaseModel):
 
 
 class RunCreate(BaseModel):
+    input: dict = Field(default_factory=dict)
+
+
+class SoloNodeRunCreate(BaseModel):
     input: dict = Field(default_factory=dict)
 
 

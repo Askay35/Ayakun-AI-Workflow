@@ -13,6 +13,7 @@ from schemas.workflow import (
     RunCreate,
     RunResponse,
     RunStepResponse,
+    SoloNodeRunCreate,
     WorkflowCreate,
     WorkflowResponse,
     WorkflowUpdate,
@@ -70,6 +71,21 @@ async def run(
     workflow_id: uuid.UUID, data: RunCreate, user: CurrentUser, service: WorkflowService = Depends(get_workflow_service)
 ):
     return ApiResponse(success=True, data=await service.run(workflow_id, user, data.input))
+
+
+@router.post(
+    "/{workflow_id}/nodes/{node_id}/runs",
+    response_model=ApiResponse[RunResponse],
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def run_node(
+    workflow_id: uuid.UUID,
+    node_id: str,
+    user: CurrentUser,
+    data: SoloNodeRunCreate = SoloNodeRunCreate(),
+    service: WorkflowService = Depends(get_workflow_service),
+):
+    return ApiResponse(success=True, data=await service.run_node(workflow_id, node_id, user, data.input))
 
 
 @router.get("/runs/{run_id}", response_model=ApiResponse[RunResponse])

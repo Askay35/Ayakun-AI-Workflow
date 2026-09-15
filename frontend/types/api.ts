@@ -71,6 +71,7 @@ export interface Workflow {
   next_run_at?: string | null
   estimated_run_cost?: number
   variables?: Record<string, string | number | boolean | null>
+  solo_run_blocked_node_types?: string[]
   draft_graph: { nodes: WorkflowNode[] }
 }
 
@@ -97,6 +98,7 @@ export interface WorkflowRun {
   workflow_id: Id
   workflow_name?: string
   status: RunStatus
+  input?: Record<string, any>
   created_at: string
   started_at?: string | null
   finished_at?: string | null

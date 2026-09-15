@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     initial_token_balance: Decimal = Decimal("100")
     default_run_cap_credits: Decimal = Decimal("100")
     max_workflows_count: int = 300
+    # Типы узлов, которые нельзя запускать отдельно от цепочки (через запятую).
+    solo_run_blocked_node_types: str = "if_else"
    
 
     yookassa_account_id: str | None = None
@@ -122,6 +124,13 @@ class Settings(BaseSettings):
         if key not in by_provider:
             raise ValueError(f"Неизвестный LLM provider: {key}")
         return by_provider[key]
+
+    def solo_run_blocked_types(self) -> frozenset[str]:
+        return frozenset(
+            item.strip()
+            for item in self.solo_run_blocked_node_types.split(",")
+            if item.strip()
+        )
 
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
