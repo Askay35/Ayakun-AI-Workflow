@@ -89,55 +89,55 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
     if strict:
         for node in graph.nodes:
             if node.type == NodeType.WEB_SEARCH and not node.query.strip():
-                errors.append(f"Узел {node.id}: укажите поисковый запрос")
+                errors.append(f"Узел {node.label}: укажите поисковый запрос")
             elif node.type == NodeType.PROMPT and not node.prompt.strip():
-                errors.append(f"Узел {node.id}: укажите промпт")
+                errors.append(f"Узел {node.label}: укажите промпт")
             elif node.type == NodeType.HTTP_REQUEST:
                 if not node.request_json.strip():
-                    errors.append(f"Узел {node.id}: укажите данные запроса")
+                    errors.append(f"Узел {node.label}: укажите данные запроса")
                 if len(node.parents) > 1:
-                    errors.append(f"Узел {node.id}: HTTP Request может иметь только одну входящую связь")
+                    errors.append(f"Узел {node.label}: HTTP Request может иметь только одну входящую связь")
                 elif len(node.parents) == 1 and node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
-                    errors.append(f"Узел {node.id}: родитель HTTP Request должен быть узлом с выводом")
+                    errors.append(f"Узел {node.label}: родитель HTTP Request должен быть узлом с выводом")
             elif node.type == NodeType.IF_ELSE:
                 if not node.condition.strip():
-                    errors.append(f"Узел {node.id}: укажите условие IF ELSE")
+                    errors.append(f"Узел {node.label}: укажите условие IF ELSE")
                 if len(node.parents) != 1:
-                    errors.append(f"Узел {node.id}: IF ELSE должен иметь ровно одну входящую связь")
+                    errors.append(f"Узел {node.label}: IF ELSE должен иметь ровно одну входящую связь")
                 elif node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
-                    errors.append(f"Узел {node.id}: родитель IF ELSE должен быть узлом с выводом")
+                    errors.append(f"Узел {node.label}: родитель IF ELSE должен быть узлом с выводом")
                 if not node.true_children:
-                    errors.append(f"Узел {node.id}: подключите ветку TRUE")
+                    errors.append(f"Узел {node.label}: подключите ветку TRUE")
                 if not node.false_children:
-                    errors.append(f"Узел {node.id}: подключите ветку FALSE")
+                    errors.append(f"Узел {node.label}: подключите ветку FALSE")
                 overlap = set(node.true_children) & set(node.false_children)
                 if overlap:
-                    errors.append(f"Узел {node.id}: TRUE и FALSE не могут вести в один узел")
+                    errors.append(f"Узел {node.label}: TRUE и FALSE не могут вести в один узел")
     for node in graph.nodes:
         for parent_id in node.parents:
             if parent_id not in known:
-                errors.append(f"Узел {node.id}: неизвестный родитель {parent_id}")
+                errors.append(f"Узел {node.label}: неизвестный родитель {parent_id}")
             elif parent_id == node.id:
-                errors.append(f"Узел {node.id}: не может ссылаться на себя")
+                errors.append(f"Узел {node.label}: не может ссылаться на себя")
         for child_id in node.children:
             if child_id not in known:
-                errors.append(f"Узел {node.id}: неизвестный потомок {child_id}")
+                errors.append(f"Узел {node.label}: неизвестный потомок {child_id}")
         indegree[node.id] = len(node.parents)
         if node.type == NodeType.HTTP_REQUEST:
             if node.request_json.strip():
                 _validate_request_json(node.id, node.request_json, errors)
             if not strict and len(node.parents) > 1:
-                errors.append(f"Узел {node.id}: HTTP Request может иметь только одну входящую связь")
+                errors.append(f"Узел {node.label}: HTTP Request может иметь только одну входящую связь")
         if node.type == NodeType.IF_ELSE:
             if not strict and len(node.parents) > 1:
-                errors.append(f"Узел {node.id}: IF ELSE может иметь только одну входящую связь")
+                errors.append(f"Узел {node.label}: IF ELSE может иметь только одну входящую связь")
         if node.type == NodeType.TELEGRAM_SEND:
             if len(node.parents) > 1:
-                errors.append(f"Узел {node.id}: Telegram может иметь только одну входящую связь")
+                errors.append(f"Узел {node.label}: Telegram может иметь только одну входящую связь")
             elif len(node.parents) == 1:
                 parent = by_id.get(node.parents[0])
                 if parent is not None and parent.type not in NodeType.with_output():
-                    errors.append(f"Узел {node.id}: родитель Telegram должен быть узлом с текстовым выводом")
+                    errors.append(f"Узел {node.label}: родитель Telegram должен быть узлом с текстовым выводом")
     queue = [node_id for node_id, degree in indegree.items() if degree == 0]
     if strict and ids and len(queue) != 1:
         errors.append("Опубликованный граф должен иметь ровно один стартовый узел")
