@@ -8,5 +8,6 @@ export const LEGAL = {
   phoneDisplay: '+7 915 397-58-65',
   email: 'aslxnvtknski@gmail.com',
   address: '363201, Республика Северная Осетия - Алания, Алагирский р-н, с. Хаталдон, ул. Кцоева, д. 84',
-  offerDate: '13 сентября 2026 г.'
+  offerDate: '13 сентября 2026 г.',
+  telegramChannel: 'https://t.me/ayakun_ai'
 }

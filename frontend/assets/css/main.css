@@ -177,6 +177,27 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   gap: 6px;
 }
+.social-icon-link {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(18, 19, 26, .08);
+  border-radius: 12px;
+  color: #229ed9;
+  background: rgba(34, 158, 217, .08);
+  transition: background .2s ease, border-color .2s ease, transform .2s ease, color .2s ease;
+}
+.social-icon-link:hover {
+  border-color: rgba(34, 158, 217, .35);
+  color: #1b8ec4;
+  background: rgba(34, 158, 217, .14);
+  transform: translateY(-1px);
+}
+.social-icon-link.footer-social {
+  margin-top: 14px;
+}
 .nav-link {
   padding: 10px 14px;
   border-radius: 11px;

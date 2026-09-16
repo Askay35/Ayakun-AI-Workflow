@@ -18,6 +18,16 @@ useAppTitle()
           <NuxtLink to="/#examples" class="nav-link nav-hide">Примеры</NuxtLink>
           <NuxtLink to="/#how" class="nav-link nav-hide">Как работает</NuxtLink>
           <NuxtLink to="/pricing" class="nav-link nav-hide">Тарифы</NuxtLink>
+          <a
+            :href="LEGAL.telegramChannel"
+            class="social-icon-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Telegram-канал Ayakun"
+            title="Telegram-канал"
+          >
+            <UIcon name="i-simple-icons-telegram" class="size-5" />
+          </a>
           <NuxtLink
             :to="auth.user.value ? '/dashboard' : '/login'"
             class="site-button secondary login-link"
@@ -38,6 +48,16 @@ useAppTitle()
           <p class="brand public-footer-logo">Ayakun</p>
           <p class="mb-0 text-sm leading-6 muted">{{ LEGAL.entity }}</p>
           <p class="mb-0 mt-2 text-sm muted">ИНН {{ LEGAL.inn }} · ОГРНИП {{ LEGAL.ogrnip }}</p>
+          <a
+            :href="LEGAL.telegramChannel"
+            class="social-icon-link footer-social"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Telegram-канал Ayakun"
+            title="Telegram-канал"
+          >
+            <UIcon name="i-simple-icons-telegram" class="size-5" />
+          </a>
         </div>
         <nav class="public-footer-links">
           <NuxtLink to="/delivery">Как получить услугу</NuxtLink>

@@ -89,7 +89,7 @@ const googleAuth = async () => {
             Google
           </button>
           <a
-            href="https://t.me/aiyakun_bot?start=logincode"
+            href="https://t.me/ayakun_bot?start=logincode"
             target="_blank"
             rel="noopener noreferrer"
             class="auth-provider telegram"
@@ -151,7 +151,7 @@ const googleAuth = async () => {
           </button>
           <div class="mt-4 flex items-center justify-between">
             <button class="text-button" type="button" @click="authStep = 'form'">Другой способ входа</button>
-            <a href="https://t.me/aiyakun_bot?start=logincode" target="_blank" rel="noopener noreferrer" class="text-button">
+            <a href="https://t.me/ayakun_bot?start=logincode" target="_blank" rel="noopener noreferrer" class="text-button">
               Получить новый код
             </a>
           </div>
