@@ -15,6 +15,8 @@ const linked = (provider: string) => auth.user.value?.identities?.some(item => i
 const showProfile = () => { tab.value = 'profile' }
 const showIntegrations = () => { tab.value = 'integrations' }
 const saveProfile = () => { toast.add({ title: 'Профиль сохранён', color: 'success' }) }
+const openTelegramStep = () => { telegramStep.value = true }
+const closeTelegramStep = () => { telegramStep.value = false }
 
 const startGoogle = async (purpose: 'login' | 'link') => {
   linking.value = true
@@ -70,7 +72,7 @@ const linkTelegram = async () => {
             </div>
           </div>
           <UBadge v-if="linked('telegram')" label="Подключён" color="success" variant="soft" />
-          <UButton v-else label="Подключить" variant="outline" @click="telegramStep = true" />
+          <UButton v-else label="Подключить" variant="outline" @click="openTelegramStep" />
         </div>
         <div v-if="telegramStep && !linked('telegram')" class="mt-4 space-y-3 border-t border-[#ece9ff] pt-4">
           <p class="mb-0 text-sm muted">Откройте бота, нажмите «Старт» и вставьте код сюда — Telegram привяжется к этому аккаунту.</p>
@@ -89,7 +91,7 @@ const linkTelegram = async () => {
           />
           <div class="flex gap-2">
             <UButton label="Привязать" :loading="linking" :disabled="!telegramCode.trim()" @click="linkTelegram" />
-            <UButton label="Отмена" variant="ghost" color="neutral" @click="telegramStep = false" />
+            <UButton label="Отмена" variant="ghost" color="neutral" @click="closeTelegramStep" />
           </div>
         </div>
       </div>
