@@ -1131,7 +1131,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: none !important;
   border: 1px solid #2e3043 !important;
 }
-.workflow-editor div[role="listbox"] {
+.workflow-editor .bg-default.max-h-60 {
   background: #21222a !important;
   color: #fff !important;
   box-shadow: none !important;
