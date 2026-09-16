@@ -16,6 +16,7 @@ import helper
 from core.config import settings
 from models.user import AuthIdentity, IdentityProvider, RefreshToken, User
 from schemas.auth import TokenPair
+from schemas.user import UserResponse
 from services.google_oauth import gmail_scope_string, save_gmail_grant, user_response
 from services.providers import EmailProvider
 
@@ -205,14 +206,50 @@ class AuthService:
         return user
 
     async def telegramLoginByCode(self, code: str) -> TokenPair:
-        key = f"telegram_login_code:{helper.hash_token(code.strip().upper())}"
-        chat_id = await self.redis.getdel(key)
-        if not chat_id:
-            raise HTTPException(401, "Неверный код")
-        user = await self.db.scalar(select(User).where(User.chat_id == int(chat_id)))
+        chat_id, name = await self._consume_telegram_code(code)
+        user = await self.db.scalar(select(User).where(User.chat_id == chat_id))
         if not user:
-            raise HTTPException(401, "Пользователь не найден")
+            user = await self.telegramRegister(chat_id, name)
         return await self._tokens(user)
+
+    async def telegram_link_by_code(self, user: User, code: str) -> UserResponse:
+        chat_id, _name = await self._consume_telegram_code(code)
+        existing = await self.db.scalar(select(User).where(User.chat_id == chat_id))
+        if existing and existing.id != user.id:
+            raise HTTPException(409, "Этот Telegram уже используется")
+        if user.chat_id and user.chat_id != chat_id:
+            raise HTTPException(409, "Telegram уже подключён")
+        user.chat_id = chat_id
+        has_identity = any(item.provider == IdentityProvider.telegram for item in user.identities)
+        if not has_identity:
+            self.db.add(AuthIdentity(user_id=user.id, provider=IdentityProvider.telegram, subject=str(chat_id)))
+        await self.db.commit()
+        loaded = await self.db.scalar(
+            select(User).options(selectinload(User.identities)).where(User.id == user.id)
+        )
+        if loaded is None:
+            raise HTTPException(401, "Пользователь недоступен")
+        return await user_response(self.db, loaded)
+
+    async def _consume_telegram_code(self, code: str) -> tuple[int, str]:
+        key = f"telegram_login_code:{helper.hash_token(code.strip().upper())}"
+        raw = await self.redis.getdel(key)
+        if not raw:
+            raise HTTPException(401, "Неверный код")
+        if isinstance(raw, bytes):
+            raw = raw.decode()
+        text = str(raw)
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = {"chat_id": text}
+        if isinstance(payload, dict):
+            chat_id = int(payload.get("chat_id"))
+            name = str(payload.get("name") or "Telegram").strip() or "Telegram"
+        else:
+            chat_id = int(payload)
+            name = "Telegram"
+        return chat_id, name
 
     async def create_google_state(
         self,
@@ -281,6 +318,8 @@ class AuthService:
             raise HTTPException(401, "Google email не подтвержден")
         if state_data.get("purpose") == "gmail":
             return await self._google_link_gmail(profile, token_payload, state_data)
+        if state_data.get("purpose") == "link":
+            return await self._google_link_identity(profile, state_data)
         return await self._google_upsert_user(profile)
 
     async def _google_upsert_user(self, profile: dict) -> TokenPair:
@@ -296,6 +335,33 @@ class AuthService:
                 self.db.add(user)
                 await self.db.flush()
             self.db.add(AuthIdentity(user_id=user.id, provider=IdentityProvider.google, subject=profile["sub"]))
+        return await self._tokens(user)
+
+    async def _google_link_identity(self, profile: dict, state_data: dict) -> TokenPair:
+        user_id = state_data.get("user_id")
+        if not user_id:
+            raise HTTPException(401, "Google OAuth state недействителен")
+        user = await self.db.scalar(
+            select(User).options(selectinload(User.identities)).where(User.id == int(user_id))
+        )
+        if not user or not user.is_active:
+            raise HTTPException(401, "Пользователь недоступен")
+        subject = profile["sub"]
+        identity = await self.db.scalar(select(AuthIdentity).where(
+            AuthIdentity.provider == IdentityProvider.google, AuthIdentity.subject == subject
+        ))
+        if identity and identity.user_id != user.id:
+            raise HTTPException(409, "Этот Google-аккаунт уже используется")
+        own = next((item for item in user.identities if item.provider == IdentityProvider.google), None)
+        if own and own.subject != subject:
+            raise HTTPException(409, "Google уже подключён")
+        if not own:
+            self.db.add(AuthIdentity(user_id=user.id, provider=IdentityProvider.google, subject=subject))
+        if not user.email:
+            email = (profile.get("email") or "").lower() or None
+            if email and not await self.db.scalar(select(User).where(User.email == email)):
+                user.email = email
+                user.email_verified = True
         return await self._tokens(user)
 
     async def _google_link_gmail(self, profile: dict, token_payload: dict, state_data: dict) -> TokenPair:

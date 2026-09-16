@@ -218,22 +218,22 @@ const steps = [
     id: 'assemble',
     number: '01',
     title: 'Соберите блоки на холсте',
-    text: 'Перетащите поиск, таблицы, почту, ИИ или Telegram и соедините выходы со входами — как в визуальном конструкторе.',
-    icons: ['i-lucide-search', 'i-lucide-table', 'i-lucide-sparkles', 'i-lucide-webhook', 'i-lucide-send']
+    text: 'Перетащите поиск, ИИ, Gmail, таблицы, SQL, HTTP или Telegram и соедините выходы со входами — как в визуальном конструкторе.',
+    icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-mail', 'i-lucide-database', 'i-lucide-send']
   },
   {
     id: 'describe',
     number: '02',
     title: 'Задайте правила обычным языком',
-    text: 'Что искать, какой промпт, какой URL, при каком условии идти дальше. Без кода и без отдельного сервера.',
-    icons: ['i-lucide-type', 'i-lucide-braces', 'i-lucide-sliders-horizontal']
+    text: 'Что искать, какой промпт, какой запрос к базе, при каком условии идти дальше и куда отправить результат. Без кода и без отдельного сервера.',
+    icons: ['i-lucide-type', 'i-lucide-braces', 'i-lucide-git-branch']
   },
   {
     id: 'run',
     number: '03',
     title: 'Запустите или поставьте расписание',
-    text: 'Оценка стоимости видна заранее. Запуск — по кнопке или в нужное время; результат приходит в кабинет и в Telegram.',
-    icons: ['i-lucide-play', 'i-lucide-clock', 'i-lucide-bell']
+    text: 'Оценка стоимости видна заранее. Запуск — по кнопке, по вебхуку или в нужное время; результат приходит в кабинет, в Gmail или в Telegram.',
+    icons: ['i-lucide-play', 'i-lucide-clock', 'i-lucide-mail']
   }
 ]
 

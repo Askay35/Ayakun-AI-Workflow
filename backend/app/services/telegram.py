@@ -7,6 +7,7 @@ from services.user import UserService
 from schemas.common import ApiResponse, TelegramWebhookRequest
 import redis.asyncio as redis
 from core.config import settings
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -56,16 +57,14 @@ class TelegramService:
             await self.redis.expire(rate_key, 60)
         if attempts > 5:
             raise HTTPException(429, "Слишком много запросов кода")
-        user = await self.userService.get_user_by_chat_id(data.message.chat.id)
-        
-        if not user:
-            await self.authService.telegramRegister(data.message.chat.id, data.message.chat.first_name)
-        
         for _ in range(5):
             code = helper.generate_login_code()
             created = await self.redis.set(
                 f"telegram_login_code:{helper.hash_token(code)}",
-                data.message.chat.id,
+                json.dumps({
+                    "chat_id": data.message.chat.id,
+                    "name": data.message.chat.first_name or "Telegram",
+                }),
                 ex=60 * settings.login_code_expiration_time,
                 nx=True,
             )

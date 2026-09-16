@@ -54,6 +54,15 @@ async def telegram_login(data: TelegramCodeRequest, service: AuthService = Depen
     return ApiResponse(success=True, data=await service.telegramLoginByCode(data.code))
 
 
+@router.post("/telegram/link", response_model=ApiResponse[UserResponse])
+async def telegram_link(
+    data: TelegramCodeRequest,
+    user: CurrentUser,
+    service: AuthService = Depends(get_auth_service),
+):
+    return ApiResponse(success=True, data=await service.telegram_link_by_code(user, data.code))
+
+
 @router.post("/google/code", response_model=ApiResponse[TokenPair])
 async def google_code(data: GoogleCodeRequest, service: AuthService = Depends(get_auth_service)):
     return ApiResponse(
@@ -75,12 +84,12 @@ async def google_authorize(
 ):
     if not settings.google_client_id:
         raise HTTPException(503, "Google OAuth не настроен")
-    if data.purpose == "gmail" and not user:
+    if data.purpose in {"gmail", "link"} and not user:
         raise HTTPException(401, "Требуется авторизация")
     state, nonce = await service.create_google_state(
         data.redirect_uri,
         purpose=data.purpose,
-        user_id=user.id if user and data.purpose == "gmail" else None,
+        user_id=user.id if user and data.purpose in {"gmail", "link"} else None,
     )
     query_params = {
         "client_id": settings.google_client_id,
@@ -96,6 +105,8 @@ async def google_authorize(
     if data.purpose == "gmail":
         query_params["prompt"] = "select_account consent"
         query_params["include_granted_scopes"] = "true"
+    elif data.purpose == "link":
+        query_params["prompt"] = "select_account"
     query = urlencode(query_params)
     return ApiResponse(
         success=True,

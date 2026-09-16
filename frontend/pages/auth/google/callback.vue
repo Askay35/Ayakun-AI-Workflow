@@ -5,10 +5,11 @@ const route = useRoute()
 const api = useApi()
 const auth = useAuth()
 const error = ref('')
-const purpose = ref<'login' | 'gmail'>('login')
+const purpose = ref<'login' | 'gmail' | 'link'>('login')
 
 onMounted(async () => {
-  const storedPurpose = sessionStorage.getItem('ayakun_google_purpose') === 'gmail' ? 'gmail' : 'login'
+  const stored = sessionStorage.getItem('ayakun_google_purpose')
+  const storedPurpose = stored === 'gmail' || stored === 'link' ? stored : 'login'
   purpose.value = storedPurpose
   const workflowId = sessionStorage.getItem('ayakun_gmail_workflow') || ''
   const nodeId = sessionStorage.getItem('ayakun_gmail_node') || ''
@@ -33,9 +34,18 @@ onMounted(async () => {
       })
       return
     }
+    if (storedPurpose === 'link') {
+      await navigateTo('/profile?tab=integrations')
+      return
+    }
     await navigateTo(storedPurpose === 'gmail' ? '/workflows' : '/dashboard')
   } catch (reason: any) {
-    error.value = apiErrorMessage(reason, storedPurpose === 'gmail' ? 'Не удалось подключить Gmail.' : 'Не удалось завершить вход.')
+    const fallback = storedPurpose === 'gmail'
+      ? 'Не удалось подключить Gmail.'
+      : storedPurpose === 'link'
+        ? 'Не удалось подключить Google.'
+        : 'Не удалось завершить вход.'
+    error.value = apiErrorMessage(reason, fallback)
   }
 })
 </script>
@@ -44,8 +54,8 @@ onMounted(async () => {
   <main class="page grid min-h-[70vh] place-items-center text-center">
     <div>
       <UIcon :name="error ? 'i-lucide-circle-alert' : 'i-lucide-loader-circle'" class="size-10" :class="{ 'animate-spin': !error }" />
-      <h1 class="mt-3 text-xl font-semibold">{{ error || (purpose === 'gmail' ? 'Подключаем Gmail…' : 'Завершаем вход…') }}</h1>
-      <UButton v-if="error" :to="purpose === 'gmail' ? '/workflows' : '/login'" label="Вернуться" class="mt-4" />
+      <h1 class="mt-3 text-xl font-semibold">{{ error || (purpose === 'gmail' ? 'Подключаем Gmail…' : purpose === 'link' ? 'Подключаем Google…' : 'Завершаем вход…') }}</h1>
+      <UButton v-if="error" :to="purpose === 'login' ? '/login' : purpose === 'gmail' ? '/workflows' : '/profile?tab=integrations'" label="Вернуться" class="mt-4" />
     </div>
   </main>
 </template>

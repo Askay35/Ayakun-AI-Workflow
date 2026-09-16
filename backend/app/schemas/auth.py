@@ -56,7 +56,7 @@ class GoogleCodeRequest(BaseModel):
 class GoogleAuthorizeRequest(BaseModel):
     code_challenge: str = Field(min_length=43, max_length=128)
     redirect_uri: str | None = None
-    purpose: Literal["login", "gmail"] = "login"
+    purpose: Literal["login", "gmail", "link"] = "login"
 
 
 class TelegramCodeRequest(BaseModel):

@@ -297,7 +297,8 @@ export const useApi = () => {
       confirmEmailRegister: (email: string, code: string) =>
         request<AuthTokens>('/auth/register/confirm', { method: 'POST', body: { email, code } }),
       telegram: (code: string) => request<AuthTokens>('/auth/login/telegram', { method: 'POST', body: { code } }),
-      googleStart: (redirectUri: string, codeChallenge: string, purpose: 'login' | 'gmail' = 'login') => request<{ authorization_url: string; state: string }>('/auth/google/authorize', {
+      telegramLink: (code: string) => request<User>('/auth/telegram/link', { method: 'POST', body: { code } }),
+      googleStart: (redirectUri: string, codeChallenge: string, purpose: 'login' | 'gmail' | 'link' = 'login') => request<{ authorization_url: string; state: string }>('/auth/google/authorize', {
         method: 'POST', body: { redirect_uri: redirectUri, code_challenge: codeChallenge, purpose }
       }),
       googleCallback: (code: string, state: string, codeVerifier: string, redirectUri: string) => request<AuthTokens>('/auth/google/code', {
