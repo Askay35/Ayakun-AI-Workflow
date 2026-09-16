@@ -983,7 +983,7 @@ a { color: inherit; text-decoration: none; }
   gap: 14px;
 }
 .unique-card {
-  min-height: 188px;
+  min-height: 200px;
   padding: 22px 20px;
   border: 1px solid var(--line);
   border-radius: 22px;

@@ -6,9 +6,9 @@
           <p class="eyebrow">Визуальные AI-цепочки</p>
           <h1>Автоматизация,<br><span class="hero-shine">которую видно</span></h1>
           <p class="hero-copy">
-            Соберите на холсте поиск, ИИ, HTTP-запросы, условия и Telegram —
-            как конструктор. Одна цепочка заменяет рутину: от сбора данных
-            до решения «что делать дальше» и готового сообщения.
+            Соберите на холсте поиск, ИИ, таблицы, почту, HTTP и условия —
+            как конструктор. Одна цепочка заменяет рутину: от входящего события
+            до письма, строки в таблице или сообщения в Telegram.
           </p>
           <div class="hero-actions">
             <UButton to="/login" size="xl" label="Начать бесплатно" trailing-icon="i-lucide-arrow-right" />
@@ -38,8 +38,8 @@
       <div class="shell">
         <div class="section-heading">
           <p class="eyebrow">Блоки цепочки</p>
-          <h2>Пять действий — любые сценарии</h2>
-          <p>Не только «поиск → промпт → Telegram». Соединяйте источники, ИИ, API и ветвления так, как устроена ваша задача.</p>
+          <h2>Десять звеньев — любые сценарии</h2>
+          <p>Поиск и Telegram — только начало. Добавьте таблицы, почту, вебхук, базу и ветвления так, как устроена ваша задача.</p>
         </div>
         <div class="blocks-grid">
           <article v-for="card in blocks" :key="card.title" class="feature-card">
@@ -137,18 +137,23 @@
 
 <script setup lang="ts">
 const unique = [
-  { icon: 'i-lucide-mouse-pointer-click', title: 'Визуальный редактор', text: 'Цепочка на холсте: каждый блок, связь и ветка видны сразу.' },
-  { icon: 'i-lucide-git-branch', title: 'Условия и API', text: 'IF ELSE и HTTP-запросы — не только поиск и Telegram.' },
-  { icon: 'i-lucide-calendar-clock', title: 'По кнопке или по расписанию', text: 'Разовые задачи и ежедневные сценарии в одном интерфейсе.' },
-  { icon: 'i-lucide-wallet', title: 'Платите за запуск', text: 'Дороже тариф — больше кредитов. Функции одинаковы на всех планах.' }
+  { icon: 'i-lucide-mouse-pointer-click', title: 'Холст вместо кода', text: 'Каждое звено, связь и ветка на одном экране — цепочку видно целиком, как схему.' },
+  { icon: 'i-lucide-unplug', title: 'Таблицы, почта, события', text: 'Google Таблицы, Gmail, вебхуки и базы рядом с поиском и ИИ — без своего сервера.' },
+  { icon: 'i-lucide-calendar-clock', title: 'По кнопке, расписанию или событию', text: 'Утренний дайджест, реакция на вебхук или разовый запуск — в одном редакторе.' },
+  { icon: 'i-lucide-wallet', title: 'Платите за запуск', text: 'Стоимость видна до старта. На всех тарифах одни и те же звенья, отличается запас credits.' }
 ]
 
 const blocks = [
   { number: '01', title: 'Поиск в сети', text: 'Свежие новости, вакансии, цены, упоминания бренда — всё, что можно найти по запросу.', icon: 'i-lucide-search', accent: '#2bbf8e' },
-  { number: '02', title: 'ИИ-промпт', text: 'Сжать, сравнить, написать письмо или отчёт в нужном формате — своими словами.', icon: 'i-lucide-sparkles', accent: '#8b7cff' },
+  { number: '02', title: 'Обработка', text: 'Сжать, сравнить, написать письмо или отчёт в нужном формате — своими словами.', icon: 'i-lucide-sparkles', accent: '#8b7cff' },
   { number: '03', title: 'HTTP-запрос', text: 'Подтянуть данные из CRM, курса валют, своей админки или любого API.', icon: 'i-lucide-globe', accent: '#f59e0b' },
   { number: '04', title: 'IF ELSE', text: 'Ветвление: если цена упала — одно действие, если нет — другое. Без лишнего шума.', icon: 'i-lucide-git-branch', accent: '#e8b84a' },
-  { number: '05', title: 'Telegram', text: 'Готовый результат уходит в чат сразу после запуска — вам или команде.', icon: 'i-lucide-send', accent: '#2aa8e0' }
+  { number: '05', title: 'Telegram', text: 'Готовый результат уходит в чат сразу после запуска — вам или команде.', icon: 'i-lucide-send', accent: '#2aa8e0' },
+  { number: '06', title: 'Вебхук', text: 'Цепочка стартует по событию: новая заявка, оплата, форма на сайте.', icon: 'i-lucide-webhook', accent: '#f472b6' },
+  { number: '07', title: 'Google Таблицы', text: 'Читать и писать строки: лиды, прайс, отчёт — без ручного копирования.', icon: 'i-lucide-table', accent: '#22c55e' },
+  { number: '08', title: 'Gmail', text: 'Отправить письмо или забрать входящие и передать дальше по цепочке.', icon: 'i-lucide-mail', accent: '#ea4335' },
+  { number: '09', title: 'Преобразование', text: 'Отфильтровать, разложить и собрать JSON так, чтобы следующее звено поняло данные.', icon: 'i-lucide-replace', accent: '#38bdf8' },
+  { number: '10', title: 'База данных', text: 'SQL-запрос к своей базе: остатки, заказы, метрики — сразу в цепочку.', icon: 'i-lucide-database', accent: '#6366f1' }
 ]
 
 const examples = [
@@ -182,11 +187,29 @@ const examples = [
   {
     tag: 'Операции',
     schedule: 'После события',
-    title: 'Статус из CRM → понятное сообщение',
-    text: 'HTTP читает заказ или лид, ИИ переводит сырой JSON в человеческий текст, команда получает апдейт в чат.',
-    chain: ['HTTP CRM', 'ИИ: формулировка', 'Telegram'],
-    icons: ['i-lucide-globe', 'i-lucide-sparkles', 'i-lucide-send'],
-    accents: ['#f59e0b', '#8b7cff', '#2aa8e0']
+    title: 'Заявка с сайта → строка и чат',
+    text: 'Вебхук ловит форму, преобразование приводит поля к виду таблицы, строка пишется в Google Таблицы, команда получает апдейт в Telegram.',
+    chain: ['Вебхук', 'Таблица', 'Telegram'],
+    icons: ['i-lucide-webhook', 'i-lucide-table', 'i-lucide-send'],
+    accents: ['#f472b6', '#22c55e', '#2aa8e0']
+  },
+  {
+    tag: 'Продажи',
+    schedule: 'По входящему письму',
+    title: 'Письмо клиента → задача в таблице',
+    text: 'Gmail забирает новое письмо, ИИ выделяет суть и следующий шаг, строка появляется в таблице — ничего не теряется во входящих.',
+    chain: ['Gmail', 'ИИ: суть', 'Google Таблицы'],
+    icons: ['i-lucide-mail', 'i-lucide-sparkles', 'i-lucide-table'],
+    accents: ['#ea4335', '#8b7cff', '#22c55e']
+  },
+  {
+    tag: 'Склад',
+    schedule: 'Каждый час',
+    title: 'Остатки из базы, если кончается товар',
+    text: 'SQL читает остатки, условие отсекает норму, и только по дефициту уходит письмо закупщику — без ложных тревог.',
+    chain: ['SQL', 'IF: мало', 'Gmail'],
+    icons: ['i-lucide-database', 'i-lucide-git-branch', 'i-lucide-mail'],
+    accents: ['#6366f1', '#e8b84a', '#ea4335']
   }
 ]
 
@@ -195,8 +218,8 @@ const steps = [
     id: 'assemble',
     number: '01',
     title: 'Соберите блоки на холсте',
-    text: 'Перетащите поиск, ИИ, HTTP, условие или Telegram и соедините выходы со входами — как в визуальном конструкторе.',
-    icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-globe', 'i-lucide-git-branch', 'i-lucide-send']
+    text: 'Перетащите поиск, таблицы, почту, ИИ или Telegram и соедините выходы со входами — как в визуальном конструкторе.',
+    icons: ['i-lucide-search', 'i-lucide-table', 'i-lucide-sparkles', 'i-lucide-webhook', 'i-lucide-send']
   },
   {
     id: 'describe',
@@ -243,13 +266,13 @@ const audience = [
     icon: 'i-lucide-building-2',
     title: 'Малый бизнес',
     text: 'Регулярные отчёты и уведомления без разработчика и отдельной инфраструктуры.',
-    example: 'Пример: HTTP заказы → ИИ-сводка → Telegram'
+    example: 'Пример: SQL заказы → ИИ-сводка → Gmail'
   },
   {
     icon: 'i-lucide-code-2',
     title: 'Разработчики и no-code',
     text: 'Быстрые интеграции и ветвления без поднятия своего n8n или воркеров.',
-    example: 'Пример: webhook/API → условие → ИИ или Telegram'
+    example: 'Пример: вебхук → условие → таблица или Telegram'
   }
 ]
 </script>
