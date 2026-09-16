@@ -17,6 +17,7 @@ import {
   NODE_META,
   DEFAULT_HTTP_REQUEST_JSON,
   IF_ELSE_CONDITION_PLACEHOLDER,
+  SINGLE_INCOMING_TYPES,
   TELEGRAM_MESSAGE_PLACEHOLDER,
   addLink,
   applyLinks,
@@ -90,6 +91,63 @@ const searchPeriods = [
   { label: 'Последний месяц', value: 'm' },
   { label: 'Последний год', value: 'y' }
 ]
+const sheetsOperations = [
+  { label: 'Читать строки', value: 'read' },
+  { label: 'Добавить строки', value: 'append' },
+  { label: 'Обновить строки', value: 'update' }
+]
+const gmailOperations = [
+  { label: 'Отправить письмо', value: 'send' },
+  { label: 'Получить письма', value: 'list' }
+]
+const gmailAuthModes = [
+  { label: 'SMTP (пароль приложения)', value: 'smtp' },
+  { label: 'OAuth-токен', value: 'oauth' }
+]
+const transformOperations = [
+  { label: 'Select — оставить нужные поля', value: 'select' },
+  { label: 'Rename — переименовать поля', value: 'rename' },
+  { label: 'Set — добавить или изменить значение', value: 'set' },
+  { label: 'Remove — удалить поля', value: 'remove' },
+  { label: 'Filter — оставить только нужные элементы', value: 'filter' },
+  { label: 'Sort — отсортировать', value: 'sort' },
+  { label: 'Map — преобразовать каждый элемент массива', value: 'map' }
+]
+const sqlEngines = [{ label: 'PostgreSQL', value: 'postgresql' }]
+const sortDirections = [
+  { label: 'По возрастанию', value: 'asc' },
+  { label: 'По убыванию', value: 'desc' }
+]
+const runtimeConfig = useRuntimeConfig()
+const webhookUrl = computed(() => {
+  const token = workflow.value?.webhook_token
+  if (!token) return ''
+  return `${String(runtimeConfig.public.apiBase).replace(/\/$/, '')}/webhooks/${token}`
+})
+const copyWebhookUrl = async () => {
+  if (!webhookUrl.value) return
+  await navigator.clipboard.writeText(webhookUrl.value)
+  toast.add({ title: 'URL скопирован', color: 'success' })
+}
+const rotateWebhookToken = async () => {
+  saveState.value = 'saving'
+  try {
+    const saved = await api.workflows.save(id, graphForSave(), {
+      schedule_slots: scheduleSlots.value.map(({ next_at: _next, ...slot }) => slot),
+      schedule_enabled: scheduleActive.value,
+      schedule_timezone: scheduleTimezone,
+      variables: recordFromVariables(workflowVariables.value),
+      rotate_webhook_token: true
+    })
+    workflow.value = saved
+    estimatedCost.value = Number(saved.estimated_run_cost || 0)
+    saveState.value = 'saved'
+    toast.add({ title: 'Новый ключ вебхука создан', color: 'success' })
+  } catch {
+    saveState.value = 'dirty'
+    toast.add({ title: 'Не удалось обновить ключ', color: 'error' })
+  }
+}
 const selectedPeriod = computed({
   get: () => selected.value?.data.period || 'any',
   set: (value: string) => {
@@ -100,6 +158,10 @@ const selectedPeriod = computed({
 const JSON_EXPRESSION_EXAMPLE = '{{$data[0].price}}'
 const VARIABLE_NAME_EXAMPLE = '{{name}}'
 const VARIABLE_COMPARE_EXAMPLE = '{{count}} == 12'
+const WEBHOOK_BODY_EXAMPLE = '{{$body}}'
+const TRANSFORM_MAP_PLACEHOLDER = '{ "title": "{{$name}}" }'
+const TRANSFORM_RENAME_PLACEHOLDER = 'old=new'
+const TRANSFORM_SET_PLACEHOLDER = 'status=active'
 const formatVariableToken = (name: string) => `{{${name}}}`
 const IF_ELSE_HELP_EXAMPLES = [
   { code: '{{$data[0].price}} != null', note: 'поле есть и не null' },
@@ -246,12 +308,24 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       request_json: type === 'http_request' ? DEFAULT_HTTP_REQUEST_JSON : undefined,
       condition: type === 'if_else' ? '' : undefined,
       message: type === 'telegram_send' ? '' : undefined,
-      assignments: type === 'prompt' || type === 'http_request' ? [] : undefined
+      operation: type === 'google_sheets' ? 'read' : type === 'gmail' ? 'send' : type === 'data_transform' ? 'select' : undefined,
+      sheet_range: type === 'google_sheets' ? 'Sheet1!A1:Z' : undefined,
+      values_json: type === 'google_sheets' ? '[]' : undefined,
+      auth_mode: type === 'gmail' ? 'smtp' : undefined,
+      smtp_host: type === 'gmail' ? 'smtp.gmail.com' : undefined,
+      smtp_port: type === 'gmail' ? 587 : undefined,
+      max_results: type === 'gmail' ? 10 : undefined,
+      mapping_json: type === 'data_transform' ? '' : undefined,
+      sort_direction: type === 'data_transform' ? 'asc' : undefined,
+      engine: type === 'sql_query' ? 'postgresql' : undefined,
+      query: type === 'sql_query' ? 'SELECT 1 AS ok' : undefined,
+      assignments: type === 'prompt' || type === 'http_request' || type === 'google_sheets' || type === 'gmail' || type === 'data_transform' || type === 'sql_query' ? [] : undefined
     }
   }
   nodes.value = [...nodes.value, node]
   selectedId.value = node.id
   selectedEdgeId.value = undefined
+  if (type === 'webhook') void save()
 }
 const connectionEnds = (connection: Connection) => ({
   source: resolveNodeId(nodes.value, connection.source),
@@ -260,9 +334,10 @@ const connectionEnds = (connection: Connection) => ({
 })
 const connectBlockedTitle = (targetId: string) => {
   const type = nodes.value.find(node => node.id === targetId)?.type
-  if (type === 'telegram_send') return 'Telegram принимает только одну входящую связь'
-  if (type === 'http_request') return 'HTTP Request принимает только одну входящую связь'
-  if (type === 'if_else') return 'IF ELSE принимает только одну входящую связь'
+  if (type === 'webhook') return 'Вебхук запускает цепочку и не принимает входящие связи'
+  if (type && SINGLE_INCOMING_TYPES.includes(type)) {
+    return `${NODE_META[type].label} принимает только одну входящую связь`
+  }
   return 'Так соединить нельзя'
 }
 const onConnect = (connection: Connection) => {
@@ -467,6 +542,21 @@ const runSelectedNode = async () => {
             <template #node-telegram_send="{ id: nodeId, data, selected: active }">
               <WorkflowNodeCard :node-id="nodeId" kind="telegram_send" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
+            <template #node-webhook="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="webhook" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-google_sheets="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="google_sheets" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-gmail="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="gmail" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-data_transform="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="data_transform" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-sql_query="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="sql_query" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
           </VueFlow>
           <template #fallback>
             <div class="grid h-full place-items-center text-sm text-white/40">Загрузка редактора…</div>
@@ -586,6 +676,138 @@ const runSelectedNode = async () => {
                 />
               </UFormField>
               <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится вывод предыдущего узла. Если задан — подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня входных данных, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — из переменных; отсутствующее поле останавливает запуск. Исходящие можно вести дальше, но текст детям не передаётся.</p>
+            </template>
+            <template v-if="selected.type === 'webhook'">
+              <p class="text-xs leading-5 text-white/40">Стартовый узел: внешний сервис вызывает URL методом POST, PUT или PATCH, и цепочка запускается. Тело запроса доступно дальше как <code>{{ WEBHOOK_BODY_EXAMPLE }}</code>.</p>
+              <UFormField label="URL вебхука">
+                <UInput :model-value="webhookUrl" readonly class="w-full font-mono text-xs" placeholder="Сохраните черновик, чтобы получить URL" />
+              </UFormField>
+              <div class="flex flex-wrap gap-2">
+                <UButton label="Скопировать" icon="i-lucide-copy" color="neutral" variant="outline" :disabled="!webhookUrl" @click="copyWebhookUrl" />
+                <UButton label="Новый ключ" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :disabled="!webhookUrl" @click="rotateWebhookToken" />
+              </div>
+              <p class="text-xs leading-5 text-white/40">Работает после публикации цепочки. Заголовок Authorization не передаётся в данные узла.</p>
+            </template>
+            <template v-if="selected.type === 'google_sheets'">
+              <UFormField label="Действие">
+                <USelect v-model="selected.data.operation" :items="sheetsOperations" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField label="ID таблицы">
+                <UInput v-model="selected.data.spreadsheet_id" class="w-full font-mono text-xs" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" />
+              </UFormField>
+              <UFormField label="Диапазон">
+                <UInput v-model="selected.data.sheet_range" class="w-full font-mono text-xs" placeholder="Sheet1!A1:Z" />
+              </UFormField>
+              <UFormField label="OAuth-токен">
+                <UInput v-model="selected.data.access_token" type="password" class="w-full" placeholder="ya29...." />
+              </UFormField>
+              <UFormField label="API-ключ (только чтение)">
+                <UInput v-model="selected.data.api_key" type="password" class="w-full" />
+              </UFormField>
+              <UFormField label="JSON сервисного аккаунта">
+                <UTextarea v-model="selected.data.service_account_json" :rows="6" class="w-full font-mono text-xs" placeholder='{"type":"service_account",...}' />
+              </UFormField>
+              <UFormField v-if="selected.data.operation !== 'read'" label="Значения строк">
+                <UTextarea v-model="selected.data.values_json" :rows="8" class="w-full font-mono text-xs" placeholder='[["Ada", 3]] или [{"name":"Ada","score":3}]' />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Чтение возвращает JSON <code>rows</code>. Для записи можно подставить {{ JSON_EXPRESSION_EXAMPLE }} или оставить значения пустыми — тогда возьмутся данные предыдущего узла. Нужен токен, API-ключ или сервисный аккаунт.</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+            </template>
+            <template v-if="selected.type === 'gmail'">
+              <UFormField label="Действие">
+                <USelect v-model="selected.data.operation" :items="gmailOperations" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField v-if="selected.data.operation !== 'list'" label="Способ входа">
+                <USelect v-model="selected.data.auth_mode" :items="gmailAuthModes" value-key="value" class="w-full" />
+              </UFormField>
+              <template v-if="selected.data.operation === 'list' || selected.data.auth_mode === 'oauth'">
+                <UFormField label="OAuth-токен">
+                  <UInput v-model="selected.data.access_token" type="password" class="w-full" />
+                </UFormField>
+              </template>
+              <template v-else>
+                <UFormField label="SMTP-хост">
+                  <UInput v-model="selected.data.smtp_host" class="w-full" placeholder="smtp.gmail.com" />
+                </UFormField>
+                <UFormField label="Порт">
+                  <UInput v-model="selected.data.smtp_port" type="number" class="w-full" />
+                </UFormField>
+                <UFormField label="Почта Gmail">
+                  <UInput v-model="selected.data.smtp_username" class="w-full" placeholder="you@gmail.com" />
+                </UFormField>
+                <UFormField label="Пароль приложения">
+                  <UInput v-model="selected.data.smtp_password" type="password" class="w-full" />
+                </UFormField>
+                <UFormField label="От кого">
+                  <UInput v-model="selected.data.from_email" class="w-full" placeholder="По умолчанию — почта входа" />
+                </UFormField>
+              </template>
+              <template v-if="selected.data.operation === 'list'">
+                <UFormField label="Поиск писем">
+                  <UInput v-model="selected.data.gmail_query" class="w-full" placeholder="is:unread newer_than:1d" />
+                </UFormField>
+                <UFormField label="Максимум писем">
+                  <UInput v-model="selected.data.max_results" type="number" min="1" max="50" class="w-full" />
+                </UFormField>
+              </template>
+              <template v-else>
+                <UFormField label="Кому">
+                  <UInput v-model="selected.data.to" class="w-full" placeholder="ada@example.com" />
+                </UFormField>
+                <UFormField label="Тема">
+                  <UInput v-model="selected.data.subject" class="w-full" />
+                </UFormField>
+                <UFormField label="Текст письма">
+                  <UTextarea v-model="selected.data.body" :rows="6" class="w-full" />
+                </UFormField>
+              </template>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Подстановки {{ JSON_EXPRESSION_EXAMPLE }} и <code>{{ VARIABLE_NAME_EXAMPLE }}</code>. Для SMTP нужен пароль приложения Google, не обычный пароль аккаунта.</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+            </template>
+            <template v-if="selected.type === 'data_transform'">
+              <UFormField label="Операция">
+                <USelect v-model="selected.data.operation" :items="transformOperations" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField label="Путь к данным">
+                <UInput v-model="selected.data.path" class="w-full font-mono text-xs" placeholder="rows или body.items — пусто = весь вход" />
+              </UFormField>
+              <UFormField v-if="selected.data.operation === 'select' || selected.data.operation === 'remove'" label="Поля">
+                <UInput v-model="selected.data.fields" class="w-full font-mono text-xs" placeholder="id, name, email" />
+              </UFormField>
+              <UFormField v-if="selected.data.operation === 'rename' || selected.data.operation === 'set' || selected.data.operation === 'map'" :label="selected.data.operation === 'map' ? 'Шаблон элемента' : 'Соответствие полей'">
+                <UTextarea
+                  v-model="selected.data.mapping_json"
+                  :rows="8"
+                  class="w-full font-mono text-xs"
+                  :placeholder="selected.data.operation === 'rename' ? TRANSFORM_RENAME_PLACEHOLDER : selected.data.operation === 'set' ? TRANSFORM_SET_PLACEHOLDER : TRANSFORM_MAP_PLACEHOLDER"
+                />
+              </UFormField>
+              <UFormField v-if="selected.data.operation === 'filter'" label="Условие">
+                <UTextarea v-model="selected.data.condition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
+              </UFormField>
+              <template v-if="selected.data.operation === 'sort'">
+                <UFormField label="Поле сортировки">
+                  <UInput v-model="selected.data.sort_field" class="w-full font-mono text-xs" placeholder="score" />
+                </UFormField>
+                <UFormField label="Направление">
+                  <USelect v-model="selected.data.sort_direction" :items="sortDirections" value-key="value" class="w-full" />
+                </UFormField>
+              </template>
+              <p class="text-xs leading-5 text-white/40">Универсальный блок над JSON предыдущего узла. Filter использует тот же синтаксис условий, что IF ELSE. Map применяет шаблон к каждому элементу массива.</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+            </template>
+            <template v-if="selected.type === 'sql_query'">
+              <UFormField label="База данных">
+                <USelect v-model="selected.data.engine" :items="sqlEngines" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField label="Строка подключения">
+                <UInput v-model="selected.data.dsn" type="password" class="w-full font-mono text-xs" placeholder="postgresql://user:pass@host:5432/dbname" />
+              </UFormField>
+              <UFormField label="SQL-запрос">
+                <UTextarea v-model="selected.data.query" :rows="8" class="w-full font-mono text-xs" placeholder="SELECT id, email FROM users LIMIT 50" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Результат всегда JSON: <code>{"rows":[...],"row_count":N}</code>. В запросе можно использовать {{ JSON_EXPRESSION_EXAMPLE }} и <code>{{ VARIABLE_NAME_EXAMPLE }}</code>. Подключение идёт к вашей PostgreSQL, не к служебной базе сервиса.</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="mb-0 mt-3 space-y-1 text-xs text-amber-200">
               <li v-for="hint in selectedVariableHints.filter(item => item.mark === 'undefined')" :key="hint.name">

@@ -48,22 +48,49 @@ def task_session_factory():
     return task_engine, async_sessionmaker(task_engine, expire_on_commit=False)
 
 
+_ZERO_COST_TYPES = {
+    NodeType.TELEGRAM_SEND,
+    NodeType.HTTP_REQUEST,
+    NodeType.IF_ELSE,
+    NodeType.WEBHOOK,
+    NodeType.GOOGLE_SHEETS,
+    NodeType.GMAIL,
+    NodeType.DATA_TRANSFORM,
+    NodeType.SQL_QUERY,
+}
+_SECRET_NODE_FIELDS = frozenset({
+    "access_token",
+    "service_account_json",
+    "smtp_password",
+    "api_key",
+    "dsn",
+})
+
+
+def snapshot_node_input(node: object) -> dict:
+    data = node.model_dump(mode="json") if hasattr(node, "model_dump") else {}
+    if not isinstance(data, dict):
+        return {}
+    for key in _SECRET_NODE_FIELDS:
+        if data.get(key):
+            data[key] = "***"
+    return data
+
+
 async def node_cost(
     pricing: PricingService,
     node: object,
     output: dict | list,
 ) -> tuple[Decimal, int, dict]:
-    if getattr(node, "type") == NodeType.WEB_SEARCH:
+    node_type = getattr(node, "type", None)
+    if node_type == NodeType.WEB_SEARCH:
         price = await pricing.get("serper", "search")
         credits = billable_credits(price.search)
         details = {"provider": "serper", "model": "search", "searches": 1}
         return credits, 0, {**details, "provider_cost_usd": str(provider_cost_usd(credits))}
-    if getattr(node, "type") == NodeType.TELEGRAM_SEND:
-        return Decimal("0"), 0, {"provider": "telegram", "model": "send"}
-    if getattr(node, "type") == NodeType.HTTP_REQUEST:
-        return Decimal("0"), 0, {"provider": "http", "model": "request"}
-    if getattr(node, "type") == NodeType.IF_ELSE:
-        return Decimal("0"), 0, {"provider": "if_else", "model": "branch"}
+    if node_type in _ZERO_COST_TYPES:
+        key = node_type.value if isinstance(node_type, NodeType) else str(node_type or "node")
+        return Decimal("0"), 0, {"provider": key, "model": key}
     usage = output.get("usage") if isinstance(output, dict) else {}
     usage = usage or {}
     model = output.get("model") or getattr(node, "model", None) or (
@@ -361,7 +388,7 @@ class WorkflowRunExecutor:
             workflow_run_id=self.run.id,
             node_id=node.id,
             node_type=node.type,
-            input=node.model_dump(mode="json"),
+            input=snapshot_node_input(node),
         )
         self.db.add(node_run)
         await self.db.flush()
@@ -374,9 +401,7 @@ class WorkflowRunExecutor:
         context: dict,
         registry: NodeRegistry,
     ) -> None:
-        max_attempts = 1 if node.type in {
-            NodeType.PROMPT, NodeType.TELEGRAM_SEND, NodeType.HTTP_REQUEST, NodeType.IF_ELSE
-        } else 3
+        max_attempts = 3 if node.type == NodeType.WEB_SEARCH else 1
         last_error: Exception | None = None
         for attempt in range(node_run.attempt, max_attempts):
             node_run.attempt = attempt + 1

@@ -3,13 +3,30 @@ from decimal import Decimal
 
 import httpx
 
-from schemas.workflow import HttpRequestNode, IfElseNode, NodeType, PromptNode, TelegramSendNode, WebSearchNode
+from schemas.workflow import (
+    DataTransformNode,
+    GmailNode,
+    GoogleSheetsNode,
+    HttpRequestNode,
+    IfElseNode,
+    NodeType,
+    PromptNode,
+    SqlQueryNode,
+    TelegramSendNode,
+    WebhookNode,
+    WebSearchNode,
+)
 from services.execution.actions import (
+    DataTransformAction,
+    GmailAction,
+    GoogleSheetsAction,
     HttpRequestAction,
     IfElseAction,
     PromptAction,
+    SqlQueryAction,
     TelegramSendAction,
     WebSearchAction,
+    WebhookAction,
 )
 from services.execution.registry import NodeRegistry
 from services.pricing import PricingService
@@ -53,6 +70,21 @@ class DefaultExecutors:
     async def if_else(self, node: IfElseNode, context: dict) -> dict | list:
         return await IfElseAction().execute(node, self.prepare(context))
 
+    async def webhook(self, node: WebhookNode, context: dict) -> dict:
+        return await WebhookAction().execute(node, self.prepare(context))
+
+    async def google_sheets(self, node: GoogleSheetsNode, context: dict) -> dict:
+        return await GoogleSheetsAction(self.client).execute(node, self.prepare(context))
+
+    async def gmail(self, node: GmailNode, context: dict) -> dict:
+        return await GmailAction(self.client).execute(node, self.prepare(context))
+
+    async def data_transform(self, node: DataTransformNode, context: dict) -> dict | list:
+        return await DataTransformAction().execute(node, self.prepare(context))
+
+    async def sql_query(self, node: SqlQueryNode, context: dict) -> dict:
+        return await SqlQueryAction().execute(node, self.prepare(context))
+
     def registry(self) -> NodeRegistry:
         registry = NodeRegistry()
         registry.register(NodeType.WEB_SEARCH, self.web_search)
@@ -60,4 +92,9 @@ class DefaultExecutors:
         registry.register(NodeType.TELEGRAM_SEND, self.telegram_send)
         registry.register(NodeType.HTTP_REQUEST, self.http_request)
         registry.register(NodeType.IF_ELSE, self.if_else)
+        registry.register(NodeType.WEBHOOK, self.webhook)
+        registry.register(NodeType.GOOGLE_SHEETS, self.google_sheets)
+        registry.register(NodeType.GMAIL, self.gmail)
+        registry.register(NodeType.DATA_TRANSFORM, self.data_transform)
+        registry.register(NodeType.SQL_QUERY, self.sql_query)
         return registry

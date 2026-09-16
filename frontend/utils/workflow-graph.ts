@@ -5,18 +5,27 @@ export const NODE_META: Record<NodeKind, { label: string; caption: string; icon:
   prompt: { label: 'Обработка', caption: 'AI Prompt', icon: 'i-lucide-sparkles', accent: '#8b7cff' },
   http_request: { label: 'HTTP Request', caption: 'HTTP-запрос', icon: 'i-lucide-globe', accent: '#f59e0b' },
   if_else: { label: 'IF ELSE', caption: 'Условие', icon: 'i-lucide-git-branch', accent: '#e8b84a' },
-  telegram_send: { label: 'Telegram', caption: 'Отправить сообщение', icon: 'i-lucide-send', accent: '#2aa8e0' }
+  telegram_send: { label: 'Telegram', caption: 'Отправить сообщение', icon: 'i-lucide-send', accent: '#2aa8e0' },
+  webhook: { label: 'Вебхук', caption: 'Запуск по событию', icon: 'i-lucide-webhook', accent: '#f472b6' },
+  google_sheets: { label: 'Google Таблицы', caption: 'Строки таблицы', icon: 'i-lucide-table', accent: '#22c55e' },
+  gmail: { label: 'Gmail', caption: 'Электронная почта', icon: 'i-lucide-mail', accent: '#ea4335' },
+  data_transform: { label: 'Преобразование', caption: 'Данные', icon: 'i-lucide-replace', accent: '#38bdf8' },
+  sql_query: { label: 'База данных', caption: 'SQL-запрос', icon: 'i-lucide-database', accent: '#6366f1' }
 }
+
+export const SINGLE_INCOMING_TYPES: NodeKind[] = [
+  'telegram_send',
+  'http_request',
+  'if_else',
+  'google_sheets',
+  'gmail',
+  'data_transform',
+  'sql_query'
+]
 
 export const DEFAULT_HTTP_REQUEST_JSON = `{
   "method": "GET",
-  "url": "https://api.example.com/users/{{$userId}}",
-  "headers": {
-    "Authorization": "Bearer ..."
-  },
-  "body": {
-    "email": "{{$email}}"
-  }
+  "url": "https://api.example.com/users/{{$userId}}"
 }`
 
 export const IF_ELSE_CONDITION_PLACEHOLDER = '{{$object.field}} == 12'
@@ -112,10 +121,8 @@ export function canConnect(
   const targetNode = nodes.find(node => node.id === target)
   const branch = branchFromHandle(sourceHandle)
   if (sourceNode?.type === 'if_else' && !branch) return false
-  if (
-    (targetNode?.type === 'telegram_send' || targetNode?.type === 'http_request' || targetNode?.type === 'if_else')
-    && links.some(link => link.target === target)
-  ) return false
+  if (targetNode?.type === 'webhook') return false
+  if (targetNode && SINGLE_INCOMING_TYPES.includes(targetNode.type) && links.some(link => link.target === target)) return false
 
   const children = new Map<string, string[]>()
   for (const link of links) {

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import uuid
 
 from fastapi import HTTPException
@@ -23,9 +24,13 @@ from models.workflow import (
 )
 from models.user import AuthIdentity, IdentityProvider, User
 from schemas.workflow import (
+    DataTransformNode,
+    GmailNode,
+    GoogleSheetsNode,
     NodeType,
     RunStepResponse,
     ScheduleSlot,
+    SqlQueryNode,
     WeeklyScheduleSlot,
     WorkflowCreate,
     WorkflowGraph,
@@ -76,6 +81,72 @@ def _validate_request_json(node_id: str, request_json: str, errors: list[str]) -
         errors.append(f"Узел {node_id}: в данных запроса нет поля url")
 
 
+def _single_incoming_label(node_type: NodeType) -> str:
+    return {
+        NodeType.TELEGRAM_SEND: "Telegram",
+        NodeType.HTTP_REQUEST: "HTTP Request",
+        NodeType.IF_ELSE: "IF ELSE",
+        NodeType.GOOGLE_SHEETS: "Google Таблицы",
+        NodeType.GMAIL: "Gmail",
+        NodeType.DATA_TRANSFORM: "Преобразование",
+        NodeType.SQL_QUERY: "База данных",
+    }.get(node_type, node_type.value)
+
+
+def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
+    label = node.label or node.id
+    if node.type == NodeType.WEB_SEARCH and not node.query.strip():
+        errors.append(f"Узел {label}: укажите поисковый запрос")
+    elif node.type == NodeType.PROMPT and not node.prompt.strip():
+        errors.append(f"Узел {label}: укажите промпт")
+    elif node.type == NodeType.HTTP_REQUEST:
+        if not node.request_json.strip():
+            errors.append(f"Узел {label}: укажите данные запроса")
+    elif node.type == NodeType.IF_ELSE:
+        if not node.condition.strip():
+            errors.append(f"Узел {label}: укажите условие IF ELSE")
+        if not node.true_children:
+            errors.append(f"Узел {label}: подключите ветку TRUE")
+        if not node.false_children:
+            errors.append(f"Узел {label}: подключите ветку FALSE")
+        overlap = set(node.true_children) & set(node.false_children)
+        if overlap:
+            errors.append(f"Узел {label}: TRUE и FALSE не могут вести в один узел")
+    elif isinstance(node, GoogleSheetsNode):
+        if not node.spreadsheet_id.strip():
+            errors.append(f"Узел {label}: укажите идентификатор таблицы")
+        has_write_auth = bool(node.access_token.strip() or node.service_account_json.strip())
+        has_any_auth = has_write_auth or bool(node.api_key.strip())
+        if not has_any_auth:
+            errors.append(f"Узел {label}: укажите токен Google, API-ключ или JSON сервисного аккаунта")
+        elif node.operation != "read" and not has_write_auth:
+            errors.append(f"Узел {label}: для записи нужен токен Google или JSON сервисного аккаунта")
+    elif isinstance(node, GmailNode):
+        if node.operation == "list":
+            if not node.access_token.strip():
+                errors.append(f"Узел {label}: для чтения писем укажите OAuth-токен")
+        elif not node.to.strip():
+            errors.append(f"Узел {label}: укажите получателя письма")
+        elif node.auth_mode == "oauth" and not node.access_token.strip():
+            errors.append(f"Узел {label}: укажите OAuth-токен Gmail")
+        elif node.auth_mode == "smtp" and (not node.smtp_username.strip() or not node.smtp_password.strip()):
+            errors.append(f"Узел {label}: укажите почту Gmail и пароль приложения")
+    elif isinstance(node, DataTransformNode):
+        if node.operation in {"select", "remove"} and not node.fields.strip():
+            errors.append(f"Узел {label}: укажите поля")
+        elif node.operation in {"rename", "set", "map"} and not node.mapping_json.strip():
+            errors.append(f"Узел {label}: укажите соответствие полей или шаблон")
+        elif node.operation == "filter" and not node.condition.strip():
+            errors.append(f"Узел {label}: укажите условие Filter")
+        elif node.operation == "sort" and not node.sort_field.strip():
+            errors.append(f"Узел {label}: укажите поле сортировки")
+    elif isinstance(node, SqlQueryNode):
+        if not node.dsn.strip():
+            errors.append(f"Узел {label}: укажите строку подключения")
+        if not node.query.strip():
+            errors.append(f"Узел {label}: укажите SQL-запрос")
+
+
 def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
     """Проверка графа. strict=True — перед публикацией/валидацией в UI (полный набор правил)."""
     errors: list[str] = []
@@ -87,33 +158,27 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
     by_id = {node.id: node for node in graph.nodes}
     known = set(ids)
     indegree = {node_id: 0 for node_id in ids}
+    if sum(1 for node in graph.nodes if node.type == NodeType.WEBHOOK) > 1:
+        errors.append("В цепочке может быть только один вебхук")
+    extra_single = NodeType.single_incoming() - {NodeType.HTTP_REQUEST, NodeType.IF_ELSE, NodeType.TELEGRAM_SEND}
     if strict:
         for node in graph.nodes:
-            if node.type == NodeType.WEB_SEARCH and not node.query.strip():
-                errors.append(f"Узел {node.label}: укажите поисковый запрос")
-            elif node.type == NodeType.PROMPT and not node.prompt.strip():
-                errors.append(f"Узел {node.label}: укажите промпт")
-            elif node.type == NodeType.HTTP_REQUEST:
-                if not node.request_json.strip():
-                    errors.append(f"Узел {node.label}: укажите данные запроса")
+            _validate_node_config(node, errors)
+            if node.type == NodeType.HTTP_REQUEST:
                 if len(node.parents) > 1:
                     errors.append(f"Узел {node.label}: HTTP Request может иметь только одну входящую связь")
                 elif len(node.parents) == 1 and node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
                     errors.append(f"Узел {node.label}: родитель HTTP Request должен быть узлом с выводом")
             elif node.type == NodeType.IF_ELSE:
-                if not node.condition.strip():
-                    errors.append(f"Узел {node.label}: укажите условие IF ELSE")
                 if len(node.parents) != 1:
                     errors.append(f"Узел {node.label}: IF ELSE должен иметь ровно одну входящую связь")
                 elif node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
                     errors.append(f"Узел {node.label}: родитель IF ELSE должен быть узлом с выводом")
-                if not node.true_children:
-                    errors.append(f"Узел {node.label}: подключите ветку TRUE")
-                if not node.false_children:
-                    errors.append(f"Узел {node.label}: подключите ветку FALSE")
-                overlap = set(node.true_children) & set(node.false_children)
-                if overlap:
-                    errors.append(f"Узел {node.label}: TRUE и FALSE не могут вести в один узел")
+            elif node.type in extra_single:
+                if len(node.parents) > 1:
+                    errors.append(f"Узел {node.label}: {_single_incoming_label(node.type)} может иметь только одну входящую связь")
+                elif len(node.parents) == 1 and node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
+                    errors.append(f"Узел {node.label}: родитель должен быть узлом с выводом")
     for node in graph.nodes:
         for parent_id in node.parents:
             if parent_id not in known:
@@ -124,6 +189,8 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
             if child_id not in known:
                 errors.append(f"Узел {node.label}: неизвестный потомок {child_id}")
         indegree[node.id] = len(node.parents)
+        if node.type == NodeType.WEBHOOK and node.parents:
+            errors.append(f"Узел {node.label}: вебхук должен быть стартовым узлом")
         if node.type == NodeType.HTTP_REQUEST:
             if node.request_json.strip():
                 _validate_request_json(node.id, node.request_json, errors)
@@ -132,6 +199,8 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
         if node.type == NodeType.IF_ELSE:
             if not strict and len(node.parents) > 1:
                 errors.append(f"Узел {node.label}: IF ELSE может иметь только одну входящую связь")
+        if node.type in extra_single and not strict and len(node.parents) > 1:
+            errors.append(f"Узел {node.label}: {_single_incoming_label(node.type)} может иметь только одну входящую связь")
         if node.type == NodeType.TELEGRAM_SEND:
             if len(node.parents) > 1:
                 errors.append(f"Узел {node.label}: Telegram может иметь только одну входящую связь")
@@ -168,6 +237,14 @@ def incoming_slots(data: WorkflowCreate | WorkflowUpdate) -> tuple[list[Schedule
     if getattr(data, "schedule_cron", None) and "schedule_cron" in data.model_fields_set:
         return slots_from_legacy(data.schedule_cron), data.schedule_enabled
     return None, data.schedule_enabled if "schedule_enabled" in data.model_fields_set else None
+
+
+def ensure_webhook_token(workflow: Workflow, graph: WorkflowGraph, *, rotate: bool = False) -> None:
+    if rotate:
+        workflow.webhook_token = secrets.token_urlsafe(32)
+        return
+    if any(node.type == NodeType.WEBHOOK for node in graph.nodes) and not workflow.webhook_token:
+        workflow.webhook_token = secrets.token_urlsafe(32)
 
 
 def apply_workflow_schedule(
@@ -215,6 +292,9 @@ def validate_solo_node(node: WorkflowNode) -> list[str]:
             errors.append("Укажите данные запроса")
         else:
             _validate_request_json(node.id, node.request_json, errors)
+    else:
+        _validate_node_config(node, errors)
+        errors[:] = [item.split(": ", 1)[-1] if ": " in item else item for item in errors]
     return errors
 
 
@@ -252,6 +332,7 @@ class WorkflowService:
             enabled=True if enabled is None and slots else enabled,
             timezone=data.schedule_timezone,
         )
+        ensure_webhook_token(workflow, data.graph)
         self.db.add(workflow)
         await self.db.commit()
         return workflow
@@ -268,8 +349,9 @@ class WorkflowService:
         workflow = await self._owned(workflow_id, user)
         values = data.model_dump(
             exclude_unset=True,
-            exclude={"graph", "schedule", "schedule_slots", "schedule_enabled", "schedule_cron"},
+            exclude={"graph", "schedule", "schedule_slots", "schedule_enabled", "schedule_cron", "rotate_webhook_token"},
         )
+        graph = WorkflowGraph.model_validate(workflow.draft_graph or {"nodes": []})
         if "graph" in data.model_fields_set and data.graph is not None:
             graph = data.graph
             errors = validate_graph(graph)
@@ -279,6 +361,7 @@ class WorkflowService:
             workflow.estimated_run_cost = await PricingService(self.db).estimate_graph(graph)
         for key, value in values.items():
             setattr(workflow, key, value)
+        ensure_webhook_token(workflow, graph, rotate=bool(data.rotate_webhook_token))
         slots, enabled = incoming_slots(data)
         if slots is not None or enabled is not None or "schedule_timezone" in data.model_fields_set:
             apply_workflow_schedule(
@@ -319,6 +402,7 @@ class WorkflowService:
             raise HTTPException(422, errors)
         snapshot = graph.model_dump(mode="json")
         workflow.draft_graph = snapshot
+        ensure_webhook_token(workflow, graph)
         number = (await self.db.scalar(select(func.max(WorkflowVersion.version)).where(
             WorkflowVersion.workflow_id == workflow.id
         )) or 0) + 1
@@ -369,6 +453,19 @@ class WorkflowService:
             },
         )
         return run
+
+    async def trigger_webhook(self, token: str, payload: dict) -> WorkflowRun:
+        workflow = await self.db.scalar(select(Workflow).where(Workflow.webhook_token == token))
+        if not workflow or workflow.status != WorkflowStatus.published or not workflow.published_version_id:
+            raise HTTPException(404, "Вебхук не найден")
+        version = await self.db.get(WorkflowVersion, workflow.published_version_id)
+        graph = WorkflowGraph.model_validate(version.graph_snapshot if version else {"nodes": []})
+        if not any(node.type == NodeType.WEBHOOK for node in graph.nodes):
+            raise HTTPException(404, "Вебхук не найден")
+        owner = await self.db.get(User, workflow.owner_id)
+        if owner is None:
+            raise HTTPException(404, "Вебхук не найден")
+        return await self.run(workflow.id, owner, payload)
 
     async def run_node(
         self,

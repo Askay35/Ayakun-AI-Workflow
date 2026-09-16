@@ -88,48 +88,109 @@ export const useApi = () => {
     headers: { ...options.headers, Authorization: `Basic ${credentials}` }
   }))
 
-  const serializeGraph = (graph: Workflow['draft_graph']) => ({
-    nodes: graph.nodes.map((node) => ({
+  const assignmentsOf = (node: WorkflowNode) =>
+    (node.data.assignments || [])
+      .map(item => ({ key: item.key?.trim() || '', value: item.value || '' }))
+      .filter(item => /^[A-Za-z_][A-Za-z0-9_]*$/.test(item.key))
+
+  const serializeNode = (node: WorkflowNode) => {
+    const base = {
       id: node.id,
       type: node.type,
       parents: node.parents || [],
       children: node.children || [],
       position: node.position,
-      label: node.data.label,
-      ...(node.type === 'web_search'
-        ? {
-            query: node.data.query || '',
-            period: node.data.period || null
-          }
-        : node.type === 'prompt'
-          ? {
-              prompt: node.data.prompt || '',
-              instructions: node.data.instructions || '',
-              output_format: node.data.output_format || '',
-              complexity: node.data.complexity || 'simple_text',
-              max_output_tokens: Number(node.data.max_output_tokens) || 8000,
-              assignments: (node.data.assignments || [])
-                .map(item => ({ key: item.key?.trim() || '', value: item.value || '' }))
-                .filter(item => /^[A-Za-z_][A-Za-z0-9_]*$/.test(item.key))
-            }
-          : node.type === 'http_request'
-            ? {
-                request_json: node.data.request_json || '',
-                assignments: (node.data.assignments || [])
-                  .map(item => ({ key: item.key?.trim() || '', value: item.value || '' }))
-                  .filter(item => /^[A-Za-z_][A-Za-z0-9_]*$/.test(item.key))
-              }
-            : node.type === 'if_else'
-              ? {
-                  condition: node.data.condition || '',
-                  true_children: node.true_children || [],
-                  false_children: node.false_children || []
-                }
-              : {
-                  chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined,
-                  message: node.data.message || ''
-                })
-    }))
+      label: node.data.label
+    }
+    if (node.type === 'web_search') {
+      return { ...base, query: node.data.query || '', period: node.data.period || null }
+    }
+    if (node.type === 'prompt') {
+      return {
+        ...base,
+        prompt: node.data.prompt || '',
+        instructions: node.data.instructions || '',
+        output_format: node.data.output_format || '',
+        complexity: node.data.complexity || 'simple_text',
+        max_output_tokens: Number(node.data.max_output_tokens) || 8000,
+        assignments: assignmentsOf(node)
+      }
+    }
+    if (node.type === 'http_request') {
+      return { ...base, request_json: node.data.request_json || '', assignments: assignmentsOf(node) }
+    }
+    if (node.type === 'if_else') {
+      return {
+        ...base,
+        condition: node.data.condition || '',
+        true_children: node.true_children || [],
+        false_children: node.false_children || []
+      }
+    }
+    if (node.type === 'telegram_send') {
+      return {
+        ...base,
+        chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined,
+        message: node.data.message || ''
+      }
+    }
+    if (node.type === 'webhook') return base
+    if (node.type === 'google_sheets') {
+      return {
+        ...base,
+        operation: node.data.operation || 'read',
+        spreadsheet_id: node.data.spreadsheet_id || '',
+        sheet_range: node.data.sheet_range || 'Sheet1!A1:Z',
+        access_token: node.data.access_token || '',
+        service_account_json: node.data.service_account_json || '',
+        api_key: node.data.api_key || '',
+        values_json: node.data.values_json || '',
+        assignments: assignmentsOf(node)
+      }
+    }
+    if (node.type === 'gmail') {
+      return {
+        ...base,
+        operation: node.data.operation || 'send',
+        auth_mode: node.data.auth_mode || 'smtp',
+        access_token: node.data.access_token || '',
+        smtp_host: node.data.smtp_host || 'smtp.gmail.com',
+        smtp_port: Number(node.data.smtp_port) || 587,
+        smtp_username: node.data.smtp_username || '',
+        smtp_password: node.data.smtp_password || '',
+        from_email: node.data.from_email || '',
+        to: node.data.to || '',
+        subject: node.data.subject || '',
+        body: node.data.body || '',
+        query: node.data.gmail_query || '',
+        max_results: Number(node.data.max_results) || 10,
+        assignments: assignmentsOf(node)
+      }
+    }
+    if (node.type === 'data_transform') {
+      return {
+        ...base,
+        operation: node.data.operation || 'select',
+        fields: node.data.fields || '',
+        mapping_json: node.data.mapping_json || '',
+        condition: node.data.condition || '',
+        sort_field: node.data.sort_field || '',
+        sort_direction: node.data.sort_direction || 'asc',
+        path: node.data.path || '',
+        assignments: assignmentsOf(node)
+      }
+    }
+    return {
+      ...base,
+      engine: node.data.engine || 'postgresql',
+      dsn: node.data.dsn || '',
+      query: node.data.query || '',
+      assignments: assignmentsOf(node)
+    }
+  }
+
+  const serializeGraph = (graph: Workflow['draft_graph']) => ({
+    nodes: graph.nodes.map(serializeNode)
   })
 
   const normalizeWorkflow = (workflow: any): Workflow => {
@@ -175,7 +236,40 @@ export const useApi = () => {
           condition: node.condition,
           chat_id: node.chat_id ? String(node.chat_id) : undefined,
           message: node.message || '',
-          assignments: node.assignments || []
+          assignments: node.assignments || [],
+          operation: node.operation,
+          spreadsheet_id: node.spreadsheet_id,
+          sheet_range: node.sheet_range,
+          access_token: node.access_token,
+          service_account_json: node.service_account_json,
+          api_key: node.api_key,
+          values_json: typeof node.values_json === 'string'
+            ? node.values_json
+            : node.values_json
+              ? JSON.stringify(node.values_json, null, 2)
+              : undefined,
+          auth_mode: node.auth_mode,
+          smtp_host: node.smtp_host,
+          smtp_port: node.smtp_port,
+          smtp_username: node.smtp_username,
+          smtp_password: node.smtp_password,
+          from_email: node.from_email,
+          to: node.to,
+          subject: node.subject,
+          body: node.body,
+          gmail_query: node.type === 'gmail' ? node.query : undefined,
+          max_results: node.max_results,
+          fields: node.fields,
+          mapping_json: typeof node.mapping_json === 'string'
+            ? node.mapping_json
+            : node.mapping_json
+              ? JSON.stringify(node.mapping_json, null, 2)
+              : undefined,
+          sort_field: node.sort_field,
+          sort_direction: node.sort_direction,
+          path: node.path,
+          engine: node.engine,
+          dsn: node.dsn
         }
       }
     })
@@ -236,6 +330,7 @@ export const useApi = () => {
           schedule_cron?: string | null
           schedule_timezone?: string
           variables?: Record<string, string | number | boolean | null>
+          rotate_webhook_token?: boolean
         } = {}
       ) => request<Workflow>(`/workflows/${id}`, {
         method: 'PATCH',

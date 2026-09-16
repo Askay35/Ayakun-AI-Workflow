@@ -43,10 +43,37 @@ class NodeType(str, Enum):
     TELEGRAM_SEND = "telegram_send"
     HTTP_REQUEST = "http_request"
     IF_ELSE = "if_else"
+    WEBHOOK = "webhook"
+    GOOGLE_SHEETS = "google_sheets"
+    GMAIL = "gmail"
+    DATA_TRANSFORM = "data_transform"
+    SQL_QUERY = "sql_query"
 
     @staticmethod
     def with_output() -> frozenset["NodeType"]:
-        return frozenset({NodeType.WEB_SEARCH, NodeType.PROMPT, NodeType.HTTP_REQUEST, NodeType.IF_ELSE})
+        return frozenset({
+            NodeType.WEB_SEARCH,
+            NodeType.PROMPT,
+            NodeType.HTTP_REQUEST,
+            NodeType.IF_ELSE,
+            NodeType.WEBHOOK,
+            NodeType.GOOGLE_SHEETS,
+            NodeType.GMAIL,
+            NodeType.DATA_TRANSFORM,
+            NodeType.SQL_QUERY,
+        })
+
+    @staticmethod
+    def single_incoming() -> frozenset["NodeType"]:
+        return frozenset({
+            NodeType.TELEGRAM_SEND,
+            NodeType.HTTP_REQUEST,
+            NodeType.IF_ELSE,
+            NodeType.GOOGLE_SHEETS,
+            NodeType.GMAIL,
+            NodeType.DATA_TRANSFORM,
+            NodeType.SQL_QUERY,
+        })
 
 
 class Node(BaseModel):
@@ -109,8 +136,108 @@ class IfElseNode(Node):
     position: dict[str, float] | None = None
 
 
+def _coerce_json_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, indent=2)
+    return str(value)
+
+
+class WebhookNode(Node):
+    type: Literal[NodeType.WEBHOOK] = NodeType.WEBHOOK
+    position: dict[str, float] | None = None
+
+
+class GoogleSheetsNode(Node):
+    type: Literal[NodeType.GOOGLE_SHEETS] = NodeType.GOOGLE_SHEETS
+    operation: Literal["read", "append", "update"] = "read"
+    spreadsheet_id: str = Field(default="", max_length=200)
+    sheet_range: str = Field(default="Sheet1!A1:Z", max_length=500)
+    access_token: str = Field(default="", max_length=8000)
+    service_account_json: str = Field(default="", max_length=20000)
+    api_key: str = Field(default="", max_length=500)
+    values_json: str = Field(default="", max_length=20000)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+    @field_validator("values_json", "service_account_json", mode="before")
+    @classmethod
+    def coerce_sheets_json(cls, value: object) -> str:
+        return _coerce_json_text(value)
+
+
+class GmailNode(Node):
+    type: Literal[NodeType.GMAIL] = NodeType.GMAIL
+    operation: Literal["send", "list"] = "send"
+    auth_mode: Literal["oauth", "smtp"] = "smtp"
+    access_token: str = Field(default="", max_length=8000)
+    smtp_host: str = Field(default="smtp.gmail.com", max_length=200)
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str = Field(default="", max_length=320)
+    smtp_password: str = Field(default="", max_length=500)
+    from_email: str = Field(default="", max_length=320)
+    to: str = Field(default="", max_length=2000)
+    subject: str = Field(default="", max_length=500)
+    body: str = Field(default="", max_length=20000)
+    query: str = Field(default="", max_length=2000)
+    max_results: int = Field(default=10, ge=1, le=50)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+    @field_validator("smtp_port", mode="before")
+    @classmethod
+    def coerce_smtp_port(cls, value: object) -> object:
+        if value is None or value == "":
+            return 587
+        return value
+
+    @field_validator("max_results", mode="before")
+    @classmethod
+    def coerce_max_results(cls, value: object) -> object:
+        if value is None or value == "":
+            return 10
+        return value
+
+
+class DataTransformNode(Node):
+    type: Literal[NodeType.DATA_TRANSFORM] = NodeType.DATA_TRANSFORM
+    operation: Literal["select", "rename", "set", "remove", "filter", "sort", "map"] = "select"
+    fields: str = Field(default="", max_length=4000)
+    mapping_json: str = Field(default="", max_length=20000)
+    condition: str = Field(default="", max_length=2000)
+    sort_field: str = Field(default="", max_length=200)
+    sort_direction: Literal["asc", "desc"] = "asc"
+    path: str = Field(default="", max_length=500)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+    @field_validator("mapping_json", mode="before")
+    @classmethod
+    def coerce_mapping_json(cls, value: object) -> str:
+        return _coerce_json_text(value)
+
+
+class SqlQueryNode(Node):
+    type: Literal[NodeType.SQL_QUERY] = NodeType.SQL_QUERY
+    engine: Literal["postgresql"] = "postgresql"
+    dsn: str = Field(default="", max_length=2000)
+    query: str = Field(default="", max_length=20000)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+
 WorkflowNode = Annotated[
-    WebSearchNode | PromptNode | TelegramSendNode | HttpRequestNode | IfElseNode,
+    WebSearchNode
+    | PromptNode
+    | TelegramSendNode
+    | HttpRequestNode
+    | IfElseNode
+    | WebhookNode
+    | GoogleSheetsNode
+    | GmailNode
+    | DataTransformNode
+    | SqlQueryNode,
     Field(discriminator="type"),
 ]
 
@@ -260,6 +387,7 @@ class WorkflowUpdate(BaseModel):
     schedule_enabled: bool | None = None
     schedule_cron: str | None = None
     schedule_timezone: str | None = None
+    rotate_webhook_token: bool | None = None
 
     @field_validator("variables")
     @classmethod
@@ -283,6 +411,7 @@ class WorkflowResponse(BaseModel):
     schedule_timezone: str
     next_run_at: datetime.datetime | None
     estimated_run_cost: Decimal = Decimal("0")
+    webhook_token: str | None = None
     solo_run_blocked_node_types: list[str] = Field(default_factory=list)
     created_at: datetime.datetime
     updated_at: datetime.datetime

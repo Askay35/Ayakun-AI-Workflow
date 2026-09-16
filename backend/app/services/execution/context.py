@@ -1,5 +1,6 @@
 import json
 
+from helper import json_root_from_output
 from schemas.workflow import Node, NodeType
 
 
@@ -71,3 +72,13 @@ def parent_output_texts(node: Node, context: dict) -> list[str]:
         if text:
             texts.append(text)
     return texts
+
+
+def incoming_payload(node: Node, context: dict) -> object:
+    """Корень JSON предыдущего узла или вход запуска, если родителей нет."""
+    records = parent_records(node, context)
+    if len(records) > 1:
+        raise ValueError("Узел может иметь только одну входящую связь")
+    if records:
+        return json_root_from_output(records[0].get("output"))
+    return json_root_from_output(context.get("input") or {})

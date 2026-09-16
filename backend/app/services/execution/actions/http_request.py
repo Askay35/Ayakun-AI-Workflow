@@ -12,6 +12,78 @@ from services.execution.context import parent_records
 
 logger = logging.getLogger(__name__)
 
+_NO_BODY_METHODS = {"GET", "HEAD", "OPTIONS"}
+_PLACEHOLDER_AUTH = {"bearer ...", "bearer", "..."}
+
+
+def _header_value(value: object) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
+def _request_headers(raw: object) -> dict[str, str]:
+    if not raw:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError("headers в данных запроса должны быть JSON-объектом")
+    headers: dict[str, str] = {}
+    for key, value in raw.items():
+        text = _header_value(value)
+        if text is None:
+            continue
+        name = str(key)
+        if name.lower() == "authorization" and text.strip().lower() in _PLACEHOLDER_AUTH:
+            continue
+        headers[name] = text
+    return headers
+
+
+def _request_kwargs(request_data: dict) -> dict:
+    method = str(request_data.get("method") or "GET").upper()
+    url = request_data.get("url")
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError("В данных запроса не указан url")
+    kwargs: dict = {
+        "method": method,
+        "url": url.strip(),
+        "headers": _request_headers(request_data.get("headers")),
+        "timeout": settings.provider_timeout_seconds,
+        "follow_redirects": True,
+    }
+    query = request_data.get("params")
+    if query is None:
+        query = request_data.get("query")
+    if isinstance(query, dict) and query:
+        kwargs["params"] = query
+    body = request_data.get("body")
+    if body is not None and method not in _NO_BODY_METHODS:
+        if isinstance(body, (dict, list)):
+            kwargs["json"] = body
+        elif isinstance(body, (bytes, bytearray)):
+            kwargs["content"] = bytes(body)
+        else:
+            kwargs["content"] = str(body).encode()
+    return kwargs
+
+
+def _payload_from_response(response: httpx.Response) -> dict | list:
+    if not response.content:
+        return {"status": response.status_code}
+    try:
+        payload = response.json()
+    except json.JSONDecodeError:
+        return {"status": response.status_code, "text": response.text}
+    if isinstance(payload, (dict, list)):
+        return payload
+    return {"data": payload}
+
 
 class HttpRequestAction(NodeAction):
     def __init__(self, client: httpx.AsyncClient):
@@ -27,22 +99,7 @@ class HttpRequestAction(NodeAction):
             json_root_from_output(parent_output) if parent_output is not None else {},
             context.setdefault("variables", {}),
         )
-        method = str(request_data.get("method") or "GET").upper()
-        url = request_data.get("url")
-        if not isinstance(url, str) or not url.strip():
-            raise ValueError("В данных запроса не указан url")
-        headers = request_data.get("headers") or {}
-        if headers and not isinstance(headers, dict):
-            raise ValueError("headers в данных запроса должны быть JSON-объектом")
-        body = request_data.get("body")
-        kwargs: dict = {
-            "method": method,
-            "url": url.strip(),
-            "headers": headers,
-            "timeout": settings.provider_timeout_seconds,
-        }
-        if body is not None:
-            kwargs["json"] = body
+        kwargs = _request_kwargs(request_data)
         try:
             response = await self.client.request(**kwargs)
         except httpx.RequestError:
@@ -53,20 +110,6 @@ class HttpRequestAction(NodeAction):
                 "HTTP request node rejected",
                 extra={"event": "http_request.failed", "status_code": response.status_code},
             )
-            raise ValueError(ERROR_HTTP)
-        if not response.content:
-            empty = {"status": response.status_code}
-            apply_variable_assignments(node.assignments, empty, context)
-            return empty
-        try:
-            payload = response.json()
-        except json.JSONDecodeError:
-            text_payload = {"status": response.status_code, "text": response.text}
-            apply_variable_assignments(node.assignments, text_payload, context)
-            return text_payload
-        if isinstance(payload, (dict, list)):
-            apply_variable_assignments(node.assignments, payload, context)
-            return payload
-        wrapped = {"data": payload}
-        apply_variable_assignments(node.assignments, wrapped, context)
-        return wrapped
+        payload = _payload_from_response(response)
+        apply_variable_assignments(node.assignments, payload, context)
+        return payload

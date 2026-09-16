@@ -23,13 +23,36 @@ const preview = computed(() => {
     if (text) return text
     return props.data.chat_id ? `Чат ${props.data.chat_id}` : 'В ваш Telegram'
   }
-  return props.data.chat_id ? `Чат ${props.data.chat_id}` : 'В ваш Telegram'
+  if (props.kind === 'webhook') return 'Ждёт событие из внешнего сервиса'
+  if (props.kind === 'google_sheets') {
+    const operation = props.data.operation === 'append' ? 'Добавить строки' : props.data.operation === 'update' ? 'Обновить строки' : 'Читать строки'
+    return props.data.spreadsheet_id?.trim() ? `${operation} · ${props.data.spreadsheet_id}` : operation
+  }
+  if (props.kind === 'gmail') {
+    if (props.data.operation === 'list') return props.data.gmail_query?.trim() || 'Получить письма'
+    return props.data.to?.trim() ? `Кому: ${props.data.to}` : 'Отправить письмо'
+  }
+  if (props.kind === 'data_transform') {
+    const names: Record<string, string> = {
+      select: 'Select — оставить поля',
+      rename: 'Rename — переименовать',
+      set: 'Set — задать значения',
+      remove: 'Remove — удалить поля',
+      filter: 'Filter — отфильтровать',
+      sort: 'Sort — сортировка',
+      map: 'Map — преобразовать элементы'
+    }
+    return names[props.data.operation || 'select'] || 'Преобразование данных'
+  }
+  if (props.kind === 'sql_query') return props.data.query?.trim() || 'SQL-запрос ещё не задан'
+  return props.data.label || meta.value.label
 })
 </script>
 
 <template>
   <div class="n8n-node" :class="[`is-${kind}`, { active: selected }]">
     <Handle
+      v-if="kind !== 'webhook'"
       :id="`${nodeId}-in`"
       type="target"
       :position="Position.Left"

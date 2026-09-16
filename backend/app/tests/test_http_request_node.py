@@ -181,7 +181,9 @@ async def test_http_request_executor_resolves_parent_output() -> None:
     call = client.calls[0]
     assert call["method"] == "GET"
     assert call["url"] == "https://api.example.com/users/123"
-    assert call["json"] == {"email": "user@example.com"}
+    assert "json" not in call
+    assert "content" not in call
+    assert call["follow_redirects"] is True
 
 
 @pytest.mark.asyncio
@@ -204,17 +206,57 @@ async def test_http_request_substitutes_workflow_variable_and_assigns() -> None:
 
 
 @pytest.mark.asyncio
-async def test_http_request_error_is_generic() -> None:
+async def test_http_request_error_status_returns_body() -> None:
+    class ErrorClient:
+        async def request(self, **kwargs):
+            return FakeHttpResponse({"error": "nope", "ok": False}, status=400)
+
+    executors = object.__new__(DefaultExecutors)
+    executors.client = ErrorClient()
+    node = HttpRequestNode(id="http", request_json='{"method":"GET","url":"https://example.com"}')
+    result = await executors.http_request(node, {"nodes": {}, "variables": {}})
+    assert result == {"error": "nope", "ok": False}
+
+
+@pytest.mark.asyncio
+async def test_http_request_network_error_is_generic() -> None:
+    import httpx
     from services.execution.errors import ERROR_HTTP
 
     class ErrorClient:
         async def request(self, **kwargs):
-            return FakeHttpResponse({"error": "nope"}, status=400)
+            raise httpx.ConnectError("dns", request=httpx.Request("GET", "https://example.com"))
 
     executors = object.__new__(DefaultExecutors)
     executors.client = ErrorClient()
     node = HttpRequestNode(id="http", request_json='{"method":"GET","url":"https://example.com"}')
     with pytest.raises(ValueError, match=ERROR_HTTP) as raised:
         await executors.http_request(node, {"nodes": {}, "variables": {}})
-    assert "400" not in str(raised.value)
-    assert "nope" not in str(raised.value)
+    assert "dns" not in str(raised.value)
+    assert "example.com" not in str(raised.value)
+
+
+@pytest.mark.asyncio
+async def test_http_request_post_sends_json_body() -> None:
+    executors = object.__new__(DefaultExecutors)
+    client = FakeHttpClient()
+    executors.client = client
+    node = HttpRequestNode(
+        id="http",
+        request_json='{"method":"POST","url":"https://api.example.com/users","body":{"email":"a@b.c"}}',
+    )
+    await executors.http_request(node, {"nodes": {}, "variables": {}})
+    assert client.calls[0]["json"] == {"email": "a@b.c"}
+
+
+@pytest.mark.asyncio
+async def test_http_request_skips_placeholder_authorization() -> None:
+    from services.execution.actions.http_request import _request_kwargs
+
+    kwargs = _request_kwargs({
+        "method": "GET",
+        "url": "https://api.example.com/users",
+        "headers": {"Authorization": "Bearer ...", "X-Test": "1"},
+    })
+    assert "Authorization" not in kwargs["headers"]
+    assert kwargs["headers"]["X-Test"] == "1"

@@ -3,7 +3,17 @@ import type { ScheduleSlot } from '~/utils/schedule'
 export type Id = string
 export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 export type NodeRunStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'cancelled'
-export type NodeKind = 'web_search' | 'prompt' | 'http_request' | 'if_else' | 'telegram_send'
+export type NodeKind =
+  | 'web_search'
+  | 'prompt'
+  | 'http_request'
+  | 'if_else'
+  | 'telegram_send'
+  | 'webhook'
+  | 'google_sheets'
+  | 'gmail'
+  | 'data_transform'
+  | 'sql_query'
 export type SearchPeriod = 'h' | 'd' | 'w' | 'm' | 'y'
 
 export interface ApiEnvelope<T> {
@@ -53,6 +63,31 @@ export interface WorkflowNode {
     chat_id?: string
     message?: string
     assignments?: Array<{ key: string; value: string }>
+    operation?: string
+    spreadsheet_id?: string
+    sheet_range?: string
+    access_token?: string
+    service_account_json?: string
+    api_key?: string
+    values_json?: string
+    auth_mode?: 'oauth' | 'smtp'
+    smtp_host?: string
+    smtp_port?: number | string
+    smtp_username?: string
+    smtp_password?: string
+    from_email?: string
+    to?: string
+    subject?: string
+    body?: string
+    gmail_query?: string
+    max_results?: number | string
+    fields?: string
+    mapping_json?: string
+    sort_field?: string
+    sort_direction?: 'asc' | 'desc'
+    path?: string
+    engine?: 'postgresql'
+    dsn?: string
     status?: RunStatus
     output?: string
   }
@@ -71,6 +106,7 @@ export interface Workflow {
   next_run_at?: string | null
   estimated_run_cost?: number
   variables?: Record<string, string | number | boolean | null>
+  webhook_token?: string | null
   solo_run_blocked_node_types?: string[]
   draft_graph: { nodes: WorkflowNode[] }
 }

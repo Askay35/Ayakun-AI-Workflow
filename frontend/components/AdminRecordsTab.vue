@@ -199,7 +199,7 @@ defineExpose({ closeEdit, openEdit, copyValue })
       :open="editOpen"
       :title="editTitle"
       :ui="{ footer: 'justify-end', 
-      content: 'bg-[#fff]!important',
+      content: 'bg-white!important',
       header: '[&_h2]:text-white!' }"
       @update:open="editOpen = $event"
     >
