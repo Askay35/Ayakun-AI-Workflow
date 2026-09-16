@@ -170,12 +170,7 @@ class GoogleSheetsNode(Node):
 class GmailNode(Node):
     type: Literal[NodeType.GMAIL] = NodeType.GMAIL
     operation: Literal["send", "list"] = "send"
-    auth_mode: Literal["oauth", "smtp"] = "smtp"
-    access_token: str = Field(default="", max_length=8000)
-    smtp_host: str = Field(default="smtp.gmail.com", max_length=200)
-    smtp_port: int = Field(default=587, ge=1, le=65535)
-    smtp_username: str = Field(default="", max_length=320)
-    smtp_password: str = Field(default="", max_length=500)
+    gmail_account_id: int | None = None
     from_email: str = Field(default="", max_length=320)
     to: str = Field(default="", max_length=2000)
     subject: str = Field(default="", max_length=500)
@@ -185,11 +180,11 @@ class GmailNode(Node):
     assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
     position: dict[str, float] | None = None
 
-    @field_validator("smtp_port", mode="before")
+    @field_validator("gmail_account_id", mode="before")
     @classmethod
-    def coerce_smtp_port(cls, value: object) -> object:
-        if value is None or value == "":
-            return 587
+    def coerce_gmail_account_id(cls, value: object) -> object:
+        if value in {None, "", 0, "0"}:
+            return None
         return value
 
     @field_validator("max_results", mode="before")
@@ -220,7 +215,7 @@ class DataTransformNode(Node):
 
 class SqlQueryNode(Node):
     type: Literal[NodeType.SQL_QUERY] = NodeType.SQL_QUERY
-    engine: Literal["postgresql"] = "postgresql"
+    engine: Literal["postgresql", "mysql", "clickhouse"] = "postgresql"
     dsn: str = Field(default="", max_length=2000)
     query: str = Field(default="", max_length=20000)
     assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)

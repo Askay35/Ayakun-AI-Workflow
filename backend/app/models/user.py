@@ -32,6 +32,10 @@ class User(Base):
     payments: Mapped[list["Payment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     workflows: Mapped[list["Workflow"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    google_oauth_tokens: Mapped[list["GoogleOAuthToken"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 class AuthIdentity(Base):
     __tablename__ = "auth_identities"
@@ -58,3 +62,19 @@ class RefreshToken(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user: Mapped[User] = relationship(back_populates="refresh_tokens")
+
+
+class GoogleOAuthToken(Base):
+    __tablename__ = "google_oauth_tokens"
+    __table_args__ = (UniqueConstraint("user_id", "google_sub", name="uq_gmail_user_google_sub"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    google_sub: Mapped[str] = mapped_column(String(320))
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    refresh_token_encrypted: Mapped[str] = mapped_column(Text)
+    scopes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="google_oauth_tokens")

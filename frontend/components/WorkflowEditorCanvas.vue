@@ -33,7 +33,9 @@ import {
 } from '~/utils/workflow-graph'
 
 const props = defineProps<{ workflowId: string }>()
+const route = useRoute()
 const api = useApi()
+const auth = useAuth()
 const toast = useToast()
 const id = props.workflowId
 const flowId = `workflow-${id}`
@@ -100,10 +102,27 @@ const gmailOperations = [
   { label: 'Отправить письмо', value: 'send' },
   { label: 'Получить письма', value: 'list' }
 ]
-const gmailAuthModes = [
-  { label: 'SMTP (пароль приложения)', value: 'smtp' },
-  { label: 'OAuth-токен', value: 'oauth' }
+const gmailAccounts = computed(() => auth.user.value?.gmail_accounts || [])
+const gmailAccountItems = computed(() => gmailAccounts.value.map(item => ({
+  label: item.email || `Почта ${item.id}`,
+  value: item.id
+})))
+const selectedGmail = computed(() => {
+  const accountId = Number(selected.value?.data?.gmail_account_id || 0)
+  return gmailAccounts.value.find(item => item.id === accountId) || null
+})
+const gmailLinking = ref(false)
+const sqlEngines = [
+  { label: 'PostgreSQL', value: 'postgresql' },
+  { label: 'MySQL', value: 'mysql' },
+  { label: 'ClickHouse', value: 'clickhouse' }
 ]
+const sqlDsnPlaceholder = computed(() => {
+  const engine = selected.value?.data?.engine
+  if (engine === 'mysql') return 'mysql://user:pass@host:3306/dbname'
+  if (engine === 'clickhouse') return 'clickhouse://user:pass@host:8123/dbname'
+  return 'postgresql://user:pass@host:5432/dbname'
+})
 const transformOperations = [
   { label: 'Select — оставить нужные поля', value: 'select' },
   { label: 'Rename — переименовать поля', value: 'rename' },
@@ -113,7 +132,6 @@ const transformOperations = [
   { label: 'Sort — отсортировать', value: 'sort' },
   { label: 'Map — преобразовать каждый элемент массива', value: 'map' }
 ]
-const sqlEngines = [{ label: 'PostgreSQL', value: 'postgresql' }]
 const sortDirections = [
   { label: 'По возрастанию', value: 'asc' },
   { label: 'По убыванию', value: 'desc' }
@@ -155,7 +173,7 @@ const selectedPeriod = computed({
     selected.value.data.period = value === 'any' ? undefined : (value as SearchPeriod)
   }
 })
-const JSON_EXPRESSION_EXAMPLE = '{{$data[0].price}}'
+const JSON_EXPRESSION_EXAMPLE = '{{$data[0].field}}'
 const VARIABLE_NAME_EXAMPLE = '{{name}}'
 const VARIABLE_COMPARE_EXAMPLE = '{{count}} == 12'
 const WEBHOOK_BODY_EXAMPLE = '{{$body}}'
@@ -164,7 +182,7 @@ const TRANSFORM_RENAME_PLACEHOLDER = 'old=new'
 const TRANSFORM_SET_PLACEHOLDER = 'status=active'
 const formatVariableToken = (name: string) => `{{${name}}}`
 const IF_ELSE_HELP_EXAMPLES = [
-  { code: '{{$data[0].price}} != null', note: 'поле есть и не null' },
+  { code: '{{$data[0].field}} != null', note: 'поле есть и не null' },
   { code: '{{$status}} == "active"', note: 'строка' },
   { code: '{{count}} == 12', note: 'переменная; строка «12» и число 12 равны' },
   { code: '{{$score}} >= 0.8', note: 'число' },
@@ -267,6 +285,33 @@ const save = async () => {
     return false
   }
 }
+const connectGmail = async () => {
+  const node = selected.value
+  if (!node || node.type !== 'gmail') return
+  gmailLinking.value = true
+  try {
+    const saved = await save()
+    if (!saved) return
+    const bytes = crypto.getRandomValues(new Uint8Array(64))
+    const verifier = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
+    const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    const redirectUri = `${location.origin}/auth/google/callback`
+    sessionStorage.setItem('ayakun_google_verifier', verifier)
+    sessionStorage.setItem('ayakun_google_redirect_uri', redirectUri)
+    sessionStorage.setItem('ayakun_google_purpose', 'gmail')
+    sessionStorage.setItem('ayakun_gmail_workflow', id)
+    sessionStorage.setItem('ayakun_gmail_node', node.id)
+    const { authorization_url } = await api.auth.googleStart(redirectUri, challenge, 'gmail')
+    location.href = authorization_url
+  } catch (error: any) {
+    toast.add({ title: 'Не удалось войти в Google', description: apiErrorMessage(error, 'Попробуйте ещё раз.'), color: 'error' })
+    gmailLinking.value = false
+  }
+}
+const disconnectGmailFromNode = () => {
+  if (selected.value?.type === 'gmail') selected.value.data.gmail_account_id = null
+}
 const hydrated = ref(false)
 watch([nodes, links, scheduleEnabled, scheduleSlots, workflowVariables], () => {
   if (!hydrated.value) return
@@ -286,9 +331,20 @@ const onEditorKey = (event: KeyboardEvent) => {
   event.preventDefault()
   unlinkSelectedEdge()
 }
-onMounted(() => {
+onMounted(async () => {
   hydrated.value = true
   window.addEventListener('keydown', onEditorKey)
+  const accountId = Number(route.query.gmail_account || 0)
+  const nodeId = String(route.query.gmail_node || '')
+  if (accountId && nodeId) {
+    const node = nodes.value.find(item => item.id === nodeId)
+    if (node?.type === 'gmail') {
+      node.data.gmail_account_id = accountId
+      selectedId.value = nodeId
+      await save()
+    }
+    await navigateTo({ path: route.path, query: {} }, { replace: true })
+  }
 })
 
 const addNode = (type: NodeKind, position: { x: number; y: number }) => {
@@ -311,9 +367,6 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       operation: type === 'google_sheets' ? 'read' : type === 'gmail' ? 'send' : type === 'data_transform' ? 'select' : undefined,
       sheet_range: type === 'google_sheets' ? 'Sheet1!A1:Z' : undefined,
       values_json: type === 'google_sheets' ? '[]' : undefined,
-      auth_mode: type === 'gmail' ? 'smtp' : undefined,
-      smtp_host: type === 'gmail' ? 'smtp.gmail.com' : undefined,
-      smtp_port: type === 'gmail' ? 587 : undefined,
       max_results: type === 'gmail' ? 10 : undefined,
       mapping_json: type === 'data_transform' ? '' : undefined,
       sort_direction: type === 'data_transform' ? 'asc' : undefined,
@@ -722,31 +775,24 @@ const runSelectedNode = async () => {
               <UFormField label="Действие">
                 <USelect v-model="selected.data.operation" :items="gmailOperations" value-key="value" class="w-full" />
               </UFormField>
-              <UFormField v-if="selected.data.operation !== 'list'" label="Способ входа">
-                <USelect v-model="selected.data.auth_mode" :items="gmailAuthModes" value-key="value" class="w-full" />
-              </UFormField>
-              <template v-if="selected.data.operation === 'list' || selected.data.auth_mode === 'oauth'">
-                <UFormField label="OAuth-токен">
-                  <UInput v-model="selected.data.access_token" type="password" class="w-full" />
+              <div class="rounded-xl border border-white/10 p-3">
+                <p class="mb-2 text-xs leading-5 text-white/55">
+                  <template v-if="selectedGmail">Письма идут через {{ selectedGmail.email || 'подключённый Google' }}.</template>
+                  <template v-else>Войдите в Google — так цепочка сможет читать и отправлять письма с выбранной почты.</template>
+                </p>
+                <UFormField v-if="gmailAccountItems.length" label="Почта" class="mb-2">
+                  <USelect v-model="selected.data.gmail_account_id" :items="gmailAccountItems" value-key="value" class="w-full" />
                 </UFormField>
-              </template>
-              <template v-else>
-                <UFormField label="SMTP-хост">
-                  <UInput v-model="selected.data.smtp_host" class="w-full" placeholder="smtp.gmail.com" />
-                </UFormField>
-                <UFormField label="Порт">
-                  <UInput v-model="selected.data.smtp_port" type="number" class="w-full" />
-                </UFormField>
-                <UFormField label="Почта Gmail">
-                  <UInput v-model="selected.data.smtp_username" class="w-full" placeholder="you@gmail.com" />
-                </UFormField>
-                <UFormField label="Пароль приложения">
-                  <UInput v-model="selected.data.smtp_password" type="password" class="w-full" />
-                </UFormField>
-                <UFormField label="От кого">
-                  <UInput v-model="selected.data.from_email" class="w-full" placeholder="По умолчанию — почта входа" />
-                </UFormField>
-              </template>
+                <div class="flex flex-wrap gap-2">
+                  <UButton
+                    :label="selectedGmail ? 'Сменить почту' : 'Войти через Google'"
+                    icon="i-simple-icons-google"
+                    :loading="gmailLinking"
+                    @click="connectGmail"
+                  />
+                  <UButton v-if="selected.data.gmail_account_id" label="Отключить" variant="outline" color="neutral" @click="disconnectGmailFromNode" />
+                </div>
+              </div>
               <template v-if="selected.data.operation === 'list'">
                 <UFormField label="Поиск писем">
                   <UInput v-model="selected.data.gmail_query" class="w-full" placeholder="is:unread newer_than:1d" />
@@ -756,6 +802,9 @@ const runSelectedNode = async () => {
                 </UFormField>
               </template>
               <template v-else>
+                <UFormField label="От кого">
+                  <UInput v-model="selected.data.from_email" class="w-full" placeholder="Необязательно" />
+                </UFormField>
                 <UFormField label="Кому">
                   <UInput v-model="selected.data.to" class="w-full" placeholder="ada@example.com" />
                 </UFormField>
@@ -766,7 +815,7 @@ const runSelectedNode = async () => {
                   <UTextarea v-model="selected.data.body" :rows="6" class="w-full" />
                 </UFormField>
               </template>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Подстановки {{ JSON_EXPRESSION_EXAMPLE }} и <code>{{ VARIABLE_NAME_EXAMPLE }}</code>. Для SMTP нужен пароль приложения Google, не обычный пароль аккаунта.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Подстановки {{ JSON_EXPRESSION_EXAMPLE }} и <code>{{ VARIABLE_NAME_EXAMPLE }}</code>. В каждом звене можно войти в свою Google-почту.</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'data_transform'">
@@ -806,12 +855,12 @@ const runSelectedNode = async () => {
                 <USelect v-model="selected.data.engine" :items="sqlEngines" value-key="value" class="w-full" />
               </UFormField>
               <UFormField label="Строка подключения">
-                <UInput v-model="selected.data.dsn" type="password" class="w-full font-mono text-xs" placeholder="postgresql://user:pass@host:5432/dbname" />
+                <UInput v-model="selected.data.dsn" type="password" class="w-full font-mono text-xs" :placeholder="sqlDsnPlaceholder" />
               </UFormField>
               <UFormField label="SQL-запрос">
                 <UTextarea v-model="selected.data.query" :rows="8" class="w-full font-mono text-xs" placeholder="SELECT id, email FROM users LIMIT 50" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Результат всегда JSON: <code>{"rows":[...],"row_count":N}</code>. В запросе можно использовать {{ JSON_EXPRESSION_EXAMPLE }} и <code>{{ VARIABLE_NAME_EXAMPLE }}</code>. Подключение идёт к вашей PostgreSQL, не к служебной базе сервиса.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Результат всегда JSON: <code>{"rows":[...],"row_count":N}</code>. В запросе можно использовать {{ JSON_EXPRESSION_EXAMPLE }} и <code>{{ VARIABLE_NAME_EXAMPLE }}</code>. Подключение идёт к вашей PostgreSQL, MySQL или ClickHouse, не к служебной базе сервиса.</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="mb-0 mt-3 space-y-1 text-xs text-amber-200">

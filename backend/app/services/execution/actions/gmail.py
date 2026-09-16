@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 import json
-import smtplib
 from email.message import EmailMessage
 
 import httpx
@@ -13,7 +11,6 @@ from core.user_errors import ERROR_GMAIL
 from helper import apply_variable_assignments, render_template
 from schemas.workflow import GmailNode
 from services.execution.actions.base import NodeAction
-from services.execution.actions.google_auth import rendered_secret
 from services.execution.context import incoming_payload
 
 _GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
@@ -30,6 +27,17 @@ def _header_value(headers: list, name: str) -> str:
         if isinstance(item, dict) and str(item.get("name") or "").lower() == needle:
             return str(item.get("value") or "")
     return ""
+
+
+def _bearer_token(node: GmailNode, context: dict) -> str:
+    tokens = context.get("gmail_tokens")
+    account_id = node.gmail_account_id
+    token = tokens.get(account_id) if isinstance(tokens, dict) and account_id is not None else None
+    if not isinstance(token, str) or not token.strip():
+        raise ValueError(
+            "Не удалось авторизоваться в Gmail" if token == "" else "Войдите в Google в этом звене"
+        )
+    return token.strip()
 
 
 def _raw_message(from_email: str, to: str, subject: str, body: str) -> str:
@@ -50,14 +58,15 @@ class GmailAction(NodeAction):
     async def execute(self, node: GmailNode, context: dict) -> dict:
         payload = incoming_payload(node, context)
         variables = context.setdefault("variables", {})
+        token = _bearer_token(node, context)
         if node.operation == "list":
-            output = await self._list(node, payload, variables)
+            output = await self._list(node, payload, variables, token)
         else:
-            output = await self._send(node, payload, variables)
+            output = await self._send(node, payload, variables, token)
         apply_variable_assignments(node.assignments, output, context)
         return output
 
-    async def _send(self, node: GmailNode, payload: object, variables: dict) -> dict:
+    async def _send(self, node: GmailNode, payload: object, variables: dict, token: str) -> dict:
         to = render_template(node.to, payload, variables).strip()
         subject = render_template(node.subject, payload, variables)
         body = render_template(node.body, payload, variables)
@@ -65,77 +74,33 @@ class GmailAction(NodeAction):
         recipients = _split_recipients(to)
         if not recipients:
             raise ValueError("Укажите получателя письма")
-        if node.auth_mode == "oauth":
-            token = rendered_secret(node.access_token, payload, variables)
-            if not token:
-                raise ValueError("Укажите OAuth-токен Gmail")
-            try:
-                response = await self.client.post(
-                    _GMAIL_SEND_URL,
-                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-                    json={"raw": _raw_message(from_email, ", ".join(recipients), subject, body)},
-                    timeout=settings.provider_timeout_seconds,
-                )
-            except httpx.RequestError:
-                raise ValueError(ERROR_GMAIL) from None
-            if response.is_error:
-                if response.status_code in {401, 403}:
-                    raise ValueError("Не удалось авторизоваться в Gmail")
-                raise ValueError(ERROR_GMAIL)
-            try:
-                result = response.json()
-            except json.JSONDecodeError:
-                result = {}
-            return {
-                "sent": True,
-                "operation": "send",
-                "to": recipients,
-                "subject": subject,
-                "id": result.get("id") if isinstance(result, dict) else None,
-                "thread_id": result.get("threadId") if isinstance(result, dict) else None,
-            }
-        await self._send_smtp(node, payload, variables, recipients, subject, body, from_email)
-        return {"sent": True, "operation": "send", "to": recipients, "subject": subject, "id": None}
-
-    async def _send_smtp(
-        self,
-        node: GmailNode,
-        payload: object,
-        variables: dict,
-        recipients: list[str],
-        subject: str,
-        body: str,
-        from_email: str,
-    ) -> None:
-        username = render_template(node.smtp_username, payload, variables).strip()
-        password = rendered_secret(node.smtp_password, payload, variables)
-        host = render_template(node.smtp_host or "smtp.gmail.com", payload, variables).strip() or "smtp.gmail.com"
-        sender = from_email or username
-        if not username or not password or not sender:
-            raise ValueError("Укажите почту Gmail и пароль приложения")
-        message = EmailMessage()
-        message["From"] = sender
-        message["To"] = ", ".join(recipients)
-        message["Subject"] = subject
-        message.set_content(body or "")
-
-        def deliver() -> None:
-            with smtplib.SMTP(host, int(node.smtp_port or 587), timeout=30) as smtp:
-                smtp.starttls()
-                smtp.login(username, password)
-                smtp.send_message(message)
-
         try:
-            await asyncio.to_thread(deliver)
-        except smtplib.SMTPAuthenticationError:
-            raise ValueError("Не удалось авторизоваться в Gmail") from None
-        except (smtplib.SMTPException, OSError, TimeoutError):
+            response = await self.client.post(
+                _GMAIL_SEND_URL,
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={"raw": _raw_message(from_email, ", ".join(recipients), subject, body)},
+                timeout=settings.provider_timeout_seconds,
+            )
+        except httpx.RequestError:
             raise ValueError(ERROR_GMAIL) from None
+        if response.is_error:
+            if response.status_code in {401, 403}:
+                raise ValueError("Не удалось авторизоваться в Gmail")
+            raise ValueError(ERROR_GMAIL)
+        try:
+            result = response.json()
+        except json.JSONDecodeError:
+            result = {}
+        return {
+            "sent": True,
+            "operation": "send",
+            "to": recipients,
+            "subject": subject,
+            "id": result.get("id") if isinstance(result, dict) else None,
+            "thread_id": result.get("threadId") if isinstance(result, dict) else None,
+        }
 
-    async def _list(self, node: GmailNode, payload: object, variables: dict) -> dict:
-        token = rendered_secret(node.access_token, payload, variables)
-        if not token:
-            raise ValueError("Для чтения писем укажите OAuth-токен Gmail")
+    async def _list(self, node: GmailNode, payload: object, variables: dict, token: str) -> dict:
         query = render_template(node.query, payload, variables).strip()
         params: dict[str, str | int] = {"maxResults": int(node.max_results or 10)}
         if query:

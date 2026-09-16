@@ -242,57 +242,38 @@ async def test_google_sheets_network_error_is_generic() -> None:
 
 
 @pytest.mark.asyncio
-async def test_gmail_smtp_send(monkeypatch) -> None:
-    sent: dict = {}
+async def test_gmail_send_uses_connected_account() -> None:
+    class FakeGmailClient:
+        async def post(self, url, **kwargs):
+            assert kwargs["headers"]["Authorization"] == "Bearer account-tok"
+            return FakeSheetsResponse({"id": "m1", "threadId": "t1"})
 
-    class FakeSMTP:
-        def __init__(self, host, port, timeout=None):
-            sent["host"] = host
-            sent["port"] = port
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-        def starttls(self):
-            sent["tls"] = True
-
-        def login(self, user, password):
-            sent["user"] = user
-            sent["password"] = password
-
-        def send_message(self, message):
-            sent["to"] = message["To"]
-            sent["subject"] = message["Subject"]
-            sent["body"] = message.get_content()
-
-    monkeypatch.setattr("services.execution.actions.gmail.smtplib.SMTP", FakeSMTP)
-    result = await GmailAction(SimpleNamespace()).execute(
+    result = await GmailAction(FakeGmailClient()).execute(
         GmailNode(
             id="mail",
             operation="send",
-            auth_mode="smtp",
-            smtp_username="me@gmail.com",
-            smtp_password="app-pass",
+            gmail_account_id=7,
             to="ada@example.com",
             subject="Hi {{$name}}",
             body="Hello",
             parents=["src"],
         ),
-        {"nodes": {"src": {"type": "webhook", "output": {"name": "Ada"}}}, "variables": {}},
+        {
+            "nodes": {"src": {"type": "webhook", "output": {"name": "Ada"}}},
+            "variables": {},
+            "gmail_tokens": {7: "account-tok"},
+        },
     )
     assert result["sent"] is True
-    assert sent["to"] == "ada@example.com"
-    assert sent["subject"] == "Hi Ada"
-    assert sent["user"] == "me@gmail.com"
+    assert result["to"] == ["ada@example.com"]
+    assert result["subject"] == "Hi Ada"
 
 
 @pytest.mark.asyncio
-async def test_gmail_oauth_list() -> None:
+async def test_gmail_list_uses_connected_account() -> None:
     class FakeGmailClient:
         async def get(self, url, **kwargs):
+            assert kwargs["headers"]["Authorization"] == "Bearer account-tok"
             if url.endswith("/messages"):
                 return FakeSheetsResponse({"messages": [{"id": "m1"}]})
             return FakeSheetsResponse({
@@ -303,8 +284,8 @@ async def test_gmail_oauth_list() -> None:
             })
 
     result = await GmailAction(FakeGmailClient()).execute(
-        GmailNode(id="mail", operation="list", auth_mode="oauth", access_token="tok"),
-        {"nodes": {}, "variables": {}},
+        GmailNode(id="mail", operation="list", gmail_account_id=7),
+        {"nodes": {}, "variables": {}, "gmail_tokens": {7: "account-tok"}},
     )
     assert result["count"] == 1
     assert result["messages"][0]["subject"] == "Hi"
@@ -389,6 +370,66 @@ def test_default_executors_register_new_types() -> None:
         NodeType.SQL_QUERY,
     ):
         assert node_type in registry._executors
+
+
+@pytest.mark.asyncio
+async def test_gmail_requires_google_login() -> None:
+    with pytest.raises(ValueError, match="Войдите в Google"):
+        await GmailAction(SimpleNamespace()).execute(
+            GmailNode(id="mail", operation="list", gmail_account_id=7),
+            {"nodes": {}, "variables": {}},
+        )
+
+
+def test_gmail_validation_requires_google_login() -> None:
+    errors = validate_solo_node(GmailNode(id="mail", operation="send", to="ada@example.com"))
+    assert any("войдите в Google" in item for item in errors)
+    connected = validate_solo_node(GmailNode(id="mail", operation="send", gmail_account_id=3, to="ada@example.com"))
+    assert connected == []
+
+
+@pytest.mark.asyncio
+async def test_sql_query_mysql(monkeypatch) -> None:
+    async def fake_mysql(dsn, query):
+        assert dsn.startswith("mysql://")
+        assert "FROM users" in query
+        return {"engine": "mysql", "rows": [{"id": 2}], "row_count": 1}
+
+    monkeypatch.setattr("services.execution.actions.sql_query._mysql", fake_mysql)
+    result = await SqlQueryAction().execute(
+        SqlQueryNode(id="sql", engine="mysql", dsn="mysql://u:p@db.example:3306/app", query="SELECT id FROM users"),
+        {"nodes": {}, "variables": {}},
+    )
+    assert result == {"engine": "mysql", "rows": [{"id": 2}], "row_count": 1}
+
+
+@pytest.mark.asyncio
+async def test_sql_query_clickhouse(monkeypatch) -> None:
+    def fake_clickhouse(dsn, query):
+        assert dsn.startswith("clickhouse://")
+        assert query.startswith("SELECT")
+        return {"engine": "clickhouse", "rows": [{"n": 1}], "row_count": 1}
+
+    monkeypatch.setattr("services.execution.actions.sql_query._clickhouse", fake_clickhouse)
+    result = await SqlQueryAction().execute(
+        SqlQueryNode(id="sql", engine="clickhouse", dsn="clickhouse://u:p@db.example:8123/app", query="SELECT 1 AS n"),
+        {"nodes": {}, "variables": {}},
+    )
+    assert result == {"engine": "clickhouse", "rows": [{"n": 1}], "row_count": 1}
+
+
+def test_sql_rejects_unknown_scheme() -> None:
+    from services.execution.actions.sql_query import _engine_from_dsn
+
+    with pytest.raises(ValueError, match="Поддерживаются PostgreSQL, MySQL и ClickHouse"):
+        _engine_from_dsn("sqlite:///tmp.db", "postgresql")
+
+
+def test_encrypt_secret_roundtrip() -> None:
+    import helper
+    token = helper.encrypt_secret("refresh-token")
+    assert token != "refresh-token"
+    assert helper.decrypt_secret(token) == "refresh-token"
 
 
 def test_apply_assignments_still_works_on_transform_output() -> None:

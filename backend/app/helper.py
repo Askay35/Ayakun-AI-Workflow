@@ -1,3 +1,4 @@
+import base64
 import datetime
 import hashlib
 import json
@@ -73,6 +74,21 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def hash_token(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _secret_fernet():
+    from cryptography.fernet import Fernet
+
+    digest = hashlib.sha256(settings.secret_key.encode()).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def encrypt_secret(value: str) -> str:
+    return _secret_fernet().encrypt(value.encode()).decode()
+
+
+def decrypt_secret(value: str) -> str:
+    return _secret_fernet().decrypt(value.encode()).decode()
 
 
 def new_refresh_token() -> tuple[str, str]:

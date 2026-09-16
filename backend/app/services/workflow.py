@@ -122,15 +122,10 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
         elif node.operation != "read" and not has_write_auth:
             errors.append(f"Узел {label}: для записи нужен токен Google или JSON сервисного аккаунта")
     elif isinstance(node, GmailNode):
-        if node.operation == "list":
-            if not node.access_token.strip():
-                errors.append(f"Узел {label}: для чтения писем укажите OAuth-токен")
-        elif not node.to.strip():
+        if not node.gmail_account_id:
+            errors.append(f"Узел {label}: войдите в Google")
+        if node.operation != "list" and not node.to.strip():
             errors.append(f"Узел {label}: укажите получателя письма")
-        elif node.auth_mode == "oauth" and not node.access_token.strip():
-            errors.append(f"Узел {label}: укажите OAuth-токен Gmail")
-        elif node.auth_mode == "smtp" and (not node.smtp_username.strip() or not node.smtp_password.strip()):
-            errors.append(f"Узел {label}: укажите почту Gmail и пароль приложения")
     elif isinstance(node, DataTransformNode):
         if node.operation in {"select", "remove"} and not node.fields.strip():
             errors.append(f"Узел {label}: укажите поля")

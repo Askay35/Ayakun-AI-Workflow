@@ -26,7 +26,7 @@ const keyInvalid = (key: string) => {
   return trimmed.length > 0 && !VARIABLE_NAME_RE.test(trimmed)
 }
 
-const assignmentExample = '{{total}} = {{$data[0].price}}'
+const assignmentExample = '{{total}} = {{$data[0].field}}'
 </script>
 
 <template>

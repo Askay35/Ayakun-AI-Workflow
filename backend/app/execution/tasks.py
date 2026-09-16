@@ -30,10 +30,11 @@ from models.workflow import (
     WorkflowStatus,
     WorkflowVersion,
 )
-from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode, normalize_workflow_variables
+from schemas.workflow import GmailNode, NodeType, WorkflowGraph, WorkflowNode, normalize_workflow_variables
 from services.billing import BillingService
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
 from services.execution.errors import user_visible_error
+from services.google_oauth import access_token_for_account
 from services.pricing import PricingService, billable_credits, billed_credits, provider_cost_usd
 from services.schedule import advance_due_slots, dump_slots, earliest_next, load_slots, slots_from_legacy
 from services.workflow import topological_nodes
@@ -61,7 +62,6 @@ _ZERO_COST_TYPES = {
 _SECRET_NODE_FIELDS = frozenset({
     "access_token",
     "service_account_json",
-    "smtp_password",
     "api_key",
     "dsn",
 })
@@ -223,7 +223,7 @@ class WorkflowRunExecutor:
         return executor
 
     async def execute(self) -> None:
-        context = self.build_context()
+        context = await self.build_context()
         workflow = await self.db.get(Workflow, self.run.workflow_id)
         if workflow and isinstance(workflow.variables, dict) and workflow.variables:
             # Актуальные значения на workflow перекрывают снимок на момент publish.
@@ -286,16 +286,30 @@ class WorkflowRunExecutor:
         if hasattr(workflow, "_sa_instance_state"):
             flag_modified(workflow, "variables")
 
-    def build_context(self) -> dict:
+    async def build_context(self) -> dict:
         run_input = dict(self.run.input)
         if self.user.chat_id and "chat_id" not in run_input:
             run_input["chat_id"] = self.user.chat_id
-        return {
+        context: dict = {
             "input": run_input,
             "nodes": {},
             "taken_branches": {},
             "variables": dict(self.graph.variables or {}),
+            "gmail_tokens": {},
         }
+        tokens: dict[int, str] = context["gmail_tokens"]
+        for node in self.graph.nodes:
+            if not isinstance(node, GmailNode) or not node.gmail_account_id:
+                continue
+            account_id = node.gmail_account_id
+            if account_id in tokens:
+                continue
+            try:
+                token = await access_token_for_account(self.db, self.user.id, account_id)
+                tokens[account_id] = token or ""
+            except ValueError:
+                tokens[account_id] = ""
+        return context
 
     def _is_reachable(
         self,

@@ -151,9 +151,9 @@ const blocks = [
   { number: '05', title: 'Telegram', text: 'Готовый результат уходит в чат сразу после запуска — вам или команде.', icon: 'i-lucide-send', accent: '#2aa8e0' },
   { number: '06', title: 'Вебхук', text: 'Цепочка стартует по событию: новая заявка, оплата, форма на сайте.', icon: 'i-lucide-webhook', accent: '#f472b6' },
   { number: '07', title: 'Google Таблицы', text: 'Читать и писать строки: лиды, прайс, отчёт — без ручного копирования.', icon: 'i-lucide-table', accent: '#22c55e' },
-  { number: '08', title: 'Gmail', text: 'Отправить письмо или забрать входящие и передать дальше по цепочке.', icon: 'i-lucide-mail', accent: '#ea4335' },
+  { number: '08', title: 'Gmail', text: 'Отправить письмо или забрать входящие через Google-аккаунт и передать дальше по цепочке.', icon: 'i-lucide-mail', accent: '#ea4335' },
   { number: '09', title: 'Преобразование', text: 'Отфильтровать, разложить и собрать JSON так, чтобы следующее звено поняло данные.', icon: 'i-lucide-replace', accent: '#38bdf8' },
-  { number: '10', title: 'База данных', text: 'SQL-запрос к своей базе: остатки, заказы, метрики — сразу в цепочку.', icon: 'i-lucide-database', accent: '#6366f1' }
+  { number: '10', title: 'База данных', text: 'SQL-запрос к PostgreSQL, MySQL или ClickHouse: остатки, заказы, метрики — сразу в цепочку.', icon: 'i-lucide-database', accent: '#6366f1' }
 ]
 
 const examples = [

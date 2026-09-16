@@ -152,12 +152,7 @@ export const useApi = () => {
       return {
         ...base,
         operation: node.data.operation || 'send',
-        auth_mode: node.data.auth_mode || 'smtp',
-        access_token: node.data.access_token || '',
-        smtp_host: node.data.smtp_host || 'smtp.gmail.com',
-        smtp_port: Number(node.data.smtp_port) || 587,
-        smtp_username: node.data.smtp_username || '',
-        smtp_password: node.data.smtp_password || '',
+        gmail_account_id: node.data.gmail_account_id || null,
         from_email: node.data.from_email || '',
         to: node.data.to || '',
         subject: node.data.subject || '',
@@ -248,11 +243,7 @@ export const useApi = () => {
             : node.values_json
               ? JSON.stringify(node.values_json, null, 2)
               : undefined,
-          auth_mode: node.auth_mode,
-          smtp_host: node.smtp_host,
-          smtp_port: node.smtp_port,
-          smtp_username: node.smtp_username,
-          smtp_password: node.smtp_password,
+          gmail_account_id: node.gmail_account_id ?? undefined,
           from_email: node.from_email,
           to: node.to,
           subject: node.subject,
@@ -306,12 +297,13 @@ export const useApi = () => {
       confirmEmailRegister: (email: string, code: string) =>
         request<AuthTokens>('/auth/register/confirm', { method: 'POST', body: { email, code } }),
       telegram: (code: string) => request<AuthTokens>('/auth/login/telegram', { method: 'POST', body: { code } }),
-      googleStart: (redirectUri: string, codeChallenge: string) => request<{ authorization_url: string; state: string }>('/auth/google/authorize', {
-        method: 'POST', body: { redirect_uri: redirectUri, code_challenge: codeChallenge }
+      googleStart: (redirectUri: string, codeChallenge: string, purpose: 'login' | 'gmail' = 'login') => request<{ authorization_url: string; state: string }>('/auth/google/authorize', {
+        method: 'POST', body: { redirect_uri: redirectUri, code_challenge: codeChallenge, purpose }
       }),
       googleCallback: (code: string, state: string, codeVerifier: string, redirectUri: string) => request<AuthTokens>('/auth/google/code', {
         method: 'POST', body: { code, state, code_verifier: codeVerifier, redirect_uri: redirectUri }
       }),
+      disconnectGmail: (accountId: number) => request<User>(`/auth/google/gmail/${accountId}`, { method: 'DELETE' }),
       forgot: (email: string) => request<void>('/auth/password-reset/request', { method: 'POST', body: { email } }),
       logout: () => request<void>('/auth/logout', { method: 'POST', body: { refresh_token: refreshToken.value } })
     },

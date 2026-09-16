@@ -23,6 +23,11 @@ export interface ApiEnvelope<T> {
   error?: { code?: string; message?: string }
 }
 
+export interface GmailAccount {
+  id: number
+  email?: string | null
+}
+
 export interface User {
   id: number
   chat_id?: number
@@ -30,6 +35,7 @@ export interface User {
   name?: string
   avatar_url?: string
   identities?: Array<{ provider: 'email' | 'google' | 'telegram'; label?: string }>
+  gmail_accounts?: GmailAccount[]
 }
 
 export interface AuthTokens {
@@ -37,6 +43,7 @@ export interface AuthTokens {
   refresh_token: string
   token_type: 'bearer'
   user: User
+  gmail_account?: GmailAccount | null
 }
 
 export interface WorkflowNode {
@@ -70,11 +77,7 @@ export interface WorkflowNode {
     service_account_json?: string
     api_key?: string
     values_json?: string
-    auth_mode?: 'oauth' | 'smtp'
-    smtp_host?: string
-    smtp_port?: number | string
-    smtp_username?: string
-    smtp_password?: string
+    gmail_account_id?: number | null
     from_email?: string
     to?: string
     subject?: string
@@ -86,7 +89,7 @@ export interface WorkflowNode {
     sort_field?: string
     sort_direction?: 'asc' | 'desc'
     path?: string
-    engine?: 'postgresql'
+    engine?: 'postgresql' | 'mysql' | 'clickhouse'
     dsn?: string
     status?: RunStatus
     output?: string

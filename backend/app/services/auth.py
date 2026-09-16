@@ -16,6 +16,7 @@ import helper
 from core.config import settings
 from models.user import AuthIdentity, IdentityProvider, RefreshToken, User
 from schemas.auth import TokenPair
+from services.google_oauth import gmail_scope_string, save_gmail_grant, user_response
 from services.providers import EmailProvider
 
 
@@ -43,7 +44,13 @@ class AuthService:
         loaded = await self.db.scalar(
             select(User).options(selectinload(User.identities)).where(User.id == user.id)
         )
-        return TokenPair(access_token=helper.generate_token(user.id), refresh_token=raw, user=loaded)
+        if loaded is None:
+            raise HTTPException(401, "Пользователь недоступен")
+        return TokenPair(
+            access_token=helper.generate_token(user.id),
+            refresh_token=raw,
+            user=await user_response(self.db, loaded),
+        )
 
     async def impersonate(self, user_id: int) -> TokenPair:
         user = await self.db.scalar(
@@ -207,12 +214,21 @@ class AuthService:
             raise HTTPException(401, "Пользователь не найден")
         return await self._tokens(user)
 
-    async def create_google_state(self, redirect_uri: str | None) -> tuple[str, str]:
+    async def create_google_state(
+        self,
+        redirect_uri: str | None,
+        *,
+        purpose: str = "login",
+        user_id: int | None = None,
+    ) -> tuple[str, str]:
         state = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(32)
+        payload: dict = {"nonce": nonce, "redirect_uri": redirect_uri, "purpose": purpose}
+        if user_id is not None:
+            payload["user_id"] = user_id
         await self.redis.set(
             f"oauth:google:{state}",
-            json.dumps({"nonce": nonce, "redirect_uri": redirect_uri}),
+            json.dumps(payload),
             ex=10 * 60,
         )
         return state, nonce
@@ -246,7 +262,8 @@ class AuthService:
         )
         if response.is_error:
             raise HTTPException(401, "Google authorization code недействителен")
-        raw_id_token = response.json().get("id_token")
+        token_payload = response.json()
+        raw_id_token = token_payload.get("id_token")
         if not raw_id_token:
             raise HTTPException(401, "Google не вернул ID token")
         try:
@@ -262,6 +279,11 @@ class AuthService:
             raise HTTPException(401, "Google OAuth nonce не совпадает")
         if not profile.get("email_verified"):
             raise HTTPException(401, "Google email не подтвержден")
+        if state_data.get("purpose") == "gmail":
+            return await self._google_link_gmail(profile, token_payload, state_data)
+        return await self._google_upsert_user(profile)
+
+    async def _google_upsert_user(self, profile: dict) -> TokenPair:
         identity = await self.db.scalar(select(AuthIdentity).where(
             AuthIdentity.provider == IdentityProvider.google, AuthIdentity.subject == profile["sub"]
         ))
@@ -275,3 +297,25 @@ class AuthService:
                 await self.db.flush()
             self.db.add(AuthIdentity(user_id=user.id, provider=IdentityProvider.google, subject=profile["sub"]))
         return await self._tokens(user)
+
+    async def _google_link_gmail(self, profile: dict, token_payload: dict, state_data: dict) -> TokenPair:
+        user_id = state_data.get("user_id")
+        if not user_id:
+            raise HTTPException(401, "Google OAuth state недействителен")
+        user = await self.db.scalar(
+            select(User).options(selectinload(User.identities)).where(User.id == int(user_id))
+        )
+        if not user or not user.is_active:
+            raise HTTPException(401, "Пользователь недоступен")
+        email = (profile.get("email") or "").lower() or None
+        scopes = token_payload.get("scope") or gmail_scope_string()
+        account = await save_gmail_grant(
+            self.db,
+            user,
+            google_sub=profile["sub"],
+            email=email,
+            refresh_token=token_payload.get("refresh_token"),
+            scopes=scopes if isinstance(scopes, str) else " ".join(scopes),
+        )
+        pair = await self._tokens(user)
+        return pair.model_copy(update={"gmail_account": {"id": account.id, "email": account.email}})

@@ -50,6 +50,7 @@ const googleAuth = async () => {
   const redirectUri = `${location.origin}/auth/google/callback`
   sessionStorage.setItem('ayakun_google_verifier', verifier)
   sessionStorage.setItem('ayakun_google_redirect_uri', redirectUri)
+  sessionStorage.setItem('ayakun_google_purpose', 'login')
   const { authorization_url } = await api.auth.googleStart(redirectUri, challenge)
   location.href = authorization_url
 }

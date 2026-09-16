@@ -5,10 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aiomysql>=0.3.2",
     "alembic>=1.19.2",
     "asyncpg>=0.31.0",
     "celery>=5.5.0",
+    "clickhouse-connect>=1.8.0",
     "croniter>=6.0.0",
+    "cryptography>=50.0.1",
     "email-validator>=2.2.0",
     "fastapi[standard]>=0.141.1",
     "google-auth[requests]>=2.40.0",

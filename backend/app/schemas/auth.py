@@ -1,6 +1,8 @@
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
-from schemas.user import UserResponse
+from schemas.user import GmailAccountResponse, UserResponse
 
 
 class EmailRegisterRequest(BaseModel):
@@ -24,6 +26,7 @@ class TokenPair(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: UserResponse
+    gmail_account: GmailAccountResponse | None = None
 
 
 class RefreshRequest(BaseModel):
@@ -53,6 +56,7 @@ class GoogleCodeRequest(BaseModel):
 class GoogleAuthorizeRequest(BaseModel):
     code_challenge: str = Field(min_length=43, max_length=128)
     redirect_uri: str | None = None
+    purpose: Literal["login", "gmail"] = "login"
 
 
 class TelegramCodeRequest(BaseModel):

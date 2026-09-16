@@ -1,8 +1,12 @@
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
 
-from deps.auth import CurrentUser
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from deps.auth import CurrentUser, OptionalUser
+from deps.database import get_db
 from deps.services import get_auth_service
 from schemas.auth import (
     EmailLoginRequest,
@@ -20,6 +24,7 @@ from schemas.auth import (
 from schemas.common import ApiResponse
 from schemas.user import UserResponse
 from services.auth import AuthService
+from services.google_oauth import disconnect_gmail, gmail_scope_string, login_scope_string, user_response
 from core.config import settings
 
 router = APIRouter()
@@ -65,22 +70,33 @@ async def google_code(data: GoogleCodeRequest, service: AuthService = Depends(ge
 @router.post("/google/authorize", response_model=ApiResponse[dict])
 async def google_authorize(
     data: GoogleAuthorizeRequest,
+    user: OptionalUser,
     service: AuthService = Depends(get_auth_service),
 ):
     if not settings.google_client_id:
         raise HTTPException(503, "Google OAuth не настроен")
-    state, nonce = await service.create_google_state(data.redirect_uri)
-    query = urlencode({
+    if data.purpose == "gmail" and not user:
+        raise HTTPException(401, "Требуется авторизация")
+    state, nonce = await service.create_google_state(
+        data.redirect_uri,
+        purpose=data.purpose,
+        user_id=user.id if user and data.purpose == "gmail" else None,
+    )
+    query_params = {
         "client_id": settings.google_client_id,
         "redirect_uri": data.redirect_uri or settings.google_redirect_uri or "",
         "response_type": "code",
-        "scope": "openid email profile",
+        "scope": gmail_scope_string() if data.purpose == "gmail" else login_scope_string(),
         "state": state,
         "nonce": nonce,
         "code_challenge": data.code_challenge,
         "code_challenge_method": "S256",
         "access_type": "offline",
-    })
+    }
+    if data.purpose == "gmail":
+        query_params["prompt"] = "select_account consent"
+        query_params["include_granted_scopes"] = "true"
+    query = urlencode(query_params)
     return ApiResponse(
         success=True,
         data={
@@ -88,6 +104,15 @@ async def google_authorize(
             "state": state,
         },
     )
+
+
+@router.delete("/google/gmail/{account_id}", response_model=ApiResponse[UserResponse])
+async def google_gmail_disconnect(
+    account_id: int,
+    user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    return ApiResponse(success=True, data=await disconnect_gmail(db, user, account_id))
 
 
 @router.post("/refresh", response_model=ApiResponse[TokenPair])
@@ -119,5 +144,5 @@ async def confirm_reset(data: ResetConfirmRequest, service: AuthService = Depend
 
 
 @router.get("/me", response_model=ApiResponse[UserResponse])
-async def me(user: CurrentUser):
-    return ApiResponse(success=True, data=UserResponse.model_validate(user))
+async def me(user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]):
+    return ApiResponse(success=True, data=await user_response(db, user))
