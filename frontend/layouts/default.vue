@@ -62,6 +62,7 @@ useAppTitle()
         <nav class="public-footer-links">
           <NuxtLink to="/delivery">Как получить услугу</NuxtLink>
           <NuxtLink to="/terms">Публичная оферта</NuxtLink>
+          <NuxtLink to="/privacy">Политика конфиденциальности</NuxtLink>
           <NuxtLink to="/contacts">Контакты и реквизиты</NuxtLink>
           <a :href="`mailto:${LEGAL.email}`">{{ LEGAL.email }}</a>
           <a :href="`tel:${LEGAL.phone}`">{{ LEGAL.phoneDisplay }}</a>

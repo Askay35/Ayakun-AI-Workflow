@@ -198,7 +198,9 @@ const googleAuth = async () => {
 
       <p v-if="authStep === 'form'" class="mb-0 mt-6 text-center text-xs leading-5 muted">
         Продолжая, вы соглашаетесь с
-        <NuxtLink to="/terms" class="legal-link">публичной офертой</NuxtLink>.
+        <NuxtLink to="/terms" class="legal-link">публичной офертой</NuxtLink>
+        и
+        <NuxtLink to="/privacy" class="legal-link">политикой конфиденциальности</NuxtLink>.
       </p>
     </section>
   </main>

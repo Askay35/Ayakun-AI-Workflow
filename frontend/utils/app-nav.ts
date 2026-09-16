@@ -10,6 +10,7 @@ export const PAGE_TITLES: Record<string, string> = {
   profile: 'Профиль',
   pricing: 'Тарифы',
   terms: 'Оферта',
+  privacy: 'Конфиденциальность',
   contacts: 'Контакты',
   delivery: 'Получение услуги',
   'auth-google-callback': 'Вход'

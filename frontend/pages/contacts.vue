@@ -48,6 +48,7 @@ useSeoMeta({
 
       <div class="legal-actions">
         <NuxtLink to="/terms" class="site-button secondary">Публичная оферта</NuxtLink>
+        <NuxtLink to="/privacy" class="site-button secondary">Конфиденциальность</NuxtLink>
         <NuxtLink to="/delivery" class="site-button secondary">Как получить услугу</NuxtLink>
       </div>
     </div>
