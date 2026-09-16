@@ -17,7 +17,7 @@
           <div class="trust-row">
             <span><UIcon name="i-lucide-check-circle-2" /> Без кода и серверов</span>
             <span><UIcon name="i-lucide-check-circle-2" /> Цена видна до запуска</span>
-            <span><UIcon name="i-lucide-check-circle-2" /> 1000 credits при регистрации</span>
+            <span><UIcon name="i-lucide-check-circle-2" /> 200 credits при регистрации</span>
           </div>
         </div>
         <LandingCanvas class="reveal" style="animation-delay: 140ms" />
