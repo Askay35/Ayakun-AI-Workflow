@@ -64,3 +64,20 @@ def test_prepare_disabled_clears_next() -> None:
     prepared = prepare_slots([slot], TZ, enabled=False)
     assert prepared[0].next_at is None
     assert earliest_next(prepared) is None
+
+
+def test_enabled_without_slots_does_not_schedule() -> None:
+    from types import SimpleNamespace
+
+    from services.workflow import apply_workflow_schedule
+
+    workflow = SimpleNamespace(
+        schedule_timezone=TZ,
+        schedule_slots=[],
+        schedule_cron="0 9 * * 1",
+        next_run_at=datetime.datetime.now(datetime.UTC),
+    )
+    apply_workflow_schedule(workflow, slots=[], enabled=True)
+    assert workflow.schedule_cron is None
+    assert workflow.next_run_at is None
+    assert workflow.schedule_slots == []

@@ -59,7 +59,7 @@ const edges = ref<Edge[]>(flowEdgesFromLinks(links.value))
 const scheduleEnabled = ref(Boolean(workflow.value.schedule_cron || workflow.value.next_run_at))
 const scheduleSlots = ref<ScheduleSlot[]>(slotsFromWorkflow(workflow.value))
 const scheduleTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-const scheduleValid = computed(() => !scheduleEnabled.value || scheduleSlots.value.length > 0)
+const scheduleActive = computed(() => scheduleEnabled.value && scheduleSlots.value.length > 0)
 const workflowVariables = ref<VariableRow[]>(variablesFromRecord(workflow.value.variables))
 const selectedId = ref<string>()
 const selectedEdgeId = ref<string>()
@@ -187,15 +187,11 @@ const defaultEdgeOptions = {
 const graphForSave = () => ({ nodes: applyLinks(nodes.value, links.value) })
 
 const save = async () => {
-  if (!scheduleValid.value) {
-    saveState.value = 'dirty'
-    return false
-  }
   saveState.value = 'saving'
   try {
     const saved = await api.workflows.save(id, graphForSave(), {
       schedule_slots: scheduleSlots.value.map(({ next_at: _next, ...slot }) => slot),
-      schedule_enabled: scheduleEnabled.value,
+      schedule_enabled: scheduleActive.value,
       schedule_timezone: scheduleTimezone,
       variables: recordFromVariables(workflowVariables.value)
     })
@@ -334,11 +330,7 @@ const deleteSelected = () => {
   selectedId.value = undefined
 }
 const validate = async () => {
-  if (!(await save())) {
-    validationErrors.value = ['Укажите время и выберите хотя бы один день автозапуска']
-    toast.add({ title: 'Проверьте автозапуск', color: 'warning' })
-    return false
-  }
+  if (!(await save())) return false
   const result = await api.workflows.validate(id)
   validationErrors.value = result.errors
   toast.add({ title: result.valid ? 'Цепочка готова' : 'Есть ошибки', color: result.valid ? 'success' : 'warning' })
@@ -361,10 +353,7 @@ const publish = async () => {
   }
 }
 const run = async () => {
-  if (!(await save())) {
-    toast.add({ title: 'Проверьте настройки автозапуска', color: 'warning' })
-    return
-  }
+  if (!(await save())) return
   const result = await api.workflows.run(id)
   await navigateTo(`/runs/${result.id}`)
 }
@@ -376,10 +365,7 @@ const canSoloRunSelected = computed(() => {
 const nodeRunLoading = ref(false)
 const runSelectedNode = async () => {
   if (!selected.value || !canSoloRunSelected.value) return
-  if (!(await save())) {
-    toast.add({ title: 'Проверьте настройки автозапуска', color: 'warning' })
-    return
-  }
+  if (!(await save())) return
   nodeRunLoading.value = true
   try {
     const result = await api.workflows.runNode(id, selected.value.id)

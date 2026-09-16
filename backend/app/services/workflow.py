@@ -181,7 +181,7 @@ def apply_workflow_schedule(
         workflow.schedule_timezone = timezone
     current = load_slots(workflow.schedule_slots) or slots_from_legacy(workflow.schedule_cron)
     resolved = current if slots is None else slots
-    is_enabled = bool(resolved) if enabled is None else bool(enabled)
+    is_enabled = bool(resolved) if enabled is None else bool(enabled) and bool(resolved)
     prepared = prepare_slots(resolved, workflow.schedule_timezone, enabled=is_enabled, previous=current)
     workflow.schedule_slots = dump_slots(prepared)
     workflow.schedule_cron = derived_cron(prepared, is_enabled)
