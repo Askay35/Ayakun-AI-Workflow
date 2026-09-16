@@ -199,7 +199,7 @@ defineExpose({ closeEdit, openEdit, copyValue })
       :open="editOpen"
       :title="editTitle"
       :ui="{ footer: 'justify-end', 
-      content: 'bg-white!important',
+      content: 'bg-white!',
       header: '[&_h2]:text-white!' }"
       @update:open="editOpen = $event"
     >
@@ -252,7 +252,7 @@ defineExpose({ closeEdit, openEdit, copyValue })
       :open="deleteOpen"
       :title="deleteTitle"
       :ui="{ footer: 'justify-end', 
-      content: 'bg-white!important',
+      content: 'bg-white!',
       header: '[&_h2]:text-white!' }"
       @update:open="deleteOpen = $event"
     >
