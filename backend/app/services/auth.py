@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 import helper
 from core.config import settings
 from models.user import AuthIdentity, IdentityProvider, RefreshToken, User
+from models.workflow import Workflow
 from schemas.auth import TokenPair
 from schemas.user import UserResponse
 from services.google_oauth import gmail_scope_string, save_gmail_grant, user_response
@@ -206,19 +207,24 @@ class AuthService:
         return user
 
     async def telegramLoginByCode(self, code: str) -> TokenPair:
-        chat_id, name = await self._consume_telegram_code(code)
-        user = await self.db.scalar(select(User).where(User.chat_id == chat_id))
+        chat_id, name, purpose = await self._consume_telegram_code(code)
+        if purpose == "link":
+            raise HTTPException(400, "Этот код для привязки в настройках, а не для входа")
+        user = await self._find_user_by_telegram(chat_id)
         if not user:
             user = await self.telegramRegister(chat_id, name)
         return await self._tokens(user)
 
     async def telegram_link_by_code(self, user: User, code: str) -> UserResponse:
-        chat_id, _name = await self._consume_telegram_code(code)
-        existing = await self.db.scalar(select(User).where(User.chat_id == chat_id))
-        if existing and existing.id != user.id:
-            raise HTTPException(409, "Этот Telegram уже используется")
+        chat_id, _name, purpose = await self._consume_telegram_code(code)
+        if purpose != "link":
+            raise HTTPException(400, "Этот код для входа. Откройте бота кнопкой из настроек аккаунта")
         if user.chat_id and user.chat_id != chat_id:
             raise HTTPException(409, "Telegram уже подключён")
+        existing = await self._find_user_by_telegram(chat_id)
+        if existing and existing.id != user.id:
+            if not await self._absorb_telegram_stub(existing, user):
+                raise HTTPException(409, "Этот Telegram уже используется")
         user.chat_id = chat_id
         has_identity = any(item.provider == IdentityProvider.telegram for item in user.identities)
         if not has_identity:
@@ -231,7 +237,42 @@ class AuthService:
             raise HTTPException(401, "Пользователь недоступен")
         return await user_response(self.db, loaded)
 
-    async def _consume_telegram_code(self, code: str) -> tuple[int, str]:
+    async def _find_user_by_telegram(self, chat_id: int) -> User | None:
+        user = await self.db.scalar(select(User).where(User.chat_id == chat_id))
+        if user:
+            return user
+        identity = await self.db.scalar(
+            select(AuthIdentity).where(
+                AuthIdentity.provider == IdentityProvider.telegram,
+                AuthIdentity.subject == str(chat_id),
+            )
+        )
+        if not identity:
+            return None
+        return await self.db.scalar(
+            select(User).options(selectinload(User.identities)).where(User.id == identity.user_id)
+        )
+
+    async def _absorb_telegram_stub(self, stub: User, into: User) -> bool:
+        """Remove orphan Telegram-only accounts created by the old bot /start flow."""
+        stub = await self.db.scalar(
+            select(User).options(selectinload(User.identities)).where(User.id == stub.id)
+        )
+        if stub is None or stub.email or stub.password_hash:
+            return False
+        providers = {item.provider for item in stub.identities}
+        if providers - {IdentityProvider.telegram}:
+            return False
+        has_workflows = await self.db.scalar(select(Workflow.id).where(Workflow.user_id == stub.id).limit(1))
+        if has_workflows:
+            return False
+        stub.chat_id = None
+        await self.db.flush()
+        await self.db.delete(stub)
+        await self.db.flush()
+        return True
+
+    async def _consume_telegram_code(self, code: str) -> tuple[int, str, str]:
         key = f"telegram_login_code:{helper.hash_token(code.strip().upper())}"
         raw = await self.redis.getdel(key)
         if not raw:
@@ -246,10 +287,14 @@ class AuthService:
         if isinstance(payload, dict):
             chat_id = int(payload.get("chat_id"))
             name = str(payload.get("name") or "Telegram").strip() or "Telegram"
+            purpose = str(payload.get("purpose") or "login").strip() or "login"
         else:
             chat_id = int(payload)
             name = "Telegram"
-        return chat_id, name
+            purpose = "login"
+        if purpose not in {"login", "link"}:
+            purpose = "login"
+        return chat_id, name, purpose
 
     async def create_google_state(
         self,

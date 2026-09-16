@@ -75,8 +75,8 @@ const linkTelegram = async () => {
           <UButton v-else label="Подключить" variant="outline" @click="openTelegramStep" />
         </div>
         <div v-if="telegramStep && !linked('telegram')" class="mt-4 space-y-3 border-t border-[#ece9ff] pt-4">
-          <p class="mb-0 text-sm muted">Откройте бота, нажмите «Старт» и вставьте код сюда — Telegram привяжется к этому аккаунту.</p>
-          <a href="https://t.me/ayakun_bot?start=logincode" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-bold text-[#229ed9]">
+          <p class="mb-0 text-sm muted">Откройте бота кнопкой ниже, нажмите «Старт» и вставьте код сюда — Telegram привяжется к этому аккаунту, без создания нового.</p>
+          <a href="https://t.me/ayakun_bot?start=link" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-bold text-[#229ed9]">
             Открыть бота
             <UIcon name="i-lucide-external-link" class="size-3.5" />
           </a>

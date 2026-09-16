@@ -45,12 +45,23 @@ class TelegramService:
         return response.json()
 
     async def processUpdate(self, data: TelegramWebhookRequest):
-        if data.message.text == "/start logincode":
-            return await self.sendLoginCode(data)
-        else:
-            return ApiResponse(success=False, message="Invalid command")
+        text = (data.message.text or "").strip()
+        if text == "/start logincode":
+            return await self.sendLoginCode(data, purpose="login")
+        if text == "/start link":
+            return await self.sendLoginCode(data, purpose="link")
+        if text == "/start":
+            await self.send_message(
+                data.message.chat.id,
+                (
+                    "Чтобы войти или привязать Telegram, откройте бота "
+                    "кнопкой на сайте Ayakun\\."
+                ),
+            )
+            return ApiResponse(success=True)
+        return ApiResponse(success=False, message="Invalid command")
 
-    async def sendLoginCode(self, data: TelegramWebhookRequest):
+    async def sendLoginCode(self, data: TelegramWebhookRequest, *, purpose: str = "login"):
         rate_key = f"telegram_login_rate:{data.message.chat.id}"
         attempts = await self.redis.incr(rate_key)
         if attempts == 1:
@@ -64,6 +75,7 @@ class TelegramService:
                 json.dumps({
                     "chat_id": data.message.chat.id,
                     "name": data.message.chat.first_name or "Telegram",
+                    "purpose": purpose,
                 }),
                 ex=60 * settings.login_code_expiration_time,
                 nx=True,
@@ -72,13 +84,19 @@ class TelegramService:
                 break
         else:
             raise RuntimeError("Не удалось создать уникальный код входа")
+        if purpose == "link":
+            title = "*Ваш код для привязки Telegram:*"
+            hint = "Вставьте его в настройках аккаунта Ayakun\\."
+        else:
+            title = "*Ваш код для входа:*"
+            hint = "Вставьте его на странице входа Ayakun\\."
         await self.send_message(
             data.message.chat.id,
             (
-                "*Ваш код для входа:*\n\n"
+                f"{title}\n\n"
                 f"`{code}`\n\n"
+                f"{hint}\n"
                 "Он действителен в течение 5 минут\\."
             ),
-       
         )
        

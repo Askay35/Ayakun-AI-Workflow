@@ -18,17 +18,31 @@ class FakeRedis:
 @pytest.mark.asyncio
 async def test_consume_telegram_code_json() -> None:
     service = AuthService(db=SimpleNamespace(), redis_client=FakeRedis(json.dumps({"chat_id": 42, "name": "Ada"})))
-    chat_id, name = await service._consume_telegram_code("ABC123")
+    chat_id, name, purpose = await service._consume_telegram_code("ABC123")
     assert chat_id == 42
     assert name == "Ada"
+    assert purpose == "login"
+
+
+@pytest.mark.asyncio
+async def test_consume_telegram_code_link_purpose() -> None:
+    service = AuthService(
+        db=SimpleNamespace(),
+        redis_client=FakeRedis(json.dumps({"chat_id": 42, "name": "Ada", "purpose": "link"})),
+    )
+    chat_id, name, purpose = await service._consume_telegram_code("ABC123")
+    assert chat_id == 42
+    assert name == "Ada"
+    assert purpose == "link"
 
 
 @pytest.mark.asyncio
 async def test_consume_telegram_code_legacy_plain() -> None:
     service = AuthService(db=SimpleNamespace(), redis_client=FakeRedis("99"))
-    chat_id, name = await service._consume_telegram_code("ABC123")
+    chat_id, name, purpose = await service._consume_telegram_code("ABC123")
     assert chat_id == 99
     assert name == "Telegram"
+    assert purpose == "login"
 
 
 @pytest.mark.asyncio
