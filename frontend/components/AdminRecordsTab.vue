@@ -251,7 +251,9 @@ defineExpose({ closeEdit, openEdit, copyValue })
     <UModal
       :open="deleteOpen"
       :title="deleteTitle"
-      :ui="{ footer: 'justify-end' }"
+      :ui="{ footer: 'justify-end', 
+      content: 'bg-white!important',
+      header: '[&_h2]:text-white!' }"
       @update:open="deleteOpen = $event"
     >
       <template #body>

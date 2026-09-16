@@ -82,8 +82,6 @@ const removeSlot = (id: string) => {
         </button>
       </div>
     </div>
-    <p v-else-if="enabled" class="mb-0 text-[11px] text-white/35">Без слотов цепочка сохранится, но автозапуск не включится</p>
-
     <template v-if="enabled">
       <div class="schedule-kind">
         <button type="button" class="schedule-kind-btn" :class="{ 'is-active': draftKind === 'weekly' }" @click="draftKind = 'weekly'">По дням</button>
