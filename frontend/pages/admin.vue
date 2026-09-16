@@ -20,6 +20,7 @@ useHead({ title: 'Администрирование' })
 
 const PAGE_SIZE = 20
 const api = useApi()
+const auth = useAuth()
 const toast = useToast()
 const login = ref('')
 const password = ref('')
@@ -127,6 +128,7 @@ const usersTotal = ref(0)
 const usersLoading = ref(false)
 const usersSaving = ref(false)
 const usersDeleting = ref(false)
+const impersonatingId = ref<number>()
 const editingUser = ref<AdminUserRecord | null>(null)
 
 const paymentQ = ref('')
@@ -395,6 +397,22 @@ const removeUser = async (row: AdminUserRecord) => {
     usersDeleting.value = false
   }
 }
+const loginAsUser = async (row: AdminUserRecord) => {
+  if (!row.is_active) {
+    toast.add({ title: 'Аккаунт отключён', description: 'Включите пользователя, чтобы войти под ним.', color: 'warning' })
+    return
+  }
+  impersonatingId.value = row.id
+  try {
+    await auth.accept(await api.admin.loginAsUser(credentials.value, row.id))
+    toast.add({ title: `Вы вошли как ${row.name}`, color: 'success' })
+    await navigateTo('/dashboard')
+  } catch (error) {
+    toast.add({ title: 'Не удалось войти', description: apiErrorMessage(error), color: 'error' })
+  } finally {
+    impersonatingId.value = undefined
+  }
+}
 const savePayment = async (row: AdminPaymentRecord, form: Record<string, unknown>) => {
   paymentsSaving.value = true
   try {
@@ -558,6 +576,19 @@ watch(credentials, (value) => {
                   :on-save="saveUser"
                   :on-remove="removeUser"
                 >
+                  <template #actions="{ row }">
+                    <UButton
+                      icon="i-lucide-log-in"
+                      color="neutral"
+                      variant="soft"
+                      size="sm"
+                      :disabled="!row.is_active"
+                      :loading="impersonatingId === row.id"
+                      aria-label="Войти как пользователь"
+                      :title="row.is_active ? 'Войти как этот пользователь' : 'Аккаунт отключён'"
+                      @click="loginAsUser(row)"
+                    />
+                  </template>
                   <template #id="{ row, copy }">
                     <button type="button" class="admin-id" :title="String(row.id)" @click="copy(row.id)">{{ row.id }}</button>
                   </template>
@@ -589,6 +620,17 @@ watch(credentials, (value) => {
                   </template>
                   <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
                   <template #edit-extra="{ row }">
+                    <UButton
+                      v-if="row"
+                      label="Войти как этот пользователь"
+                      icon="i-lucide-log-in"
+                      color="neutral"
+                      variant="soft"
+                      block
+                      :disabled="!row.is_active"
+                      :loading="impersonatingId === row.id"
+                      @click="loginAsUser(row)"
+                    />
                     <div v-if="(editingUser?.id === row?.id ? editingUser : row)?.ledger?.length" class="admin-ledger">
                       <p class="admin-ledger-title">Последние операции баланса</p>
                       <div v-for="entry in (editingUser?.id === row?.id ? editingUser?.ledger : row?.ledger) || []" :key="entry.id" class="admin-ledger-row">

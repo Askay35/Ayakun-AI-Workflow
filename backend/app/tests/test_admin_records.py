@@ -10,7 +10,10 @@ from api.v1 import admin_records as admin_api
 from models.billing import Wallet, WalletLedger
 from models.user import User
 from schemas.admin import AdminPage, AdminUserResponse, AdminUserUpdate
+from schemas.auth import TokenPair
+from schemas.user import UserResponse
 from services.admin_records import _integrity_message
+from services.auth import AuthService
 from services.billing.credits import CreditService
 
 
@@ -88,6 +91,10 @@ class FakeRecords:
 
     async def delete_user(self, user_id: int, actor: str, request_id: str):
         self.deleted = (user_id, actor, request_id)
+
+    async def login_as_user(self, user_id: int, actor: str, auth):
+        self.logged_in = (user_id, actor)
+        return await auth.impersonate(user_id)
 
 
 @pytest.mark.asyncio
@@ -207,3 +214,71 @@ async def test_admin_get_user_not_found() -> None:
         await admin_api.get_user(9, "root", FakeRecords())
     assert error.value.status_code == 404
     assert error.value.detail == "Пользователь не найден"
+
+
+class FakeAuth:
+    def __init__(self, tokens: TokenPair | HTTPException) -> None:
+        self.result = tokens
+        self.called_with: int | None = None
+
+    async def impersonate(self, user_id: int) -> TokenPair:
+        self.called_with = user_id
+        if isinstance(self.result, HTTPException):
+            raise self.result
+        return self.result
+
+
+def sample_tokens() -> TokenPair:
+    return TokenPair(
+        access_token="access",
+        refresh_token="refresh",
+        user=UserResponse(id=1, chat_id=None, name="Иван", email="ivan@example.com", identities=[]),
+    )
+
+
+@pytest.mark.asyncio
+async def test_admin_login_as_user_issues_session() -> None:
+    service = FakeRecords()
+    auth = FakeAuth(sample_tokens())
+    result = await admin_api.login_as_user(1, "root", service, auth)
+    assert result.success is True
+    assert result.data.access_token == "access"
+    assert result.data.user.id == 1
+    assert service.logged_in == (1, "root")
+    assert auth.called_with == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_login_as_user_rejects_inactive() -> None:
+    service = FakeRecords()
+    auth = FakeAuth(HTTPException(403, "Пользователь отключён"))
+    with pytest.raises(HTTPException) as error:
+        await admin_api.login_as_user(1, "root", service, auth)
+    assert error.value.status_code == 403
+    assert error.value.detail == "Пользователь отключён"
+
+
+@pytest.mark.asyncio
+async def test_impersonate_missing_user() -> None:
+    class FakeDB:
+        async def scalar(self, _query):
+            return None
+
+    service = AuthService(FakeDB(), None)  # type: ignore[arg-type]
+    with pytest.raises(HTTPException) as error:
+        await service.impersonate(42)
+    assert error.value.status_code == 404
+    assert error.value.detail == "Пользователь не найден"
+
+
+@pytest.mark.asyncio
+async def test_impersonate_inactive_user() -> None:
+    class FakeDB:
+        async def scalar(self, _query):
+            return User(id=3, name="Спит", email="sleep@example.com", is_active=False)
+
+    service = AuthService(FakeDB(), None)  # type: ignore[arg-type]
+    with pytest.raises(HTTPException) as error:
+        await service.impersonate(3)
+    assert error.value.status_code == 403
+    assert error.value.detail == "Пользователь отключён"

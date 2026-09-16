@@ -344,6 +344,8 @@ export const useApi = () => {
           method: 'PATCH',
           body: { ...body, request_id: crypto.randomUUID() }
         }),
+      loginAsUser: (credentials: string, id: number) =>
+        adminRequest<AuthTokens>(`/admin/users/${id}/session`, credentials, { method: 'POST' }),
       deleteUser: (credentials: string, id: number) =>
         adminRequest<{ ok: boolean }>(`/admin/users/${id}`, credentials, {
           method: 'DELETE',

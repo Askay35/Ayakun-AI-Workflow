@@ -22,6 +22,8 @@ from schemas.admin import (
     AdminWorkflowResponse,
     AdminWorkflowUpdate,
 )
+from schemas.auth import TokenPair
+from services.auth import AuthService
 from services.billing import BillingService
 
 
@@ -223,6 +225,20 @@ class AdminRecordsService:
 
     async def get_user(self, user_id: int) -> AdminUserResponse:
         return await self._user_with_wallet(user_id, with_ledger=True)
+
+    async def login_as_user(self, user_id: int, actor: str, auth: AuthService) -> TokenPair:
+        tokens = await auth.impersonate(user_id)
+        self._queue_audit(
+            actor=actor,
+            action="impersonate",
+            entity_type="user",
+            entity_id=str(user_id),
+            before={},
+            after={"session": True},
+            request_id=f"admin-login:{uuid.uuid4()}",
+        )
+        await self.db.commit()
+        return tokens
 
     async def update_user(self, user_id: int, data: AdminUserUpdate, actor: str) -> AdminUserResponse:
         if await self._seen(data.request_id):

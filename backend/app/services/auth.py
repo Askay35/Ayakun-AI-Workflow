@@ -45,6 +45,16 @@ class AuthService:
         )
         return TokenPair(access_token=helper.generate_token(user.id), refresh_token=raw, user=loaded)
 
+    async def impersonate(self, user_id: int) -> TokenPair:
+        user = await self.db.scalar(
+            select(User).options(selectinload(User.identities)).where(User.id == user_id)
+        )
+        if not user:
+            raise HTTPException(404, "Пользователь не найден")
+        if not user.is_active:
+            raise HTTPException(403, "Пользователь отключён")
+        return await self._tokens(user)
+
     async def request_email_register(self, email: str, password: str, name: str) -> None:
         email = email.lower()
         if not self.email_provider:

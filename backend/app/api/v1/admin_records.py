@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 
 from deps.admin import AdminActor
-from deps.services import get_admin_records_service
+from deps.services import get_admin_records_service, get_auth_service
 from models.workflow import RunStatus, WorkflowStatus
 from schemas.admin import (
     AdminPage,
@@ -16,9 +16,11 @@ from schemas.admin import (
     AdminWorkflowResponse,
     AdminWorkflowUpdate,
 )
+from schemas.auth import TokenPair
 from schemas.billing import PaymentStatus
 from schemas.common import ApiResponse
 from services.admin_records import AdminRecordsService
+from services.auth import AuthService
 
 router = APIRouter()
 
@@ -54,6 +56,16 @@ async def update_user(
     service: AdminRecordsService = Depends(get_records),
 ):
     return ApiResponse(success=True, data=await service.update_user(user_id, data, actor))
+
+
+@router.post("/users/{user_id}/session", response_model=ApiResponse[TokenPair])
+async def login_as_user(
+    user_id: int,
+    actor: AdminActor,
+    service: AdminRecordsService = Depends(get_records),
+    auth: AuthService = Depends(get_auth_service),
+):
+    return ApiResponse(success=True, data=await service.login_as_user(user_id, actor, auth))
 
 
 @router.delete("/users/{user_id}", response_model=ApiResponse[dict])

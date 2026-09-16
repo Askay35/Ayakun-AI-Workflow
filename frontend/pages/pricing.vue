@@ -16,9 +16,9 @@ const ordered = computed(() => {
 })
 const planMeta: Record<string, { title: string; pitch: string; action: string }> = {
   free: { title: 'Пробный', pitch: 'Чтобы собрать первые цепочки и проверить идею.', action: 'Попробовать бесплатно' },
-  starter: { title: 'Старт', pitch: 'Больше кредитов для регулярных задач.', action: 'Выбрать Старт' },
-  pro: { title: 'Про', pitch: 'Запас кредитов для ежедневной работы.', action: 'Выбрать Про' },
-  max: { title: 'Макс', pitch: 'Максимальный запас кредитов.', action: 'Выбрать Макс' }
+  starter: { title: 'Старт', pitch: 'Достаточно для начала работы.', action: 'Выбрать Старт' },
+  pro: { title: 'Про', pitch: 'Запас кредитов для множества регулярных задач.', action: 'Выбрать Про' },
+  max: { title: 'Макс', pitch: 'Для самых активных пользователей.', action: 'Выбрать Макс' }
 }
 const meta = (plan: Plan) => planMeta[plan.code] || { title: plan.name, pitch: 'Гибкий тариф для ваших задач.', action: 'Выбрать' }
 const featuresFor = (plan: Plan) => {
@@ -51,8 +51,8 @@ const featuresFor = (plan: Plan) => {
             :class="plan.code === 'starter' ? 'border-violet-500 shadow-[0_24px_60px_rgba(103,88,238,.16)]' : ''"
             :style="{ animationDelay: `${index * 90}ms` }"
           >
-            <span v-if="plan.code === 'starter'" class="absolute -top-3 right-6 rounded-full bg-[#6758ee] px-3 py-1 text-xs font-extrabold text-white">Выбирают чаще</span>
-            <p class="eyebrow">{{ plan.code === 'free' ? 'Для знакомства' : plan.code === 'starter' ? 'Для регулярной работы' : 'Больше кредитов' }}</p>
+            <span v-if="plan.code === 'pro'" class="absolute -top-3 right-6 rounded-full bg-[#6758ee] px-3 py-1 text-xs font-extrabold text-white">Выгодно</span>
+            <p class="eyebrow">{{ plan.code === 'free' ? 'Для знакомства' : plan.code === 'starter' ? 'Базовый минимум' : plan.code === 'pro' ? 'Больше кредитов' : 'Максимальный запас' }}</p>
             <h2 class="mb-2 text-3xl font-extrabold">{{ meta(plan).title }}</h2>
             <p class="min-h-12 text-sm leading-6 muted">{{ meta(plan).pitch }}</p>
             <div class="my-7 flex items-end gap-2">

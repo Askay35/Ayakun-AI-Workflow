@@ -174,6 +174,7 @@ defineExpose({ closeEdit, openEdit, copyValue })
             </td>
             <td class="admin-col-actions">
               <div class="admin-row-actions">
+                <slot name="actions" :row="row" />
                 <UButton icon="i-lucide-pencil" color="neutral" variant="soft" size="sm" aria-label="Изменить" @click="openEdit(row)" />
                 <UButton icon="i-lucide-trash-2" color="error" variant="soft" size="sm" aria-label="Удалить" @click="openDelete(row)" />
               </div>
