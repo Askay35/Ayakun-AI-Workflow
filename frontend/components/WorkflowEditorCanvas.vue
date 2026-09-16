@@ -111,6 +111,12 @@ const selectedGmail = computed(() => {
   const accountId = Number(selected.value?.data?.gmail_account_id || 0)
   return gmailAccounts.value.find(item => item.id === accountId) || null
 })
+const selectedGmailAccountId = computed<number | undefined>({
+  get: () => selected.value?.data?.gmail_account_id ?? undefined,
+  set: (value) => {
+    if (selected.value?.type === 'gmail') selected.value.data.gmail_account_id = value ?? null
+  }
+})
 const gmailLinking = ref(false)
 const sqlEngines = [
   { label: 'PostgreSQL', value: 'postgresql' },
@@ -781,7 +787,7 @@ const runSelectedNode = async () => {
                   <template v-else>Войдите в Google — так цепочка сможет читать и отправлять письма с выбранной почты.</template>
                 </p>
                 <UFormField v-if="gmailAccountItems.length" label="Почта" class="mb-2">
-                  <USelect v-model="selected.data.gmail_account_id" :items="gmailAccountItems" value-key="value" class="w-full" />
+                  <USelect v-model="selectedGmailAccountId" :items="gmailAccountItems" value-key="value" class="w-full" />
                 </UFormField>
                 <div class="flex flex-wrap gap-2">
                   <UButton
