@@ -122,7 +122,7 @@ const runtimeConfig = useRuntimeConfig()
 const webhookUrl = computed(() => {
   const token = workflow.value?.webhook_token
   if (!token) return ''
-  return `${String(runtimeConfig.public.apiBase).replace(/\/$/, '')}/webhooks/${token}`
+  return `${String(runtimeConfig.public.siteUrl)}${String(runtimeConfig.public.apiBase).replace(/\/$/, '')}/webhooks/${token}`
 })
 const copyWebhookUrl = async () => {
   if (!webhookUrl.value) return
@@ -478,25 +478,30 @@ const runSelectedNode = async () => {
     </header>
     <div class="editor-body">
       <aside class="editor-pane editor-pane-left">
-        <p class="editor-kicker">Узлы</p>
-        <p class="mb-4 text-[11px] leading-4 text-white/40">Перетащите на холст или кликните, чтобы добавить</p>
-        <button
-          v-for="item in palette"
-          :key="item.type"
-          type="button"
-          draggable="true"
-          class="palette-item"
-          @dragstart="onDragStart($event, item.type)"
-          @click="addFromPalette(item.type)"
-        >
-          <span class="palette-icon" :style="{ color: item.accent, background: `${item.accent}22` }">
-            <UIcon :name="item.icon" class="size-4" />
-          </span>
-          <span class="min-w-0 text-left">
-            <strong class="block text-[13px] font-extrabold text-white">{{ item.label }}</strong>
-            <span class="text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">{{ item.caption }}</span>
-          </span>
-        </button>
+        <div class="palette-block">
+          <p class="editor-kicker">Узлы</p>
+          <p class="mb-3 text-[11px] leading-4 text-white/40">Перетащите на холст или кликните</p>
+          <div class="palette-list" role="list">
+            <button
+              v-for="item in palette"
+              :key="item.type"
+              type="button"
+              draggable="true"
+              class="palette-item"
+              role="listitem"
+              @dragstart="onDragStart($event, item.type)"
+              @click="addFromPalette(item.type)"
+            >
+              <span class="palette-icon" :style="{ color: item.accent, background: `${item.accent}22` }">
+                <UIcon :name="item.icon" class="size-4" />
+              </span>
+              <span class="min-w-0 text-left">
+                <strong class="block truncate text-[13px] font-extrabold text-white">{{ item.label }}</strong>
+                <span class="block truncate text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">{{ item.caption }}</span>
+              </span>
+            </button>
+          </div>
+        </div>
         <WorkflowVariablesPanel v-model:items="workflowVariables" />
         <WorkflowSchedulePanel
           v-model:enabled="scheduleEnabled"

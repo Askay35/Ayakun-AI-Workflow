@@ -1278,32 +1278,61 @@ body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"]:ho
   letter-spacing: .16em;
   text-transform: uppercase;
 }
+.palette-block {
+  margin-bottom: 18px;
+}
+.palette-list {
+  --palette-row: 48px;
+  max-height: calc(var(--palette-row) * 5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.18) transparent;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 18px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 calc(100% - 18px), transparent 100%);
+}
+.palette-list:hover,
+.palette-list:focus-within {
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+.palette-list::-webkit-scrollbar {
+  width: 4px;
+}
+.palette-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+}
 .palette-item {
   display: flex;
   width: 100%;
+  height: var(--palette-row);
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px;
-  background: #1d1e28;
+  margin: 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
   cursor: grab;
   text-align: left;
-  transition: border-color .2s ease, transform .2s ease, background .2s ease;
+  transition: background .15s ease;
 }
 .palette-item:hover {
-  border-color: rgba(139,124,255,.45);
-  background: #232433;
-  transform: translateY(-1px);
+  background: rgba(255,255,255,.05);
+}
+.palette-item:active {
+  cursor: grabbing;
+  background: rgba(255,255,255,.08);
 }
 .palette-icon {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 9px;
 }
 .editor-schedule {
   display: grid;

@@ -8,6 +8,7 @@ export default defineNuxtConfig({
     apiBase: '',
     public: {
       // Browser (NUXT_PUBLIC_API_BASE)
+      siteUrl: 'https://ayakun.ru',
       apiBase: 'http://localhost:8000/api/v1'
     }
   },
