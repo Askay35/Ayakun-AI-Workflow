@@ -1125,6 +1125,18 @@ a { color: inherit; text-decoration: none; }
   box-shadow: none !important;
   border: 1px solid #2e3043 !important;
 }
+.workflow-editor button[role="combobox"] {
+  background: #21222a !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  border: 1px solid #2e3043 !important;
+}
+.workflow-editor div[role="listbox"] {
+  background: #21222a !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  border: 1px solid #2e3043 !important;
+}
 .workflow-editor input:not([type="checkbox"]):not([type="radio"])::placeholder,
 .workflow-editor textarea::placeholder {
   color: rgba(255, 255, 255, 0.35);
