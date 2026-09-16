@@ -94,6 +94,17 @@ class BillingService:
     async def refund(self, user: User, amount: Decimal, key: str, reference: str | None = None) -> Wallet:
         return await self.credits.refund(user, amount, key, reference)
 
+    async def set_balance(
+        self,
+        user: User,
+        target: Decimal,
+        key: str,
+        *,
+        actor: str,
+        note: str | None = None,
+    ) -> Wallet:
+        return await self.credits.set_balance(user, target, key, actor=actor, note=note)
+
     async def release(self, user: User, amount: Decimal, key: str, reference: str | None = None) -> Wallet:
         return await self.credits.release(user, amount, key, reference)
 

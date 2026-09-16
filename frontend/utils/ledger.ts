@@ -30,6 +30,12 @@ function chargeLabel(item: LedgerItem) {
 }
 
 export function ledgerDescription(item: LedgerItem) {
+  const meta = item.metadata_ || (item as { metadata?: Record<string, unknown> }).metadata || {}
+  if (String(meta.source || '') === 'admin') {
+    const note = String(meta.note || '').trim()
+    const base = Number(item.amount) >= 0 ? 'Начисление администратором' : 'Корректировка администратором'
+    return note ? `${base} · ${note}` : base
+  }
   switch (item.kind) {
     case 'credit':
       return 'Стартовые credits'

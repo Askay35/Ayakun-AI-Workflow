@@ -140,3 +140,100 @@ export interface AdminConfig {
   plans: Plan[]
   settings: Array<{ key: string; value: string | number | boolean; description: string }>
 }
+
+export interface AdminPage<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface AdminIdentity {
+  provider: string
+  subject: string
+  created_at: string
+}
+
+export interface AdminLedgerEntry {
+  id: string
+  kind: string
+  amount: number
+  reference?: string | null
+  metadata?: Record<string, unknown>
+  created_at: string
+}
+
+export interface AdminUserRecord {
+  id: number
+  name: string
+  email?: string | null
+  chat_id?: number | null
+  email_verified: boolean
+  is_active: boolean
+  balance: number
+  reserved: number
+  identities: AdminIdentity[]
+  ledger?: AdminLedgerEntry[]
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminPaymentRecord {
+  id: string
+  user_id: number
+  user_name?: string | null
+  user_email?: string | null
+  plan_id?: number | null
+  plan_name?: string | null
+  plan_code?: string | null
+  credits?: number | null
+  provider: string
+  provider_payment_id?: string | null
+  amount: number
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminWorkflowRecord {
+  id: string
+  owner_id: number
+  owner_name?: string | null
+  owner_email?: string | null
+  name: string
+  description?: string | null
+  status: 'draft' | 'published' | 'archived'
+  schedule_cron?: string | null
+  schedule_timezone: string
+  next_run_at?: string | null
+  estimated_run_cost: number
+  nodes_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminRunRecord {
+  id: string
+  workflow_id: string
+  workflow_name?: string | null
+  workflow_version_id: string
+  owner_id: number
+  owner_name?: string | null
+  owner_email?: string | null
+  status: RunStatus
+  error?: string | null
+  cost: number
+  cancel_requested: boolean
+  started_at?: string | null
+  finished_at?: string | null
+  created_at: string
+}
+
+export interface AdminListQuery {
+  q?: string
+  status?: string
+  is_active?: boolean | string
+  user_id?: number | string
+  page?: number
+  page_size?: number
+}

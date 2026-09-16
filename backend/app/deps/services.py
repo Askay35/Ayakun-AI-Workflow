@@ -8,6 +8,7 @@ from services.user import UserService
 from services.auth import AuthService
 from services.billing import BillingService
 from services.providers import SMTPEmailProvider, YooKassaProvider
+from services.admin_records import AdminRecordsService
 from services.workflow import WorkflowService
 
 
@@ -40,3 +41,9 @@ def get_billing_service(
     http_client: httpx.AsyncClient = Depends(get_http_client),
 ) -> BillingService:
     return BillingService(db, YooKassaProvider(http_client))
+
+
+def get_admin_records_service(
+    db: AsyncSession = Depends(get_db),
+) -> AdminRecordsService:
+    return AdminRecordsService(db, BillingService(db))

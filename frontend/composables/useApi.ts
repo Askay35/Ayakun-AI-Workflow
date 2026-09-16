@@ -1,5 +1,6 @@
 import type {
-  AdminConfig, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
+  AdminConfig, AdminListQuery, AdminPage, AdminPaymentRecord, AdminRunRecord,
+  AdminUserRecord, AdminWorkflowRecord, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
   User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
 } from '~/types/api'
 import { visibleLedgerEntries } from '~/utils/ledger'
@@ -333,7 +334,57 @@ export const useApi = () => {
       ) => adminRequest<typeof setting>(`/admin/settings/${setting.key}`, credentials, {
         method: 'PUT',
         body: { value: setting.value, request_id: crypto.randomUUID() }
-      })
+      }),
+      listUsers: (credentials: string, query: AdminListQuery = {}) =>
+        adminRequest<AdminPage<AdminUserRecord>>('/admin/users', credentials, { query }),
+      getUser: (credentials: string, id: number) =>
+        adminRequest<AdminUserRecord>(`/admin/users/${id}`, credentials),
+      updateUser: (credentials: string, id: number, body: Record<string, unknown>) =>
+        adminRequest<AdminUserRecord>(`/admin/users/${id}`, credentials, {
+          method: 'PATCH',
+          body: { ...body, request_id: crypto.randomUUID() }
+        }),
+      deleteUser: (credentials: string, id: number) =>
+        adminRequest<{ ok: boolean }>(`/admin/users/${id}`, credentials, {
+          method: 'DELETE',
+          query: { request_id: crypto.randomUUID() }
+        }),
+      listPayments: (credentials: string, query: AdminListQuery = {}) =>
+        adminRequest<AdminPage<AdminPaymentRecord>>('/admin/payments', credentials, { query }),
+      updatePayment: (credentials: string, id: string, body: Record<string, unknown>) =>
+        adminRequest<AdminPaymentRecord>(`/admin/payments/${id}`, credentials, {
+          method: 'PATCH',
+          body: { ...body, request_id: crypto.randomUUID() }
+        }),
+      deletePayment: (credentials: string, id: string) =>
+        adminRequest<{ ok: boolean }>(`/admin/payments/${id}`, credentials, {
+          method: 'DELETE',
+          query: { request_id: crypto.randomUUID() }
+        }),
+      listWorkflows: (credentials: string, query: AdminListQuery = {}) =>
+        adminRequest<AdminPage<AdminWorkflowRecord>>('/admin/workflows', credentials, { query }),
+      updateWorkflow: (credentials: string, id: string, body: Record<string, unknown>) =>
+        adminRequest<AdminWorkflowRecord>(`/admin/workflows/${id}`, credentials, {
+          method: 'PATCH',
+          body: { ...body, request_id: crypto.randomUUID() }
+        }),
+      deleteWorkflow: (credentials: string, id: string) =>
+        adminRequest<{ ok: boolean }>(`/admin/workflows/${id}`, credentials, {
+          method: 'DELETE',
+          query: { request_id: crypto.randomUUID() }
+        }),
+      listRuns: (credentials: string, query: AdminListQuery = {}) =>
+        adminRequest<AdminPage<AdminRunRecord>>('/admin/runs', credentials, { query }),
+      updateRun: (credentials: string, id: string, body: Record<string, unknown>) =>
+        adminRequest<AdminRunRecord>(`/admin/runs/${id}`, credentials, {
+          method: 'PATCH',
+          body: { ...body, request_id: crypto.randomUUID() }
+        }),
+      deleteRun: (credentials: string, id: string) =>
+        adminRequest<{ ok: boolean }>(`/admin/runs/${id}`, credentials, {
+          method: 'DELETE',
+          query: { request_id: crypto.randomUUID() }
+        })
     }
   }
 }

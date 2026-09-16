@@ -229,6 +229,49 @@ class CreditService:
         await self.db.commit()
         return wallet
 
+    async def set_balance(
+        self,
+        user: User,
+        target: Decimal,
+        key: str,
+        *,
+        actor: str,
+        note: str | None = None,
+    ) -> Wallet:
+        if target < 0:
+            raise HTTPException(400, "Баланс не может быть отрицательным")
+        target = quantize_credits(target) if target > 0 else Decimal("0")
+        wallet = await self.wallets.wallet(user, lock=True)
+        if await self.wallets.already_applied(key):
+            return wallet
+        if target < wallet.reserved:
+            raise HTTPException(
+                400,
+                f"Баланс не может быть меньше зарезервированной суммы ({wallet.reserved})",
+            )
+        previous = wallet.balance
+        delta = target - previous
+        if delta == 0:
+            return wallet
+        wallet.balance = target
+        kind = LedgerKind.credit if delta > 0 else LedgerKind.charge
+        self.db.add(WalletLedger(
+            user_id=user.id,
+            kind=kind,
+            amount=delta,
+            idempotency_key=key,
+            reference="admin-adjustment",
+            metadata_={
+                "source": "admin",
+                "actor": actor,
+                "note": note or "",
+                "previous_balance": str(previous),
+                "new_balance": str(target),
+            },
+        ))
+        await self.db.commit()
+        return wallet
+
     async def release(self, user: User, amount: Decimal, key: str, reference: str | None = None) -> Wallet:
         wallet = await self.wallets.wallet(user, lock=True)
         if await self.wallets.already_applied(key):
