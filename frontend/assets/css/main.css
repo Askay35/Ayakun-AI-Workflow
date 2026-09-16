@@ -1131,11 +1131,20 @@ a { color: inherit; text-decoration: none; }
   box-shadow: none !important;
   border: 1px solid #2e3043 !important;
 }
-.workflow-editor .bg-default.max-h-60 {
+/* USelect content уходит в portal (body), поэтому без .workflow-editor-предка */
+body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="listbox"],
+body:has(.workflow-editor) [data-reka-popper-content-wrapper] .bg-default {
   background: #21222a !important;
   color: #fff !important;
   box-shadow: none !important;
   border: 1px solid #2e3043 !important;
+}
+body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"] {
+  color: #fff !important;
+}
+body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"][data-highlighted],
+body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"]:hover {
+  background: #2a2b36 !important;
 }
 .workflow-editor input:not([type="checkbox"]):not([type="radio"])::placeholder,
 .workflow-editor textarea::placeholder {
