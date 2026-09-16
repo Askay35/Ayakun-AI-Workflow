@@ -1245,6 +1245,7 @@ a { color: inherit; text-decoration: none; }
   box-shadow: none !important;
   border: 1px solid #2e3043 !important;
 }
+
 /* USelect content уходит в portal (body), поэтому без .workflow-editor-предка */
 body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="listbox"],
 body:has(.workflow-editor) [data-reka-popper-content-wrapper] .bg-default {
