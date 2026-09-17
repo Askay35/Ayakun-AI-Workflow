@@ -268,6 +268,8 @@ def _scoped_variables(variables: dict | None, name: str, item: Any) -> dict:
 def _expand_for_loops(text: str, json_root: Any, variables: dict | None, stringify: Any | None) -> str:
     def replace_block(match: re.Match[str]) -> str:
         item_name, source, body = match.group(1), match.group(2), match.group(3)
+        if isinstance(variables, dict) and item_name in variables:
+            raise ValueError("В цикле используется занятое имя переменной")
         items = _loop_items(_resolve_loop_source(source, json_root, variables))
         chunks: list[str] = []
         for item in items:

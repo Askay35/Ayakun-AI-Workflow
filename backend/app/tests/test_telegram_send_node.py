@@ -44,6 +44,24 @@ def test_render_template_for_loop_over_variable() -> None:
     assert rendered == "A B "
 
 
+def test_render_template_for_loop_rejects_taken_variable_name() -> None:
+    with pytest.raises(ValueError, match="В цикле используется занятое имя переменной"):
+        render_template(
+            "{% for item in $data %}{{item.title}}{% endfor %}",
+            {"data": [{"title": "BTC"}]},
+            {"item": "занято"},
+        )
+
+
+def test_render_template_for_loop_allows_other_name_when_item_exists() -> None:
+    rendered = render_template(
+        "{% for row in $data %}{{row.title}} {{item}}{% endfor %}",
+        {"data": [{"title": "BTC"}]},
+        {"item": "ok"},
+    )
+    assert rendered == "BTC ok"
+
+
 def test_render_telegram_message_root_and_loop() -> None:
     payload = [{"title": "BTC", "symbol": "BTC"}]
     dumped = render_telegram_message("{{$}}", payload)

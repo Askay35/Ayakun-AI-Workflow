@@ -16,7 +16,24 @@ const examples = {
   itemPrice: '{{item.field}}',
   loopJson: '{% for item in $data %}\nНазвание: {{item.label}} цена: {{item.price}}\n{% endfor %}',
   loopVar: '{% for row in rows %}{{row.title}}{% endfor %}',
-  map: '{\n  "title": "{{$name}}",\n  "symbol": "{{$symbol}}",\n  "price": "{{$data.price}}"\n}',
+  loopTaken: '{% for item in $data %}',
+  loopFree: '{% for row in $data %}',
+  transformInput: '{\n  "data": [\n    { "id": 1, "name": "BTC", "symbol": "BTC", "score": 3, "secret": "x" },\n    { "id": 2, "name": "ETH", "symbol": "ETH", "score": 1, "secret": "y" }\n  ]\n}',
+  transformPath: 'data',
+  selectFields: 'id, name, score',
+  selectOut: '[\n  { "id": 1, "name": "BTC", "score": 3 },\n  { "id": 2, "name": "ETH", "score": 1 }\n]',
+  renameMap: 'name=title\nscore=points',
+  renameOut: '[\n  { "id": 1, "title": "BTC", "symbol": "BTC", "points": 3, "secret": "x" },\n  { "id": 2, "title": "ETH", "symbol": "ETH", "points": 1, "secret": "y" }\n]',
+  setMap: 'status=active\nlabel={{$name}}',
+  setOut: '[\n  { "id": 1, "name": "BTC", "symbol": "BTC", "score": 3, "secret": "x", "status": "active", "label": "BTC" },\n  { "id": 2, "name": "ETH", "symbol": "ETH", "score": 1, "secret": "y", "status": "active", "label": "ETH" }\n]',
+  removeFields: 'secret, symbol',
+  removeOut: '[\n  { "id": 1, "name": "BTC", "score": 3 },\n  { "id": 2, "name": "ETH", "score": 1 }\n]',
+  filterCondition: '{{$score}} >= 2',
+  filterOut: '[\n  { "id": 1, "name": "BTC", "symbol": "BTC", "score": 3, "secret": "x" }\n]',
+  sortField: 'score',
+  sortOut: '[\n  { "id": 2, "name": "ETH", "symbol": "ETH", "score": 1, "secret": "y" },\n  { "id": 1, "name": "BTC", "symbol": "BTC", "score": 3, "secret": "x" }\n]',
+  map: '{\n  "title": "{{$name}}",\n  "symbol": "{{$symbol}}",\n  "points": "{{$score}}"\n}',
+  mapOut: '[\n  { "title": "BTC", "symbol": "BTC", "points": 3 },\n  { "title": "ETH", "symbol": "ETH", "points": 1 }\n]',
   ifScore: '{{$score}} >= 0.8',
   ifStatus: '{{$status}} == "active"'
 }
@@ -68,7 +85,12 @@ const examples = {
         <pre><code>{{ examples.loopJson }}</code></pre>
         <p>Источник может быть путём JSON (<code>$data</code>, <code>$jsonfield</code>) или переменной цепочки:</p>
         <pre><code>{{ examples.loopVar }}</code></pre>
-        <p>Циклы можно вкладывать. Тело цикла — обычный текст с теми же подстановками.</p>
+        <p>
+          Циклы можно вкладывать. Тело цикла — обычный текст с теми же подстановками.
+          Имя элемента цикла не должно совпадать с уже заданной переменной цепочки:
+          если есть переменная <code>item</code>, пишите <code>{{ examples.loopFree }}</code>, а не
+          <code>{{ examples.loopTaken }}</code> — иначе запуск остановится с ошибкой.
+        </p>
 
         <h2>Telegram</h2>
         <ul>
@@ -79,11 +101,48 @@ const examples = {
 
         <h2>Преобразование данных</h2>
         <p>
-          Операция Map строит новый объект или массив по шаблону. Путь (например <code>data</code>) указывает,
-          какой кусок входа брать. Шаблон элемента:
+          Узел берёт JSON предыдущего шага и меняет его. Поле «Путь к данным» указывает, какой кусок входа брать:
+          пусто — весь вход, <code>{{ examples.transformPath }}</code> — массив внутри объекта.
+          Если по пути массив, операция применяется к каждому элементу (Sort всегда ждёт массив).
         </p>
+        <p>Пример входа для операций ниже (путь <code>{{ examples.transformPath }}</code>):</p>
+        <pre><code>{{ examples.transformInput }}</code></pre>
+
+        <h3>Select — оставить поля</h3>
+        <p>Оставляет только перечисленные ключи. Остальные отбрасываются. Поля пишутся через запятую или JSON-массивом.</p>
+        <p>Поля: <code>{{ examples.selectFields }}</code></p>
+        <pre><code>{{ examples.selectOut }}</code></pre>
+
+        <h3>Rename — переименовать</h3>
+        <p>Меняет имена ключей, значения не трогает. Строки вида <code>старое=новое</code> или JSON-объект.</p>
+        <pre><code>{{ examples.renameMap }}</code></pre>
+        <pre><code>{{ examples.renameOut }}</code></pre>
+
+        <h3>Set — задать значения</h3>
+        <p>Добавляет или перезаписывает поля. Справа можно писать константу или подстановку из текущего элемента.</p>
+        <pre><code>{{ examples.setMap }}</code></pre>
+        <pre><code>{{ examples.setOut }}</code></pre>
+
+        <h3>Remove — удалить поля</h3>
+        <p>Убирает перечисленные ключи, остальное сохраняет.</p>
+        <p>Поля: <code>{{ examples.removeFields }}</code></p>
+        <pre><code>{{ examples.removeOut }}</code></pre>
+
+        <h3>Filter — отфильтровать</h3>
+        <p>Оставляет элементы, для которых условие истинно. Синтаксис тот же, что у IF ELSE; пути читаются от элемента, не от всего входа.</p>
+        <p>Условие: <code>{{ examples.filterCondition }}</code></p>
+        <pre><code>{{ examples.filterOut }}</code></pre>
+
+        <h3>Sort — сортировка</h3>
+        <p>Сортирует массив по полю. Нужен именно массив: одиночный объект сюда не подходит. Направление — по возрастанию или убыванию.</p>
+        <p>Поле: <code>{{ examples.sortField }}</code>, направление: по возрастанию.</p>
+        <pre><code>{{ examples.sortOut }}</code></pre>
+
+        <h3>Map — преобразовать элементы</h3>
+        <p>Строит новый объект по шаблону для каждого элемента. В отличие от Select, можно задать другие имена полей и брать вложенные пути.</p>
         <pre><code>{{ examples.map }}</code></pre>
-        <p>На выходе — массив таких объектов. Дальше его можно отдать в Telegram целиком или через цикл.</p>
+        <pre><code>{{ examples.mapOut }}</code></pre>
+        <p>Дальше массив можно отдать в Telegram целиком или перечислить циклом.</p>
 
         <h2>Условие IF</h2>
         <p>Сравнивайте поля предыдущего узла: <code>{{ examples.ifScore }}</code>, <code>{{ examples.ifStatus }}</code>. Пустой / null / отсутствующее поле в одиночной проверке считается ложью.</p>
