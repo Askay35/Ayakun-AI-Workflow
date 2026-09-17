@@ -494,9 +494,10 @@ const addFromPalette = (type: NodeKind) => {
   const origin = screenToFlowCoordinate({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
   addNode(type, { x: origin.x + nodes.value.length * 24, y: origin.y + nodes.value.length * 16 })
 }
+const isFlowSelected = (item: { selected?: boolean } | Record<string, unknown>) => Boolean((item as { selected?: boolean }).selected)
 const deleteSelected = () => {
-  const selectedFlowEdges = edges.value.filter(edge => edge.selected)
-  const selectedFlowNodes = nodes.value.filter(node => (node as WorkflowNode & { selected?: boolean }).selected)
+  const selectedFlowEdges = edges.value.filter(edge => isFlowSelected(edge))
+  const selectedFlowNodes = nodes.value.filter(node => isFlowSelected(node))
   const edgeIds = new Set([
     ...selectedFlowEdges.map(edge => edge.id),
     ...(selectedEdgeId.value ? [selectedEdgeId.value] : [])
