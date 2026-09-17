@@ -160,6 +160,7 @@ export function flowEdgesFromLinks(links: GraphLink[]) {
     target: link.target,
     sourceHandle: link.sourceHandle ? `${link.source}-${link.sourceHandle}` : `${link.source}-out`,
     targetHandle: `${link.target}-in`,
+    type: 'workflow',
     selectable: true,
     deletable: true
   }))

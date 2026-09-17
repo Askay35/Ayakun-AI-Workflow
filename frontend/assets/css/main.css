@@ -1754,6 +1754,38 @@ body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"]:ho
 .workflow-editor .vue-flow__edge:focus .vue-flow__edge-path {
   stroke: #c9f169;
 }
+.workflow-editor .vue-flow__edge .edge-delete {
+  opacity: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity .15s ease;
+}
+.workflow-editor .vue-flow__edge:hover .edge-delete,
+.workflow-editor .vue-flow__edge.selected .edge-delete {
+  opacity: 1;
+}
+.workflow-editor .vue-flow__edge .edge-delete-hit {
+  fill: transparent;
+  stroke: none;
+}
+.workflow-editor .vue-flow__edge .edge-delete circle {
+  fill: #1f2030;
+  stroke: #ff9b8a;
+  stroke-width: 1.4;
+}
+.workflow-editor .vue-flow__edge .edge-delete path {
+  fill: none;
+  stroke: #ff9b8a;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+.workflow-editor .vue-flow__edge .edge-delete:hover circle {
+  fill: #c94c4c;
+  stroke: #ffd0c8;
+}
+.workflow-editor .vue-flow__edge .edge-delete:hover path {
+  stroke: #fff;
+}
 .workflow-editor .vue-flow__connection-path {
   stroke: #8b7cff;
   stroke-width: 2;

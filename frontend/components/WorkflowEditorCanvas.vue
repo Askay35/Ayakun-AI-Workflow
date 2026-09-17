@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ConnectionMode, MarkerType, VueFlow, useVueFlow, type Connection, type Edge, type EdgeChange } from '@vue-flow/core'
+import { ConnectionMode, MarkerType, SelectionMode, VueFlow, useVueFlow, type Connection, type Edge, type EdgeChange, type NodeChange } from '@vue-flow/core'
 import { apiErrorMessage } from '~/composables/useApi'
 import { useAuthAsyncData } from '~/composables/useAuthAsyncData'
 import type { NodeKind, SearchPeriod, Workflow, WorkflowNode } from '~/types/api'
@@ -78,8 +78,11 @@ const {
   screenToFlowCoordinate,
   zoomIn,
   zoomOut,
-  fitView
+  fitView,
+  getSelectedNodes,
+  getSelectedEdges
 } = useVueFlow({ id: flowId })
+const hasSelectedNodes = computed(() => getSelectedNodes.value.length > 0)
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 
 const palette = (Object.keys(NODE_META) as NodeKind[]).map(type => ({ type, ...NODE_META[type] }))
@@ -268,7 +271,7 @@ const hintsFor = (nodeId: string) => {
   return node ? nodeVariableHints(node, definedNames.value) : []
 }
 const defaultEdgeOptions = {
-  type: 'default',
+  type: 'workflow',
   markerEnd: MarkerType.ArrowClosed,
   style: { stroke: '#8b82e8', strokeWidth: 2 },
   interactionWidth: 28,
@@ -462,16 +465,24 @@ const onConnect = (connection: Connection) => {
     targetHandle: `${target}-in`
   }]
 }
-const unlinkSelectedEdge = () => {
-  const edgeId = selectedEdgeId.value
-  if (!edgeId) return
-  const { source, target } = parseEdgeId(edgeId)
+const unlinkEdge = (edgeId?: string) => {
+  const id = edgeId || selectedEdgeId.value
+  if (!id) return
+  const { source, target } = parseEdgeId(id)
   if (!source || !target) return
   const next = removeLink(links.value, source, target)
   if (next.length === links.value.length) return
-  selectedEdgeId.value = undefined
-  edges.value = edges.value.filter(edge => edge.id !== edgeId)
+  if (selectedEdgeId.value === id) selectedEdgeId.value = undefined
+  edges.value = edges.value.filter(edge => edge.id !== id)
   links.value = next
+}
+const unlinkSelectedEdge = () => unlinkEdge()
+const onNodesChange = (changes: NodeChange[]) => {
+  for (const change of changes) {
+    if (change.type !== 'select') continue
+    if (change.selected) selectedId.value = change.id
+    else if (selectedId.value === change.id) selectedId.value = undefined
+  }
 }
 const onEdgesChange = (changes: EdgeChange[]) => {
   for (const change of changes) {
@@ -494,33 +505,22 @@ const addFromPalette = (type: NodeKind) => {
   const origin = screenToFlowCoordinate({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
   addNode(type, { x: origin.x + nodes.value.length * 24, y: origin.y + nodes.value.length * 16 })
 }
-const isFlowSelected = (item: { selected?: boolean } | Record<string, unknown>) => Boolean((item as { selected?: boolean }).selected)
 const deleteSelected = () => {
-  const selectedFlowEdges = edges.value.filter(edge => isFlowSelected(edge))
-  const selectedFlowNodes = nodes.value.filter(node => isFlowSelected(node))
-  const edgeIds = new Set([
-    ...selectedFlowEdges.map(edge => edge.id),
-    ...(selectedEdgeId.value ? [selectedEdgeId.value] : [])
-  ])
-  const nodeIds = new Set([
-    ...selectedFlowNodes.map(node => node.id),
-    ...(selectedId.value ? [selectedId.value] : [])
-  ])
-  if (edgeIds.size && !nodeIds.size) {
-    for (const edgeId of edgeIds) {
-      selectedEdgeId.value = edgeId
-      unlinkSelectedEdge()
-    }
+  const nodeIds = new Set(getSelectedNodes.value.map(node => node.id))
+  if (selectedId.value) nodeIds.add(selectedId.value)
+  if (nodeIds.size) {
+    let nextLinks = links.value
+    for (const nodeId of nodeIds) nextLinks = dropNodeLinks(nextLinks, nodeId)
+    links.value = nextLinks
+    edges.value = edges.value.filter(edge => !nodeIds.has(edge.source) && !nodeIds.has(edge.target))
+    nodes.value = nodes.value.filter(node => !nodeIds.has(node.id))
+    selectedId.value = undefined
+    selectedEdgeId.value = undefined
     return
   }
-  if (!nodeIds.size) return
-  let nextLinks = links.value
-  for (const nodeId of nodeIds) nextLinks = dropNodeLinks(nextLinks, nodeId)
-  links.value = nextLinks
-  edges.value = edges.value.filter(edge => !nodeIds.has(edge.source) && !nodeIds.has(edge.target) && !edgeIds.has(edge.id))
-  nodes.value = nodes.value.filter(node => !nodeIds.has(node.id))
-  selectedId.value = undefined
-  selectedEdgeId.value = undefined
+  const edgeIds = new Set(getSelectedEdges.value.map(edge => edge.id))
+  if (selectedEdgeId.value) edgeIds.add(selectedEdgeId.value)
+  for (const edgeId of edgeIds) unlinkEdge(edgeId)
 }
 const validate = async () => {
   if (!(await save())) return false
@@ -663,15 +663,21 @@ const runSelectedNode = async () => {
             :max-zoom="1.8"
             :edges-focusable="true"
             :elements-selectable="true"
+            :selection-mode="SelectionMode.Partial"
+            :multi-selection-key-code="['Meta', 'Control', 'Shift']"
             :delete-key-code="null"
             fit-view-on-init
             class="editor-flow"
             @connect="onConnect"
+            @nodes-change="onNodesChange"
             @edges-change="onEdgesChange"
             @node-click="selectedId = $event.node.id; selectedEdgeId = undefined"
             @pane-click="selectedId = undefined; selectedEdgeId = undefined"
             @edge-click="selectedEdgeId = $event.edge.id; selectedId = undefined"
           >
+            <template #edge-workflow="edgeProps">
+              <WorkflowEdge v-bind="edgeProps" @remove="unlinkEdge" />
+            </template>
             <template #node-web_search="{ id: nodeId, data, selected: active }">
               <WorkflowNodeCard :node-id="nodeId" kind="web_search" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
@@ -721,10 +727,10 @@ const runSelectedNode = async () => {
         </div>
       </div>
       <aside class="editor-pane editor-pane-right">
-        <template v-if="selectedEdgeId">
+        <template v-if="selectedEdgeId && !hasSelectedNodes">
           <p class="editor-kicker">Связь</p>
           <h2 class="mb-2 text-lg font-extrabold text-white">Стрелка</h2>
-          <p class="text-sm leading-6 text-white/45">Delete или кнопка ниже убирает связь. Узлы остаются на холсте.</p>
+          <p class="text-sm leading-6 text-white/45">Delete, кнопка ниже или крестик на стрелке убирает связь. Узлы остаются на холсте.</p>
           <UButton class="mt-4" label="Удалить связь" icon="i-lucide-unlink" color="error" variant="soft" @click="unlinkSelectedEdge" />
         </template>
         <template v-else-if="selected">
