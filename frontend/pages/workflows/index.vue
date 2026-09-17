@@ -104,7 +104,7 @@ const commitRename = async (workflowId: string) => {
       </div>
     </div>
     <div v-if="pending" class="grid-cards"><div v-for="i in 3" :key="i" class="panel h-52 animate-pulse bg-white/50" /></div>
-    <div v-else-if="workflows?.length" class="grid-cards">
+    <div v-else-if="workflows?.length" class="flex-cards">
       <div v-for="workflow in workflows" :key="workflow.id" class="panel workflow-card">
         <div class="flex items-start justify-between gap-3">
           <button type="button" class="grid size-11 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]" @click="openWorkflow(workflow.id)">
