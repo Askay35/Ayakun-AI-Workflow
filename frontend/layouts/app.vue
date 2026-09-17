@@ -21,7 +21,7 @@ useAppTitle()
           :label="item.label"
           block
           class="justify-start text-white"
-          :variant="route.path.startsWith(item.to) ? 'soft' : 'ghost'"
+          :variant="item.to === '/docs' ? (route.path === '/docs' ? 'soft' : 'ghost') : (route.path.startsWith(item.to) ? 'soft' : 'ghost')"
           color="neutral"
         />
       </nav>

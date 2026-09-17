@@ -31,7 +31,9 @@ def test_output_text_joins_search_hits() -> None:
         {"title": "A", "snippet": "one", "url": "https://a.example"},
         {"title": "B", "snippet": "two", "url": "https://b.example"},
     ])
-    assert "A" in text and "B" in text
+    assert '"title": "A"' in text
+    assert '"title": "B"' in text
+    assert "snippet" in text
 
 
 def test_parent_output_uses_only_direct_parents() -> None:

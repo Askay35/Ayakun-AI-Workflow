@@ -21,6 +21,42 @@ def test_render_template_keeps_legacy_json_prefix() -> None:
     assert render_template("id={{$json.userId}}", {"json": {"userId": 7}}) == "id=7"
 
 
+def test_render_template_root_placeholder_dumps_json() -> None:
+    payload = [{"title": "BTC", "price": 1.2}]
+    assert render_template("{{$}}", payload) == '[{"title": "BTC", "price": 1.2}]'
+
+
+def test_render_template_for_loop_over_json_path() -> None:
+    payload = {"data": [{"label": "BTC", "price": 12}, {"label": "ETH", "price": 8}]}
+    rendered = render_template(
+        "{% for item in $data %}Название: {{item.label}} цена: {{item.price}}\n{% endfor %}",
+        payload,
+    )
+    assert rendered == "Название: BTC цена: 12\nНазвание: ETH цена: 8\n"
+
+
+def test_render_template_for_loop_over_variable() -> None:
+    rendered = render_template(
+        "{% for row in rows %}{{row.title}} {% endfor %}",
+        {},
+        {"rows": [{"title": "A"}, {"title": "B"}]},
+    )
+    assert rendered == "A B "
+
+
+def test_render_telegram_message_root_and_loop() -> None:
+    payload = [{"title": "BTC", "symbol": "BTC"}]
+    dumped = render_telegram_message("{{$}}", payload)
+    assert "BTC" in dumped
+    assert "title" in dumped.replace("\\", "")
+    looped = render_telegram_message(
+        "{% for item in $ %}*{{item.title}}* {{item.symbol}}\n{% endfor %}",
+        payload,
+    )
+    assert "*BTC*" in looped
+
+
+
 def test_render_telegram_message_escapes_values_and_keeps_markup() -> None:
     assert render_telegram_message("Цена: {{price}}.", {}, {"price": 12.5}) == "Цена: 12\\.5\\."
     assert render_telegram_message("*Скидка:* {{price}}!", {}, {"price": "50%"}) == "*Скидка:* 50%\\!"
@@ -131,6 +167,44 @@ async def test_telegram_send_uses_parent_text_when_message_empty() -> None:
     })
     assert result == {"sent": True, "text": "Готовый отчёт"}
     assert executors.notifications.sent == [("42", "Готовый отчёт")]
+
+
+@pytest.mark.asyncio
+async def test_telegram_send_dumps_json_array_when_message_empty() -> None:
+    executors = object.__new__(DefaultExecutors)
+    executors.notifications = FakeNotifications()
+    node = TelegramSendNode(id="tg", chat_id=42, parents=["transform"])
+    payload = [{"title": "BTC", "symbol": "BTC", "percent_change_24h": 1.2}]
+    result = await executors.telegram_send(node, {
+        "nodes": {
+            "transform": {
+                "type": "data_transform",
+                "output": payload,
+            }
+        }
+    })
+    assert "BTC" in result["text"]
+    assert "percent\\_change\\_24h" in result["text"] or "percent_change_24h" in result["text"].replace("\\", "")
+    assert "1\\.2" in result["text"] or "1.2" in result["text"].replace("\\", "")
+    assert result["sent"] is True
+
+
+@pytest.mark.asyncio
+async def test_telegram_send_renders_root_placeholder() -> None:
+    executors = object.__new__(DefaultExecutors)
+    executors.notifications = FakeNotifications()
+    node = TelegramSendNode(id="tg", chat_id=42, message="{{$}}", parents=["transform"])
+    payload = [{"title": "ETH"}]
+    result = await executors.telegram_send(node, {
+        "nodes": {
+            "transform": {
+                "type": "data_transform",
+                "output": payload,
+            }
+        }
+    })
+    assert "ETH" in result["text"]
+    assert result["sent"] is True
 
 
 @pytest.mark.asyncio

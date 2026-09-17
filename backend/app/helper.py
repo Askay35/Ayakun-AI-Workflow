@@ -13,8 +13,12 @@ from pwdlib import PasswordHash
 from core.config import settings
 
 password_hash = PasswordHash.recommended()
-_PLACEHOLDER_RE = re.compile(r"\{\{\$([^}]+)\}\}")
-_VAR_PLACEHOLDER_RE = re.compile(r"\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}")
+_PLACEHOLDER_RE = re.compile(r"\{\{\$([^}]*)\}\}")
+_VAR_PLACEHOLDER_RE = re.compile(r"\{\{([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])*)\}\}")
+_FOR_BLOCK_RE = re.compile(
+    r"\{%\s*for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(\$[^\s%]*|[A-Za-z_][A-Za-z0-9_.\[\]]*)\s*%\}(.*?)\{\%\s*endfor\s*%\}",
+    re.DOTALL,
+)
 _NUMERIC_STRING_RE = re.compile(r"-?\d+(?:\.\d+)?")
 _MISSING = object()
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
@@ -147,10 +151,12 @@ def json_root_from_output(output: Any) -> Any:
 
 def parse_expression_path(path: str) -> list[str | int]:
     raw = path.strip()
+    if raw.startswith("$"):
+        raw = raw[1:]
     if raw.startswith("."):
         raw = raw[1:]
     if not raw:
-        raise ValueError("Пустое выражение {{$}}")
+        return []
     parts: list[str | int] = []
     index = 0
     while index < len(raw):
@@ -172,6 +178,8 @@ def parse_expression_path(path: str) -> list[str | int]:
 
 def _walk_path(data: Any, parts: list[str | int]) -> Any:
     current = data
+    if not parts:
+        return current
     for part in parts:
         if isinstance(current, dict):
             if part in current:
@@ -212,6 +220,18 @@ def _missing_variable_error(name: str) -> ValueError:
 
 def _lookup_variable(name: str, variables: dict | None, *, missing_as_null: bool = False) -> Any:
     vars_map = variables if isinstance(variables, dict) else {}
+    if "." in name or "[" in name:
+        resolved = _resolve_json_path(vars_map, name)
+        if resolved is not _MISSING:
+            return resolved
+        root_name = name.split(".", 1)[0].split("[", 1)[0]
+        if root_name not in vars_map:
+            if missing_as_null:
+                return None
+            raise _missing_variable_error(root_name)
+        if missing_as_null:
+            return None
+        raise _missing_expression_error(name)
     if name in vars_map:
         return vars_map[name]
     if missing_as_null:
@@ -219,9 +239,52 @@ def _lookup_variable(name: str, variables: dict | None, *, missing_as_null: bool
     raise _missing_variable_error(name)
 
 
+def _resolve_loop_source(source: str, json_root: Any, variables: dict | None) -> Any:
+    token = source.strip()
+    if token.startswith("$"):
+        resolved = _resolve_json_path(json_root, token[1:])
+        if resolved is _MISSING:
+            raise _missing_expression_error(token[1:] or ".")
+        return resolved
+    return _lookup_variable(token, variables)
+
+
+def _loop_items(source: Any) -> list[Any]:
+    if source is None:
+        return []
+    if isinstance(source, list):
+        return source
+    if isinstance(source, dict):
+        return [source]
+    return [source]
+
+
+def _scoped_variables(variables: dict | None, name: str, item: Any) -> dict:
+    scoped = dict(variables or {})
+    scoped[name] = item
+    return scoped
+
+
+def _expand_for_loops(text: str, json_root: Any, variables: dict | None, stringify: Any | None) -> str:
+    def replace_block(match: re.Match[str]) -> str:
+        item_name, source, body = match.group(1), match.group(2), match.group(3)
+        items = _loop_items(_resolve_loop_source(source, json_root, variables))
+        chunks: list[str] = []
+        for item in items:
+            scoped = _scoped_variables(variables, item_name, item)
+            inner = _expand_for_loops(body, json_root, scoped, stringify)
+            rendered = _substitute_placeholders(inner, json_root, scoped, stringify)
+            chunks.append("" if rendered is None else (rendered if isinstance(rendered, str) else str(rendered)))
+        return "".join(chunks)
+
+    return _FOR_BLOCK_RE.sub(replace_block, text)
+
+
 def _stringify_resolved(value: Any) -> str:
     if value is None:
         return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False)
     return str(value)
 
 
@@ -268,17 +331,21 @@ def _substitute_placeholders(
     if not isinstance(value, str):
         return value
 
+    if "{%" in value:
+        value = _expand_for_loops(value, json_root, variables, stringify)
+
     stripped = value.strip()
-    full_match = _PLACEHOLDER_RE.fullmatch(stripped)
-    if full_match:
-        path = full_match.group(1).strip()
-        resolved = _resolve_json_path(json_root, path)
-        if resolved is _MISSING:
-            raise _missing_expression_error(path)
-        return resolved
-    var_match = _VAR_PLACEHOLDER_RE.fullmatch(stripped)
-    if var_match:
-        return _lookup_variable(var_match.group(1), variables)
+    if stripped == value:
+        full_match = _PLACEHOLDER_RE.fullmatch(stripped)
+        if full_match:
+            path = full_match.group(1).strip()
+            resolved = _resolve_json_path(json_root, path)
+            if resolved is _MISSING:
+                raise _missing_expression_error(path)
+            return resolved
+        var_match = _VAR_PLACEHOLDER_RE.fullmatch(stripped)
+        if var_match:
+            return _lookup_variable(var_match.group(1), variables)
 
     def replace_path(match: re.Match[str]) -> str:
         path = match.group(1).strip()
@@ -307,6 +374,8 @@ def render_template(
         return ""
     if stringify is not None:
         return result if isinstance(result, str) else stringify(result)
+    if isinstance(result, (dict, list)):
+        return json.dumps(result, ensure_ascii=False)
     return str(result)
 
 
@@ -319,10 +388,12 @@ _TELEGRAM_TOKEN_RE = re.compile(
     r"|\*.+?\*"
     r"|_.+?_"
     r"|~.+?~"
-    r"|\{\{\$[^}]+\}\}"
-    r"|\{\{[A-Za-z_][A-Za-z0-9_]*\}\}"
+    r"|\{\{\$[^}]*\}\}"
+    r"|\{\{[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])*\}\}"
 )
-_TELEGRAM_PLACEHOLDER_RE = re.compile(r"\{\{\$[^}]+\}\}|\{\{[A-Za-z_][A-Za-z0-9_]*\}\}")
+_TELEGRAM_PLACEHOLDER_RE = re.compile(
+    r"\{\{\$[^}]*\}\}|\{\{[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])*\}\}"
+)
 
 
 def _escape_telegram_link_url(value: Any) -> str:
@@ -379,7 +450,53 @@ def _render_telegram_segment(segment: str, data: Any, variables: dict | None) ->
 
 def render_telegram_message(template: str, data: Any, variables: dict | None = None) -> str:
     """Подставляет переменные и экранирует MarkdownV2, сохраняя разметку шаблона."""
-    return _render_telegram_segment(template, data, variables)
+    expanded = _expand_for_loops(template, data, variables, stringify=_stringify_resolved)
+    if "{{" not in expanded and "{%" not in expanded:
+        return _escape_telegram_keeping_markup(expanded)
+    return _render_telegram_segment(expanded, data, variables)
+
+
+_TELEGRAM_MARKUP_RE = re.compile(
+    r"```[\s\S]*?```"
+    r"|`[^`]+`"
+    r"|\[[^]]*\]\([^)]*\)"
+    r"|\|\|.+?\|\|"
+    r"|__.+?__"
+    r"|\*.+?\*"
+    r"|_.+?_"
+    r"|~.+?~"
+)
+
+
+def _escape_telegram_keeping_markup(text: str) -> str:
+    parts: list[str] = []
+    last = 0
+    for match in _TELEGRAM_MARKUP_RE.finditer(text):
+        if match.start() > last:
+            parts.append(escape_telegram_markdown(text[last:match.start()]))
+        token = match.group(0)
+        if token.startswith("```") and token.endswith("```"):
+            parts.append("```" + token[3:-3] + "```")
+        elif token.startswith("`") and token.endswith("`"):
+            parts.append("`" + token[1:-1] + "`")
+        elif token.startswith("[") and "](" in token and token.endswith(")"):
+            label, url = token[1:-1].split("](", 1)
+            parts.append(f"[{escape_telegram_markdown(label)}]({url.replace(')', '\\)')})")
+        else:
+            for opener in ("||", "__"):
+                if token.startswith(opener) and token.endswith(opener) and len(token) >= 2 * len(opener):
+                    inner = token[len(opener):-len(opener)]
+                    parts.append(opener + inner + opener)
+                    break
+            else:
+                if len(token) >= 2 and token[0] == token[-1] and token[0] in "*_~":
+                    parts.append(token[0] + token[1:-1] + token[0])
+                else:
+                    parts.append(escape_telegram_markdown(token))
+        last = match.end()
+    if last < len(text):
+        parts.append(escape_telegram_markdown(text[last:]))
+    return "".join(parts)
 
 
 def _parse_request_template(body: str | dict) -> dict:

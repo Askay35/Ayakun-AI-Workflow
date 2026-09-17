@@ -29,7 +29,7 @@ export const DEFAULT_HTTP_REQUEST_JSON = `{
 }`
 
 export const IF_ELSE_CONDITION_PLACEHOLDER = '{{$object.field}} == 12'
-export const TELEGRAM_MESSAGE_PLACEHOLDER = 'Цена: {{$data[0].price}}'
+export const TELEGRAM_MESSAGE_PLACEHOLDER = '{% for item in $data %}{{item.title}} — {{item.price}}\n{% endfor %}'
 
 export type GraphLink = { source: string; target: string; sourceHandle?: 'true' | 'false' }
 

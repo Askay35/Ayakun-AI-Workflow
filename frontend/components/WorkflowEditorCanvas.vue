@@ -186,6 +186,8 @@ const JSON_EXPRESSION_EXAMPLE = '{{$data[0].field}}'
 const VARIABLE_NAME_EXAMPLE = '{{name}}'
 const VARIABLE_COMPARE_EXAMPLE = '{{count}} == 12'
 const WEBHOOK_BODY_EXAMPLE = '{{$body}}'
+const ROOT_JSON_EXAMPLE = '{{$}}'
+const TELEGRAM_LOOP_EXAMPLE = '{% for item in $data %}{{item.title}}{% endfor %}'
 const TRANSFORM_MAP_PLACEHOLDER = '{ "title": "{{$name}}" }'
 const TRANSFORM_RENAME_PLACEHOLDER = 'old=new'
 const TRANSFORM_SET_PLACEHOLDER = 'status=active'
@@ -375,9 +377,8 @@ const onEditorKey = (event: KeyboardEvent) => {
   if (event.key !== 'Delete' && event.key !== 'Backspace') return
   const tag = (event.target as HTMLElement | null)?.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-  if (!selectedEdgeId.value) return
   event.preventDefault()
-  unlinkSelectedEdge()
+  deleteSelected()
 }
 onMounted(async () => {
   hydrated.value = true
@@ -494,16 +495,31 @@ const addFromPalette = (type: NodeKind) => {
   addNode(type, { x: origin.x + nodes.value.length * 24, y: origin.y + nodes.value.length * 16 })
 }
 const deleteSelected = () => {
-  if (selectedEdgeId.value) {
-    unlinkSelectedEdge()
+  const selectedFlowEdges = edges.value.filter(edge => edge.selected)
+  const selectedFlowNodes = nodes.value.filter(node => (node as WorkflowNode & { selected?: boolean }).selected)
+  const edgeIds = new Set([
+    ...selectedFlowEdges.map(edge => edge.id),
+    ...(selectedEdgeId.value ? [selectedEdgeId.value] : [])
+  ])
+  const nodeIds = new Set([
+    ...selectedFlowNodes.map(node => node.id),
+    ...(selectedId.value ? [selectedId.value] : [])
+  ])
+  if (edgeIds.size && !nodeIds.size) {
+    for (const edgeId of edgeIds) {
+      selectedEdgeId.value = edgeId
+      unlinkSelectedEdge()
+    }
     return
   }
-  if (!selectedId.value) return
-  const nodeId = selectedId.value
-  links.value = dropNodeLinks(links.value, nodeId)
-  edges.value = edges.value.filter(edge => edge.source !== nodeId && edge.target !== nodeId)
-  nodes.value = nodes.value.filter(node => node.id !== nodeId)
+  if (!nodeIds.size) return
+  let nextLinks = links.value
+  for (const nodeId of nodeIds) nextLinks = dropNodeLinks(nextLinks, nodeId)
+  links.value = nextLinks
+  edges.value = edges.value.filter(edge => !nodeIds.has(edge.source) && !nodeIds.has(edge.target) && !edgeIds.has(edge.id))
+  nodes.value = nodes.value.filter(node => !nodeIds.has(node.id))
   selectedId.value = undefined
+  selectedEdgeId.value = undefined
 }
 const validate = async () => {
   if (!(await save())) return false
@@ -803,7 +819,7 @@ const runSelectedNode = async () => {
                   :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится вывод предыдущего узла. Если задан — подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня входных данных, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — из переменных; отсутствующее поле останавливает запуск. Исходящие можно вести дальше, но текст детям не передаётся.</p>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится весь JSON или текст предыдущего узла. <code>{{ ROOT_JSON_EXAMPLE }}</code> — все входные данные, <code>{{ JSON_EXPRESSION_EXAMPLE }}</code> — поле, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — переменная цепочки. Цикл: <code>{{ TELEGRAM_LOOP_EXAMPLE }}</code>.</p>
             </template>
             <template v-if="selected.type === 'webhook'">
               <p class="text-xs leading-5 text-white/40">Стартовый узел: внешний сервис вызывает URL методом POST, PUT или PATCH, и цепочка запускается. Тело запроса доступно дальше как <code>{{ WEBHOOK_BODY_EXAMPLE }}</code>.</p>

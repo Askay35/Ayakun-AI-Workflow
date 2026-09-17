@@ -11,6 +11,7 @@ export const PAGE_TITLES: Record<string, string> = {
   pricing: 'Тарифы',
   terms: 'Оферта',
   privacy: 'Конфиденциальность',
+  docs: 'Документация',
   contacts: 'Контакты',
   delivery: 'Получение услуги',
   'auth-google-callback': 'Вход'
@@ -20,6 +21,7 @@ export const APP_NAV_ITEMS = [
   { label: 'Обзор', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
   { label: 'Цепочки', icon: 'i-lucide-workflow', to: '/workflows' },
   { label: 'Запуски', icon: 'i-lucide-activity', to: '/runs' },
+  { label: 'Документация', icon: 'i-lucide-book-open', to: '/docs' },
   { label: 'Биллинг', icon: 'i-lucide-wallet', to: '/billing' },
   { label: 'Профиль', icon: 'i-lucide-user', to: '/profile' }
 ] as const

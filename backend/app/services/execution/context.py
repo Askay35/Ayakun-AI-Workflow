@@ -30,24 +30,14 @@ def output_text(output: object) -> str:
             if isinstance(value, str) and value.strip():
                 return value
         try:
-            return json.dumps(output, ensure_ascii=False)
+            return json.dumps(output, ensure_ascii=False, indent=2)
         except (TypeError, ValueError):
             return str(output)
     if isinstance(output, list):
-        chunks: list[str] = []
-        for item in output:
-            data = item.model_dump() if hasattr(item, "model_dump") else item
-            if isinstance(data, dict):
-                title = data.get("title") or ""
-                snippet = data.get("snippet") or ""
-                url = data.get("url") or ""
-                item_date = data.get("date") or ""
-                chunk = "\n".join(part for part in (title, snippet, url, item_date) if part)
-                if chunk:
-                    chunks.append(chunk)
-            elif isinstance(data, str) and data.strip():
-                chunks.append(data)
-        return "\n\n".join(chunks)
+        try:
+            return json.dumps(output, ensure_ascii=False, indent=2)
+        except (TypeError, ValueError):
+            return str(output)
     return str(output)
 
 

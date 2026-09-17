@@ -18,6 +18,7 @@ useAppTitle()
           <NuxtLink to="/#examples" class="nav-link nav-hide">Примеры</NuxtLink>
           <NuxtLink to="/#how" class="nav-link nav-hide">Как работает</NuxtLink>
           <NuxtLink to="/pricing" class="nav-link nav-hide">Тарифы</NuxtLink>
+          <NuxtLink to="/docs" class="nav-link nav-hide">Документация</NuxtLink>
           <a
             :href="LEGAL.telegramChannel"
             class="social-icon-link"
@@ -61,6 +62,7 @@ useAppTitle()
         </div>
         <nav class="public-footer-links">
           <NuxtLink to="/delivery">Как получить услугу</NuxtLink>
+          <NuxtLink to="/docs">Документация</NuxtLink>
           <NuxtLink to="/terms">Публичная оферта</NuxtLink>
           <NuxtLink to="/privacy">Политика конфиденциальности</NuxtLink>
           <NuxtLink to="/contacts">Контакты и реквизиты</NuxtLink>

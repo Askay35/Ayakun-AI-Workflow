@@ -26,7 +26,8 @@ class TelegramSendAction(NodeAction):
             )
         else:
             texts = parent_output_texts(node, context)
-            message = escape_telegram_markdown(texts[0]) if texts else ""
+            raw = texts[0] if texts else ""
+            message = escape_telegram_markdown(raw)
         if not message:
             return {"sent": False, "text": ""}
         if not chat_id:
