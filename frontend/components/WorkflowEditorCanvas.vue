@@ -70,7 +70,10 @@ const selected = computed(() => nodes.value.find(node => node.id === selectedId.
 const validationErrors = ref<string[]>([])
 const saveState = ref<'saved' | 'saving' | 'dirty'>('saved')
 const estimatedCost = ref(Number(workflow.value.estimated_run_cost || 0))
-useAppTitle(computed(() => workflow.value?.name || 'Редактор'))
+const workflowName = ref(workflow.value.name || '')
+const renaming = ref(false)
+const nameDraft = ref(workflow.value.name || '')
+useAppTitle(computed(() => workflowName.value || workflow.value?.name || 'Редактор'))
 const {
   screenToFlowCoordinate,
   zoomIn,
@@ -282,6 +285,7 @@ const save = async () => {
       variables: recordFromVariables(workflowVariables.value)
     })
     workflow.value = saved
+    workflowName.value = saved.name
     estimatedCost.value = Number(saved.estimated_run_cost || 0)
     saveState.value = 'saved'
     return true
@@ -317,6 +321,44 @@ const connectGmail = async () => {
 }
 const disconnectGmailFromNode = () => {
   if (selected.value?.type === 'gmail') selected.value.data.gmail_account_id = null
+}
+const startRename = () => {
+  nameDraft.value = workflowName.value
+  renaming.value = true
+}
+const cancelRename = () => {
+  renaming.value = false
+  nameDraft.value = workflowName.value
+}
+const commitRename = async () => {
+  const next = nameDraft.value.trim()
+  if (!next) {
+    toast.add({ title: 'Укажите название', color: 'error' })
+    return
+  }
+  if (next === workflowName.value) {
+    renaming.value = false
+    return
+  }
+  saveState.value = 'saving'
+  try {
+    const saved = await api.workflows.save(id, graphForSave(), {
+      name: next,
+      schedule_slots: scheduleSlots.value.map(({ next_at: _next, ...slot }) => slot),
+      schedule_enabled: scheduleActive.value,
+      schedule_timezone: scheduleTimezone,
+      variables: recordFromVariables(workflowVariables.value)
+    })
+    workflow.value = saved
+    workflowName.value = saved.name
+    nameDraft.value = saved.name
+    estimatedCost.value = Number(saved.estimated_run_cost || 0)
+    saveState.value = 'saved'
+    renaming.value = false
+  } catch {
+    saveState.value = 'dirty'
+    toast.add({ title: 'Не удалось переименовать цепочку', color: 'error' })
+  }
 }
 const hydrated = ref(false)
 watch([nodes, links, scheduleEnabled, scheduleSlots, workflowVariables], () => {
@@ -522,7 +564,29 @@ const runSelectedNode = async () => {
       <div class="flex min-w-0 items-center gap-3">
         <UButton to="/workflows" icon="i-lucide-arrow-left" color="neutral" variant="ghost" class="text-white/80 hover:text-white" />
         <div class="min-w-0">
-          <h1 class="mb-0 truncate text-[15px] font-extrabold tracking-tight text-white">{{ workflow?.name }}</h1>
+          <div v-if="renaming" class="flex min-w-0 items-center gap-2">
+            <UInput
+              v-model="nameDraft"
+              autofocus
+              size="sm"
+              class="editor-name-input min-w-0 w-[min(320px,46vw)]"
+              maxlength="160"
+              @keyup.enter="commitRename"
+              @keyup.escape="cancelRename"
+            />
+            <UButton icon="i-lucide-check" size="xs" color="neutral" variant="soft" aria-label="Сохранить название" @click="commitRename" />
+            <UButton icon="i-lucide-x" size="xs" color="neutral" variant="ghost" class="text-white/70" aria-label="Отменить" @click="cancelRename" />
+          </div>
+          <button
+            v-else
+            type="button"
+            class="group flex max-w-full items-center gap-1.5 text-left"
+            title="Переименовать"
+            @click="startRename"
+          >
+            <h1 class="mb-0 truncate text-[15px] font-extrabold tracking-tight text-white">{{ workflowName }}</h1>
+            <UIcon name="i-lucide-pencil" class="size-3.5 shrink-0 text-white/35 transition group-hover:text-white/80" />
+          </button>
           <p class="mb-0 text-[11px] text-white/45">
             {{ saveState === 'saving' ? 'Сохраняем…' : saveState === 'saved' ? 'Черновик сохранён' : 'Несохранённые изменения' }}
           </p>

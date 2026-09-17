@@ -319,6 +319,7 @@ export const useApi = () => {
         id: string,
         graph: Workflow['draft_graph'],
         extras: {
+          name?: string
           schedule?: { time: string; weekdays: number[] } | null
           schedule_slots?: ScheduleSlot[]
           schedule_enabled?: boolean
@@ -331,6 +332,8 @@ export const useApi = () => {
         method: 'PATCH',
         body: { graph: serializeGraph(graph), ...extras }
       }).then(normalizeWorkflow),
+      rename: (id: string, name: string) =>
+        request<Workflow>(`/workflows/${id}`, { method: 'PATCH', body: { name } }).then(normalizeWorkflow),
       validate: (id: string) => request<ValidationResult>(`/workflows/${id}/validate`, { method: 'POST' }),
       publish: (id: string) => request<Workflow>(`/workflows/${id}/publish`, { method: 'POST' }).then(normalizeWorkflow),
       run: (id: string) => request<WorkflowRun>(`/workflows/${id}/runs`, { method: 'POST', body: { input: {} } }),

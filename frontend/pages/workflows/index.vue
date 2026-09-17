@@ -11,6 +11,9 @@ const showMobileGate = ref(false)
 const name = ref('')
 const creating = ref(false)
 const deletingId = ref<string>()
+const renamingId = ref<string>()
+const nameDraft = ref('')
+const renamingBusy = ref(false)
 const { data: workflows, pending, refresh } = await useAuthAsyncData('workflows', () => api.workflows.list())
 
 const create = async () => {
@@ -52,6 +55,35 @@ const remove = async (id: string, workflowName: string) => {
 }
 
 const formatCost = (value?: number) => `${formatCredits(value)} credits`
+
+const startRename = (workflowId: string, workflowName: string) => {
+  renamingId.value = workflowId
+  nameDraft.value = workflowName
+}
+
+const cancelRename = () => {
+  renamingId.value = undefined
+  nameDraft.value = ''
+}
+
+const commitRename = async (workflowId: string) => {
+  const next = nameDraft.value.trim()
+  if (!next) {
+    toast.add({ title: 'Укажите название', color: 'error' })
+    return
+  }
+  renamingBusy.value = true
+  try {
+    const saved = await api.workflows.rename(workflowId, next)
+    workflows.value = (workflows.value || []).map(item => item.id === saved.id ? { ...item, name: saved.name } : item)
+    cancelRename()
+    toast.add({ title: 'Цепочка переименована', color: 'success' })
+  } catch (error) {
+    toast.add({ title: 'Не удалось переименовать', description: apiErrorMessage(error), color: 'error' })
+  } finally {
+    renamingBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -80,6 +112,14 @@ const formatCost = (value?: number) => `${formatCredits(value)} credits`
           <div class="flex items-center gap-1">
             <span class="cost-pill"><UIcon name="i-lucide-coins" />до {{ formatCost(workflow.estimated_run_cost) }} / запуск</span>
             <UButton
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              aria-label="Переименовать цепочку"
+              @click="startRename(workflow.id, workflow.name)"
+            />
+            <UButton
               icon="i-lucide-trash-2"
               color="error"
               variant="ghost"
@@ -90,7 +130,22 @@ const formatCost = (value?: number) => `${formatCredits(value)} credits`
             />
           </div>
         </div>
-        <button type="button" class="block w-full cursor-pointer text-left" @click="openWorkflow(workflow.id)">
+        <div v-if="renamingId === workflow.id" class="mt-5 space-y-3">
+          <UInput
+            v-model="nameDraft"
+            autofocus
+            size="lg"
+            maxlength="160"
+            class="w-full"
+            @keyup.enter="commitRename(workflow.id)"
+            @keyup.escape="cancelRename"
+          />
+          <div class="flex gap-2">
+            <UButton label="Сохранить" size="sm" :loading="renamingBusy" @click="commitRename(workflow.id)" />
+            <UButton label="Отмена" size="sm" variant="ghost" color="neutral" @click="cancelRename" />
+          </div>
+        </div>
+        <button v-else type="button" class="block w-full cursor-pointer text-left" @click="openWorkflow(workflow.id)">
           <h2 class="mb-2 mt-5 text-xl font-extrabold">{{ workflow.name }}</h2>
           <p class="mb-5 text-sm muted">{{ workflow.next_run_at || workflow.schedule_cron ? 'Запускается автоматически' : 'Запуск вручную' }}</p>
           <div class="workflow-card-footer">
