@@ -3,6 +3,7 @@ import { APP_NAV_ITEMS } from '~/utils/app-nav'
 
 const route = useRoute()
 const auth = useAuth()
+const { t } = useI18n()
 useAppTitle()
 </script>
 
@@ -18,7 +19,7 @@ useAppTitle()
           :key="item.to"
           :to="item.to"
           :icon="item.icon"
-          :label="item.label"
+          :label="t(`nav.${item.key}`)"
           block
           class="justify-start text-white"
           :variant="item.to === '/docs' ? (route.path === '/docs' ? 'soft' : 'ghost') : (route.path.startsWith(item.to) ? 'soft' : 'ghost')"
@@ -26,11 +27,12 @@ useAppTitle()
         />
       </nav>
       <div class="app-user">
+        <LanguageSwitcher tone="dark" class="mb-3" />
         <div class="mb-2 flex items-center gap-2">
           <span class="status-dot online" />
-          <p class="m-0 truncate text-sm font-semibold">{{ auth.user.value?.name || auth.user.value?.email || 'Аккаунт' }}</p>
+          <p class="m-0 truncate text-sm font-semibold">{{ auth.user.value?.name || auth.user.value?.email || t('common.account') }}</p>
         </div>
-        <UButton label="Выйти" icon="i-lucide-log-out" color="neutral" variant="ghost" size="sm" class="px-0 text-white/60" @click="auth.logout" />
+        <UButton :label="t('common.logout')" icon="i-lucide-log-out" color="neutral" variant="ghost" size="sm" class="px-0 text-white/60" @click="auth.logout" />
       </div>
     </aside>
     <main class="app-main"><slot /></main>

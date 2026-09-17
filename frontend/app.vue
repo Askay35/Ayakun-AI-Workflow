@@ -1,12 +1,17 @@
 <script setup lang="ts">
-const SITE_TITLE = 'Ayakun — визуальная автоматизация с ИИ без кода'
+const { locale, t } = useI18n()
 
 useHead({
-  titleTemplate: (title?: string) => (
-    !title || title === 'Ayakun' || title === SITE_TITLE
-      ? SITE_TITLE
-      : `${title} · Ayakun`
-  )
+  htmlAttrs: { lang: locale },
+  titleTemplate: (title?: string) => {
+    const site = t('meta.siteTitle')
+    return !title || title === 'Ayakun' || title === site ? site : `${title} · Ayakun`
+  },
+  meta: [
+    { name: 'description', content: () => t('meta.siteDescription') },
+    { property: 'og:title', content: () => t('meta.siteTitle') },
+    { property: 'og:description', content: () => t('meta.siteDescription') }
+  ]
 })
 </script>
 

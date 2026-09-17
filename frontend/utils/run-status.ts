@@ -1,10 +1,10 @@
 const LABELS: Record<string, string> = {
-  queued: 'В очереди',
-  running: 'Выполняется',
-  succeeded: 'Готово',
-  failed: 'Ошибка',
-  cancelled: 'Отменён',
-  pending: 'Ожидает'
+  queued: 'status.queued',
+  running: 'status.running',
+  succeeded: 'status.succeeded',
+  failed: 'status.failed',
+  cancelled: 'status.cancelled',
+  pending: 'status.pending'
 }
 
 export function statusKey(status?: string | { value?: string } | null) {
@@ -13,9 +13,12 @@ export function statusKey(status?: string | { value?: string } | null) {
   return String(status.value || '').trim().toLowerCase()
 }
 
-export function statusLabel(status?: string | { value?: string } | null) {
+export function statusLabel(status?: string | { value?: string } | null, t?: (key: string) => string) {
   const key = statusKey(status)
-  return LABELS[key] || key || '—'
+  const path = LABELS[key]
+  if (path && t) return t(path)
+  if (path) return path
+  return key || '—'
 }
 
 export function statusColor(status?: string | { value?: string } | null) {

@@ -22,6 +22,7 @@ export const apiErrorMessage = (error: unknown, fallback = 'Что-то пошл
 
 export const useApi = () => {
   const config = useRuntimeConfig()
+  const { t } = useI18n()
   const apiBase = computed(() => {
     if (import.meta.server && config.apiBase) return String(config.apiBase)
     return String(config.public.apiBase)
@@ -380,7 +381,7 @@ export const useApi = () => {
           ledger: visibleLedgerEntries(ledger.map(item => ({
             ...item,
             metadata_: item.metadata_ || item.metadata
-          })))
+          })), t)
         }
       },
       checkout: (planId: number, idempotencyKey: string, customerEmail?: string) => request<{ confirmation_url: string | null }>('/billing/checkout', {

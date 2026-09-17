@@ -5,6 +5,7 @@ const props = defineProps<EdgeProps>()
 const emit = defineEmits<{
   remove: [id: string]
 }>()
+const { t } = useI18n()
 
 const path = computed(() => {
   const [d, labelX, labelY] = getBezierPath({
@@ -42,7 +43,7 @@ const removeEdge = (event: Event) => {
       @pointerdown.stop
       @mousedown.stop
     >
-      <title>Удалить связь</title>
+      <title>{{ t('editor.deleteEdge') }}</title>
       <circle class="edge-delete-hit" r="14" />
       <circle r="11" />
       <path d="M-4 -4 L4 4 M4 -4 L-4 4" />

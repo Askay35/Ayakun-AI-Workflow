@@ -9,6 +9,8 @@ const emit = defineEmits<{
   'update:items': [value: VariableRow[]]
 }>()
 
+const { t } = useI18n()
+
 const addVariable = () => {
   emit('update:items', [...props.items, { key: '', value: '' }])
 }
@@ -24,7 +26,7 @@ const removeRow = (index: number) => {
 const keyError = (key: string) => {
   const trimmed = key.trim()
   if (!trimmed) return ''
-  if (!VARIABLE_NAME_RE.test(trimmed)) return 'Только латиница, цифры и _'
+  if (!VARIABLE_NAME_RE.test(trimmed)) return t('vars.keyError')
   return ''
 }
 
@@ -33,13 +35,13 @@ const variableNameExample = '{{name}}'
 
 <template>
   <div class="editor-vars">
-    <p class="mb-1 text-sm font-extrabold text-white">Переменные</p>
-    <p class="mb-3 text-[11px] leading-5 text-white/40">Доступны в звеньях как <code>{{ variableNameExample }}</code>. Значение можно перезаписать.</p>
+    <p class="mb-1 text-sm font-extrabold text-white">{{ t('vars.title') }}</p>
+    <p class="mb-3 text-[11px] leading-5 text-white/40">{{ t('vars.hint', { example: variableNameExample }) }}</p>
     <div v-if="items.length" class="editor-var-list">
       <div v-for="(item, index) in items" :key="index" class="editor-var-row">
         <UInput
           :model-value="item.key"
-          placeholder="ключ"
+          :placeholder="t('vars.key')"
           size="sm"
           class="w-full"
           :color="keyError(item.key) ? 'error' : undefined"
@@ -47,19 +49,19 @@ const variableNameExample = '{{name}}'
         />
         <UInput
           :model-value="item.value"
-          placeholder="значение"
+          :placeholder="t('vars.value')"
           size="sm"
           class="w-full"
           @update:model-value="updateRow(index, { value: String($event) })"
         />
-        <button type="button" class="editor-var-remove" aria-label="Удалить переменную" @click="removeRow(index)">
+        <button type="button" class="editor-var-remove" :aria-label="t('vars.remove')" @click="removeRow(index)">
           <UIcon name="i-lucide-x" class="size-3.5" />
         </button>
         <p v-if="keyError(item.key)" class="editor-var-error">{{ keyError(item.key) }}</p>
       </div>
     </div>
     <UButton
-      label="Добавить"
+      :label="t('vars.add')"
       icon="i-lucide-plus"
       color="neutral"
       variant="soft"

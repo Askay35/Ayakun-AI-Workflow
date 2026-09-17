@@ -2,9 +2,10 @@
 import type { Plan } from '~/types/api'
 import { bestValuePackCode, formatCredits, packCredits, sortCreditPacks } from '~/utils/credits'
 
+const { t, tm, formatMoney } = useI18n()
 useSeoMeta({
-  title: 'Цены',
-  description: 'Покупаете credits — списывается только фактический расход запуска. Без подписки и срока действия.'
+  title: () => t('pricing.title'),
+  description: () => t('pricing.description')
 })
 
 const api = useApi()
@@ -17,12 +18,11 @@ const fallback: Plan[] = [
 const { data: plans } = await useAsyncData('public-plans', () => api.billing.plans().catch(() => fallback))
 const ordered = computed(() => sortCreditPacks(plans.value || fallback))
 const featuredCode = computed(() => bestValuePackCode(ordered.value))
-const facts = [
-  { icon: 'i-lucide-wallet', title: 'Пакет = credits', text: 'Платите один раз — на баланс сразу приходит указанный запас.' },
-  { icon: 'i-lucide-gauge', title: 'Списание по факту', text: 'Уходит только стоимость запуска, а не весь пакет сразу.' },
-  { icon: 'i-lucide-eye', title: 'Цена до старта', text: 'В редакторе виден максимум запуска, до того как цепочка пойдёт.' },
-  { icon: 'i-lucide-infinity', title: 'Не сгорают', text: 'Остаток лежит на балансе, пока вы его не потратите.' }
-]
+const factIcons = ['i-lucide-wallet', 'i-lucide-gauge', 'i-lucide-eye', 'i-lucide-infinity']
+const facts = computed(() => tm<Array<{ title: string; text: string }>>('pricing.facts').map((item, index) => ({
+  ...item,
+  icon: factIcons[index]
+})))
 </script>
 
 <template>
@@ -30,10 +30,10 @@ const facts = [
     <section class="section">
       <div class="shell">
         <div class="mx-auto mb-14 max-w-3xl text-center reveal">
-          <p class="eyebrow">Credits</p>
-          <h1 class="page-title !text-[clamp(42px,6vw,76px)]">Платите только за нужный объём</h1>
+          <p class="eyebrow">{{ t('pricing.eyebrow') }}</p>
+          <h1 class="page-title !text-[clamp(42px,6vw,76px)]">{{ t('pricing.heading') }}</h1>
           <p class="mx-auto mt-5 max-w-2xl text-lg leading-8 muted">
-            Никаких подписок или скрытых ступеней — вы приобретаете пакет credits и тратите их по мере использования.
+            {{ t('pricing.lead') }}
           </p>
   
         </div>
@@ -48,25 +48,25 @@ const facts = [
             }"
             :style="{ animationDelay: `${index * 90}ms` }"
           >
-            <span v-if="plan.code === featuredCode" class="credit-pack-badge">Выгоднее</span>
+            <span v-if="plan.code === featuredCode" class="credit-pack-badge">{{ t('pricing.better') }}</span>
             <span class="credit-pack-icon">
               <UIcon :name="Number(plan.price) ? 'i-lucide-coins' : 'i-lucide-gift'" class="size-5" />
             </span>
             <p class="credit-pack-credits">{{ formatCredits(packCredits(plan)) }}</p>
-            <p class="credit-pack-unit">credits</p>
+            <p class="credit-pack-unit">{{ t('common.credits') }}</p>
             <span class="credit-pack-rule" aria-hidden="true" />
             <p class="credit-pack-price">
               <template v-if="Number(plan.price)">
-                <strong>{{ Number(plan.price).toLocaleString('ru-RU') }}</strong>
+                <strong>{{ formatMoney(Number(plan.price)) }}</strong>
                 <span>₽</span>
               </template>
               <template v-else>
-                <strong>Бесплатно</strong>
+                <strong>{{ t('pricing.free') }}</strong>
               </template>
             </p>
             <UButton
               to="/login"
-              :label="Number(plan.price) ? 'Купить' : 'Начать бесплатно'"
+              :label="Number(plan.price) ? t('pricing.buy') : t('nav.startFree')"
               block
               size="lg"
               class="credit-pack-cta mt-auto"
@@ -82,9 +82,9 @@ const facts = [
     <section class="section alt">
       <div class="shell grid items-center gap-10 md:grid-cols-2">
         <div class="section-heading mb-0!">
-          <p class="eyebrow">Как это работает</p>
-          <h2>Один баланс на все цепочки</h2>
-          <p>Не нужно сравнивать функции пакетов. Отличается только число credits, которое вы кладёте на счёт.</p>
+          <p class="eyebrow">{{ t('pricing.howEyebrow') }}</p>
+          <h2>{{ t('pricing.howTitle') }}</h2>
+          <p>{{ t('pricing.howLead') }}</p>
         </div>
         <div class="grid gap-3">
           <div v-for="item in facts" :key="item.title" class="flex items-start gap-3 rounded-2xl bg-white/5 p-4">

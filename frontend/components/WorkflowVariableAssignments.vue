@@ -9,6 +9,8 @@ const emit = defineEmits<{
   'update:items': [value: Array<{ key: string; value: string }>]
 }>()
 
+const { t } = useI18n()
+
 const addRow = () => {
   emit('update:items', [...props.items, { key: '', value: '' }])
 }
@@ -31,12 +33,12 @@ const assignmentExample = '{{total}} = {{$data[0].field}}'
 
 <template>
   <div class="editor-assign">
-    <p class="mb-1 text-[13px] font-extrabold text-white">Запись в переменные</p>
-    <p class="mb-3 text-[11px] leading-5 text-white/40">После выполнения можно сохранить поле вывода: <code>{{ assignmentExample }}</code></p>
+    <p class="mb-1 text-[13px] font-extrabold text-white">{{ t('vars.assignTitle') }}</p>
+    <p class="mb-3 text-[11px] leading-5 text-white/40">{{ t('vars.assignHint', { example: assignmentExample }) }}</p>
     <div v-for="(item, index) in items" :key="index" class="editor-assign-row">
       <UInput
         :model-value="item.key"
-        placeholder="переменная"
+        :placeholder="t('vars.assignKey')"
         size="sm"
         class="w-full"
         :color="keyInvalid(item.key) ? 'error' : undefined"
@@ -44,17 +46,17 @@ const assignmentExample = '{{total}} = {{$data[0].field}}'
       />
       <UInput
         :model-value="item.value"
-        placeholder="значение"
+        :placeholder="t('vars.value')"
         size="sm"
         class="w-full font-mono"
         @update:model-value="updateRow(index, { value: String($event) })"
       />
-      <button type="button" class="editor-var-remove" aria-label="Удалить присваивание" @click="removeRow(index)">
+      <button type="button" class="editor-var-remove" :aria-label="t('vars.assignRemove')" @click="removeRow(index)">
         <UIcon name="i-lucide-x" class="size-3.5" />
       </button>
     </div>
     <UButton
-      label="Добавить запись"
+      :label="t('vars.assignAdd')"
       icon="i-lucide-plus"
       color="neutral"
       variant="ghost"

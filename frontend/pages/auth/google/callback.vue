@@ -4,6 +4,7 @@ import { apiErrorMessage } from '~/composables/useApi'
 const route = useRoute()
 const api = useApi()
 const auth = useAuth()
+const { t } = useI18n()
 const error = ref('')
 const purpose = ref<'login' | 'link'>('login')
 
@@ -14,10 +15,10 @@ onMounted(async () => {
   try {
     const code = String(route.query.code || '')
     const state = String(route.query.state || '')
-    if (!code || !state) throw new Error('Google не вернул code/state')
+    if (!code || !state) throw new Error(t('google.noCode'))
     const verifier = sessionStorage.getItem('ayakun_google_verifier') || ''
     const redirectUri = sessionStorage.getItem('ayakun_google_redirect_uri') || `${location.origin}/auth/google/callback`
-    if (!verifier) throw new Error('PKCE verifier не найден')
+    if (!verifier) throw new Error(t('google.noVerifier'))
     const tokens = await api.auth.googleCallback(code, state, verifier, redirectUri)
     await auth.accept(tokens)
     sessionStorage.removeItem('ayakun_google_verifier')
@@ -32,8 +33,8 @@ onMounted(async () => {
     await navigateTo('/dashboard')
   } catch (reason: any) {
     const fallback = storedPurpose === 'link'
-      ? 'Не удалось подключить Google.'
-      : 'Не удалось завершить вход.'
+      ? t('google.linkFail')
+      : t('google.loginFail')
     error.value = apiErrorMessage(reason, fallback)
   }
 })
@@ -43,8 +44,8 @@ onMounted(async () => {
   <main class="page grid min-h-[70vh] place-items-center text-center">
     <div>
       <UIcon :name="error ? 'i-lucide-circle-alert' : 'i-lucide-loader-circle'" class="size-10" :class="{ 'animate-spin': !error }" />
-      <h1 class="mt-3 text-xl font-semibold">{{ error || (purpose === 'link' ? 'Подключаем Google…' : 'Завершаем вход…') }}</h1>
-      <UButton v-if="error" :to="purpose === 'login' ? '/login' : '/profile?tab=integrations'" label="Вернуться" class="mt-4" />
+      <h1 class="mt-3 text-xl font-semibold">{{ error || (purpose === 'link' ? t('google.linking') : t('google.finishing')) }}</h1>
+      <UButton v-if="error" :to="purpose === 'login' ? '/login' : '/profile?tab=integrations'" :label="t('common.back')" class="mt-4" />
     </div>
   </main>
 </template>

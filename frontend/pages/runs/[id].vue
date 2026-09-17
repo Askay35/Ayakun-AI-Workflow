@@ -8,10 +8,11 @@ import { NODE_META } from '~/utils/workflow-graph'
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const route = useRoute()
 const api = useApi()
+const { t, formatDate } = useI18n()
 const config = useRuntimeConfig()
 const id = String(route.params.id)
 const { data: run, refresh } = await useAuthAsyncData(`run-${id}`, () => api.runs.get(id))
-useAppTitle(computed(() => run.value?.workflow_name || 'Запуск'))
+useAppTitle(computed(() => run.value?.workflow_name || t('titles.run')))
 const isSoloRun = computed(() => Boolean(run.value?.input?._solo))
 let stream: AbortController | undefined
 let poll: ReturnType<typeof setInterval> | undefined
@@ -30,7 +31,7 @@ const progress = computed(() => {
   return Math.round((completedCount.value / steps.value.length) * 100)
 })
 const stepMeta = (step: NodeRun) => NODE_META[step.node_type] || NODE_META.prompt
-const stepTitle = (step: NodeRun) => step.label || stepMeta(step).label
+const stepTitle = (step: NodeRun) => step.label || t(`nodes.${step.node_type}.label`) || stepMeta(step).label
 const stepIcon = (step: NodeRun) => {
   const key = statusKey(step.status)
   if (key === 'succeeded') return 'i-lucide-check'
@@ -42,7 +43,7 @@ const stepIcon = (step: NodeRun) => {
 const stepDuration = (step: NodeRun) => {
   if (!step.started_at || !step.finished_at) return ''
   const seconds = (new Date(step.finished_at).getTime() - new Date(step.started_at).getTime()) / 1000
-  return seconds < 1 ? '< 1 с' : `${seconds.toFixed(seconds < 10 ? 1 : 0)} с`
+  return seconds < 1 ? t('runs.ltOne') : t('runs.sec', { n: seconds.toFixed(seconds < 10 ? 1 : 0) })
 }
 const formatOutput = (step: NodeRun) => {
   const output = step.output
@@ -113,17 +114,17 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
   <div class="page">
     <div class="page-head">
       <div>
-        <UButton to="/runs" label="Назад к истории" icon="i-lucide-arrow-left" color="neutral" variant="ghost" class="mb-3 px-2" />
-        <p class="eyebrow">Результат выполнения</p>
-        <h1 class="page-title">{{ run?.workflow_name || 'Запуск цепочки' }}</h1>
+        <UButton to="/runs" :label="t('runs.back')" icon="i-lucide-arrow-left" color="neutral" variant="ghost" class="mb-3 px-2" />
+        <p class="eyebrow">{{ t('runs.resultEyebrow') }}</p>
+        <h1 class="page-title">{{ run?.workflow_name || t('dashboard.runFallback') }}</h1>
         <p class="text-sm muted">
           ID {{ id }}
-          <span v-if="isSoloRun"> · один узел</span>
+          <span v-if="isSoloRun"> · {{ t('runs.solo') }}</span>
         </p>
       </div>
       <div class="flex items-center gap-2">
-        <UBadge :color="statusColor(run?.status)" size="lg" variant="soft">{{ statusLabel(run?.status) }}</UBadge>
-        <UButton v-if="run && !done(run)" label="Остановить" color="error" variant="outline" @click="cancel" />
+        <UBadge :color="statusColor(run?.status)" size="lg" variant="soft">{{ statusLabel(run?.status, t) }}</UBadge>
+        <UButton v-if="run && !done(run)" :label="t('runs.stop')" color="error" variant="outline" @click="cancel" />
       </div>
     </div>
 
@@ -132,10 +133,10 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
         <div v-if="steps.length" class="panel p-5">
           <div class="mb-3 flex items-end justify-between gap-4">
             <div>
-              <p class="mb-1 text-xs font-bold uppercase tracking-wider muted">Прогресс</p>
+              <p class="mb-1 text-xs font-bold uppercase tracking-wider muted">{{ t('runs.progress') }}</p>
               <p class="mb-0 font-bold">
-                {{ completedCount }} из {{ steps.length }} звеньев
-                <span v-if="currentStep" class="muted">— сейчас «{{ stepTitle(currentStep) }}»</span>
+                {{ t('runs.stepsOf', { done: completedCount, total: steps.length }) }}
+                <span v-if="currentStep" class="muted">{{ t('runs.now', { name: stepTitle(currentStep) }) }}</span>
               </p>
             </div>
             <span class="text-2xl font-extrabold">{{ progress }}%</span>
@@ -168,13 +169,13 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
                 />
               </span>
               <div class="min-w-0">
-                <p class="mb-0 text-xs font-bold uppercase tracking-wider muted">Шаг {{ index + 1 }} · {{ stepMeta(step).label }}</p>
+                <p class="mb-0 text-xs font-bold uppercase tracking-wider muted">{{ t('runs.step', { n: index + 1 }) }} · {{ t(`nodes.${step.node_type}.label`) }}</p>
                 <h2 class="mb-0 truncate font-bold">{{ stepTitle(step) }}</h2>
               </div>
             </div>
             <div class="flex shrink-0 items-center gap-2">
               <span v-if="stepDuration(step)" class="text-xs muted">{{ stepDuration(step) }}</span>
-              <UBadge :color="statusColor(step.status)" variant="soft">{{ statusLabel(step.status) }}</UBadge>
+              <UBadge :color="statusColor(step.status)" variant="soft">{{ statusLabel(step.status, t) }}</UBadge>
               <UIcon
                 v-if="stepHasBody(step)"
                 name="i-lucide-chevron-down"
@@ -187,7 +188,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
             <pre v-if="formatOutput(step)" class="overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step) }}</pre>
             <p v-if="step.error" class="rounded-xl bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
             <div v-if="step.citations?.length" class="border-t border-default pt-3">
-              <p class="text-xs font-semibold uppercase muted">Источники</p>
+              <p class="text-xs font-semibold uppercase muted">{{ t('runs.sources') }}</p>
               <a
                 v-for="citation in step.citations"
                 :key="citation.url"
@@ -204,14 +205,14 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
       </div>
 
       <aside class="panel h-fit p-5">
-        <p class="eyebrow">Сводка</p>
-        <p class="mb-1 text-sm muted">Запущено</p>
-        <p class="font-bold">{{ run && new Date(run.created_at).toLocaleString('ru') }}</p>
+        <p class="eyebrow">{{ t('runs.summary') }}</p>
+        <p class="mb-1 text-sm muted">{{ t('runs.started') }}</p>
+        <p class="font-bold">{{ run && formatDate(run.created_at) }}</p>
         <div class="my-5 border-t border-(--line)" />
-        <p class="mb-1 text-sm muted">Списано</p>
+        <p class="mb-1 text-sm muted">{{ t('runs.charged') }}</p>
         <p class="mb-0 text-3xl font-extrabold">{{ formatCredits(run?.cost) }}</p>
-        <p class="text-sm muted">credits</p>
-        <p class="mt-5 mb-0 text-xs leading-5 muted">Списание рассчитано по фактическому использованию.</p>
+        <p class="text-sm muted">{{ t('common.credits') }}</p>
+        <p class="mt-5 mb-0 text-xs leading-5 muted">{{ t('runs.chargedHint') }}</p>
       </aside>
     </div>
   </div>

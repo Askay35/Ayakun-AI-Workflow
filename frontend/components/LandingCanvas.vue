@@ -1,20 +1,18 @@
 <script setup lang="ts">
-const chain = [
-  { id: 'search', label: 'Поиск в сети', caption: 'Новости рынка', icon: 'i-lucide-search', accent: '#2bbf8e' },
-  { id: 'prompt', label: 'Обработка', caption: 'Выделить главное', icon: 'i-lucide-sparkles', accent: '#8b7cff' },
-  { id: 'telegram', label: 'Telegram', caption: 'Утренний обзор', icon: 'i-lucide-send', accent: '#2aa8e0' }
-] as const
+const { t, tm } = useI18n()
+
+const chain = computed(() => [
+  { id: 'search', label: t('landing.canvas.searchLabel'), caption: t('landing.canvas.searchCaption'), icon: 'i-lucide-search', accent: '#2bbf8e' },
+  { id: 'prompt', label: t('landing.canvas.promptLabel'), caption: t('landing.canvas.promptCaption'), icon: 'i-lucide-sparkles', accent: '#8b7cff' },
+  { id: 'telegram', label: t('landing.canvas.telegramLabel'), caption: t('landing.canvas.telegramCaption'), icon: 'i-lucide-send', accent: '#2aa8e0' }
+])
 
 const ghosts = [
   { id: 'http', label: 'HTTP', icon: 'i-lucide-globe', accent: '#f59e0b' },
   { id: 'branch', label: 'IF / ELSE', icon: 'i-lucide-git-branch', accent: '#e8b84a' }
 ] as const
 
-const logs = [
-  'Ищу свежие материалы…',
-  'Сжимаю 12 источников в вывод',
-  'Отправляю в Telegram'
-]
+const logs = computed(() => tm<string[]>('landing.canvas.logs'))
 
 const active = ref(0)
 const running = ref(true)
@@ -22,12 +20,12 @@ let timer: ReturnType<typeof setInterval> | undefined
 
 onMounted(() => {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    active.value = chain.length - 1
+    active.value = chain.value.length - 1
     running.value = false
     return
   }
   timer = setInterval(() => {
-    active.value = (active.value + 1) % chain.length
+    active.value = (active.value + 1) % chain.value.length
   }, 2200)
 })
 onBeforeUnmount(() => { if (timer) clearInterval(timer) })
@@ -40,12 +38,12 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 
     <div class="landing-canvas-toolbar">
       <div class="min-w-0">
-        <p class="m-0 text-[13px] font-extrabold tracking-tight text-white">Утренний обзор рынка</p>
-        <p class="m-0 mt-1 text-[11px] text-white/40">Будни · 09:00 · ≈ 2 credits</p>
+        <p class="m-0 text-[13px] font-extrabold tracking-tight text-white">{{ t('landing.canvas.name') }}</p>
+        <p class="m-0 mt-1 text-[11px] text-white/40">{{ t('landing.canvas.schedule') }}</p>
       </div>
       <span class="landing-run-pill" :class="{ 'is-live': running }">
         <i />
-        {{ running ? 'Выполняется' : 'Готово' }}
+        {{ running ? t('landing.canvas.running') : t('landing.canvas.done') }}
       </span>
     </div>
 

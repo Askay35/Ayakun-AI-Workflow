@@ -1,7 +1,8 @@
 <script setup lang="ts">
+const { t, tm } = useI18n()
 useSeoMeta({
-  title: 'Документация',
-  description: 'Как собирать цепочки Ayakun: переменные, JSON, циклы и работа в редакторе'
+  title: () => t('docs.title'),
+  description: () => t('docs.description')
 })
 
 const examples = {
@@ -14,7 +15,7 @@ const examples = {
   total: '{{total}}',
   nestedVar: '{{rows[0].title}}',
   itemPrice: '{{item.field}}',
-  loopJson: '{% for item in $data %}\nНазвание: {{item.label}} цена: {{item.price}}\n{% endfor %}',
+  loopJson: '{% for item in $data %}\n{{item.label}} — {{item.price}}\n{% endfor %}',
   loopVar: '{% for row in rows %}{{row.title}}{% endfor %}',
   loopTaken: '{% for item in $data %}',
   loopFree: '{% for row in $data %}',
@@ -37,122 +38,105 @@ const examples = {
   ifScore: '{{$score}} >= 0.8',
   ifStatus: '{{$status}} == "active"'
 }
+
+const fill = (text: string, vars: Record<string, string>) => (
+  text.replace(/\{(\w+)\}/g, (_, key: string) => (
+    Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : `{${key}}`
+  ))
+)
+
+const editorItems = computed(() => tm<string[]>('docs.editorItems'))
+const tgItems = computed(() => tm<string[]>('docs.tgItems').map(item => fill(item, { root: examples.root })))
+const emailItems = computed(() => tm<string[]>('docs.emailItems'))
 </script>
 
 <template>
   <main class="shell legal-page">
     <div class="legal-card reveal">
-      <p class="eyebrow">Справка</p>
-      <h1 class="page-title">Документация</h1>
-      <p class="legal-meta muted">Базовые приёмы редактора, подстановки и циклы.</p>
+      <p class="eyebrow">{{ t('docs.eyebrow') }}</p>
+      <h1 class="page-title">{{ t('docs.heading') }}</h1>
+      <p class="legal-meta muted">{{ t('docs.lead') }}</p>
 
       <div class="legal-body">
-        <h2>Редактор</h2>
+        <h2>{{ t('docs.editor') }}</h2>
         <ul>
-          <li>Перетащите узел из палитры на холст или кликните по нему — блок появится в центре.</li>
-          <li>Соединяйте выход одного узла со входом следующего. У большинства узлов только одна входящая связь.</li>
-          <li>Клик по узлу открывает его настройки справа.</li>
-          <li><strong>Ctrl</strong> (на Mac — ⌘) или <strong>Shift</strong> + клик добавляет узел к выбору или снимает его. <strong>Shift</strong> + рамка выделяет все узлы, которых коснулась.</li>
-          <li><strong>Delete</strong> или <strong>Backspace</strong> удаляет все выбранные узлы вместе со связями. Наведите на стрелку — в середине появится крестик, чтобы убрать только связь.</li>
-          <li>Черновик сохраняется сам. «Опубликовать» фиксирует версию, по которой идут запуски и расписание.</li>
+          <li v-for="item in editorItems" :key="item">{{ item }}</li>
         </ul>
 
-        <h2>Данные между узлами</h2>
-        <p>
-          Каждый узел передаёт дальше свой результат: объект, массив или текст.
-          Следующий узел читает этот JSON как корень для подстановок с <code>$</code>.
-        </p>
+        <h2>{{ t('docs.dataTitle') }}</h2>
+        <p>{{ t('docs.dataLead') }}</p>
         <ul>
-          <li><code>{{ examples.root }}</code> — все входные данные целиком (объект или массив станет JSON-текстом, если вставить в строку).</li>
-          <li><code>{{ examples.field }}</code> или <code>{{ examples.jsonField }}</code> — поле объекта.</li>
-          <li><code>{{ examples.path }}</code> — элемент массива и вложенное поле. Можно писать <code>{{ examples.dotted }}</code>.</li>
+          <li><code>{{ examples.root }}</code> — {{ t('docs.dataRoot') }}</li>
+          <li><code>{{ examples.field }}</code> / <code>{{ examples.jsonField }}</code> — {{ t('docs.dataField') }}</li>
+          <li><code>{{ examples.path }}</code> — {{ t('docs.dataPath', { dotted: examples.dotted }) }}</li>
         </ul>
-        <p>Если поля нет, запуск останавливается с понятной ошибкой — так проще заметить опечатку в пути.</p>
+        <p>{{ t('docs.dataMissing') }}</p>
 
-        <h2>Переменные цепочки</h2>
-        <p>
-          Слева в редакторе задаются переменные. В любом текстовом поле, где есть подстановки,
-          пишите <code>{{ examples.variable }}</code> — без знака <code>$</code>.
-        </p>
-        <p>
-          Узлы вроде «Обработка», HTTP, Email, SQL и преобразования могут записывать значения в переменные
-          (блок «Переменные» в настройках узла). Дальше их читают так же: <code>{{ examples.total }}</code>.
-        </p>
-        <p>Вложенные поля переменной: <code>{{ examples.nestedVar }}</code> или <code>{{ examples.itemPrice }}</code> внутри цикла.</p>
+        <h2>{{ t('docs.varsTitle') }}</h2>
+        <p>{{ t('docs.varsP1', { variable: examples.variable }) }}</p>
+        <p>{{ t('docs.varsP2', { total: examples.total }) }}</p>
+        <p>{{ t('docs.varsP3', { nested: examples.nestedVar, item: examples.itemPrice }) }}</p>
 
-        <h2>Циклы</h2>
-        <p>Там, где работают поля JSON и переменные, можно пройтись по массиву:</p>
+        <h2>{{ t('docs.loopsTitle') }}</h2>
+        <p>{{ t('docs.loopsP1') }}</p>
         <pre><code>{{ examples.loopJson }}</code></pre>
-        <p>Источник может быть путём JSON (<code>$data</code>, <code>$jsonfield</code>) или переменной цепочки:</p>
+        <p>{{ t('docs.loopsP2') }}</p>
         <pre><code>{{ examples.loopVar }}</code></pre>
-        <p>
-          Циклы можно вкладывать. Тело цикла — обычный текст с теми же подстановками.
-          Имя элемента цикла не должно совпадать с уже заданной переменной цепочки:
-          если есть переменная <code>item</code>, пишите <code>{{ examples.loopFree }}</code>, а не
-          <code>{{ examples.loopTaken }}</code> — иначе запуск остановится с ошибкой.
-        </p>
+        <p>{{ t('docs.loopsP3', { free: examples.loopFree, taken: examples.loopTaken }) }}</p>
 
-        <h2>Telegram</h2>
+        <h2>{{ t('docs.tgTitle') }}</h2>
         <ul>
-          <li>Если текст сообщения пустой, уходит весь JSON или текст предыдущего узла — не только заголовки.</li>
-          <li>Чтобы отправить JSON явно, напишите <code>{{ examples.root }}</code>.</li>
-          <li>Чтобы красиво перечислить массив, используйте цикл, как в примере выше.</li>
+          <li v-for="item in tgItems" :key="item">{{ item }}</li>
         </ul>
 
-        <h2>Email</h2>
+        <h2>{{ t('docs.emailTitle') }}</h2>
         <ul>
-          <li>Узел только отправляет письмо: адрес, тема и текст. Читать входящие нельзя.</li>
-          <li>В трёх полях работают те же подстановки, JSON-пути и циклы, что и в Telegram.</li>
-          <li>Письмо уходит через почтовый сервер сервиса — отдельно подключать Google-почту не нужно.</li>
+          <li v-for="item in emailItems" :key="item">{{ item }}</li>
         </ul>
 
-        <h2>Преобразование данных</h2>
-        <p>
-          Узел берёт JSON предыдущего шага и меняет его. Поле «Путь к данным» указывает, какой кусок входа брать:
-          пусто — весь вход, <code>{{ examples.transformPath }}</code> — массив внутри объекта.
-          Если по пути массив, операция применяется к каждому элементу (Sort всегда ждёт массив).
-        </p>
-        <p>Пример входа для операций ниже (путь <code>{{ examples.transformPath }}</code>):</p>
+        <h2>{{ t('docs.transformTitle') }}</h2>
+        <p>{{ t('docs.transformP1', { path: examples.transformPath }) }}</p>
+        <p>{{ t('docs.transformP2', { path: examples.transformPath }) }}</p>
         <pre><code>{{ examples.transformInput }}</code></pre>
 
-        <h3>Select — оставить поля</h3>
-        <p>Оставляет только перечисленные ключи. Остальные отбрасываются. Поля пишутся через запятую или JSON-массивом.</p>
-        <p>Поля: <code>{{ examples.selectFields }}</code></p>
+        <h3>{{ t('docs.selectTitle') }}</h3>
+        <p>{{ t('docs.selectP') }}</p>
+        <p>{{ t('docs.fields') }}: <code>{{ examples.selectFields }}</code></p>
         <pre><code>{{ examples.selectOut }}</code></pre>
 
-        <h3>Rename — переименовать</h3>
-        <p>Меняет имена ключей, значения не трогает. Строки вида <code>старое=новое</code> или JSON-объект.</p>
+        <h3>{{ t('docs.renameTitle') }}</h3>
+        <p>{{ t('docs.renameP') }}</p>
         <pre><code>{{ examples.renameMap }}</code></pre>
         <pre><code>{{ examples.renameOut }}</code></pre>
 
-        <h3>Set — задать значения</h3>
-        <p>Добавляет или перезаписывает поля. Справа можно писать константу или подстановку из текущего элемента.</p>
+        <h3>{{ t('docs.setTitle') }}</h3>
+        <p>{{ t('docs.setP') }}</p>
         <pre><code>{{ examples.setMap }}</code></pre>
         <pre><code>{{ examples.setOut }}</code></pre>
 
-        <h3>Remove — удалить поля</h3>
-        <p>Убирает перечисленные ключи, остальное сохраняет.</p>
-        <p>Поля: <code>{{ examples.removeFields }}</code></p>
+        <h3>{{ t('docs.removeTitle') }}</h3>
+        <p>{{ t('docs.removeP') }}</p>
+        <p>{{ t('docs.fields') }}: <code>{{ examples.removeFields }}</code></p>
         <pre><code>{{ examples.removeOut }}</code></pre>
 
-        <h3>Filter — отфильтровать</h3>
-        <p>Оставляет элементы, для которых условие истинно. Синтаксис тот же, что у IF ELSE; пути читаются от элемента, не от всего входа.</p>
-        <p>Условие: <code>{{ examples.filterCondition }}</code></p>
+        <h3>{{ t('docs.filterTitle') }}</h3>
+        <p>{{ t('docs.filterP') }}</p>
+        <p>{{ t('docs.condition') }}: <code>{{ examples.filterCondition }}</code></p>
         <pre><code>{{ examples.filterOut }}</code></pre>
 
-        <h3>Sort — сортировка</h3>
-        <p>Сортирует массив по полю. Нужен именно массив: одиночный объект сюда не подходит. Направление — по возрастанию или убыванию.</p>
-        <p>Поле: <code>{{ examples.sortField }}</code>, направление: по возрастанию.</p>
+        <h3>{{ t('docs.sortTitle') }}</h3>
+        <p>{{ t('docs.sortP') }}</p>
+        <p>{{ t('docs.sortField') }}: <code>{{ examples.sortField }}</code>, {{ t('docs.sortDir') }}</p>
         <pre><code>{{ examples.sortOut }}</code></pre>
 
-        <h3>Map — преобразовать элементы</h3>
-        <p>Строит новый объект по шаблону для каждого элемента. В отличие от Select, можно задать другие имена полей и брать вложенные пути.</p>
+        <h3>{{ t('docs.mapTitle') }}</h3>
+        <p>{{ t('docs.mapP') }}</p>
         <pre><code>{{ examples.map }}</code></pre>
         <pre><code>{{ examples.mapOut }}</code></pre>
-        <p>Дальше массив можно отдать в Telegram целиком или перечислить циклом.</p>
+        <p>{{ t('docs.mapAfter') }}</p>
 
-        <h2>Условие IF</h2>
-        <p>Сравнивайте поля предыдущего узла: <code>{{ examples.ifScore }}</code>, <code>{{ examples.ifStatus }}</code>. Пустой / null / отсутствующее поле в одиночной проверке считается ложью.</p>
+        <h2>{{ t('docs.ifTitle') }}</h2>
+        <p>{{ t('docs.ifP', { a: examples.ifScore, b: examples.ifStatus }) }}</p>
       </div>
     </div>
   </main>

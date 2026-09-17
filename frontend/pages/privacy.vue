@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { LEGAL } from '~/utils/legal'
 
+const { t, locale } = useI18n()
 useSeoMeta({
-  title: 'Политика конфиденциальности',
-  description: 'Политика конфиденциальности сервиса Ayakun: какие данные собираются и как они обрабатываются'
+  title: () => t('legal.privacyTitle'),
+  description: () => t('legal.privacyDesc')
 })
 </script>
 
 <template>
   <main class="shell legal-page">
     <div class="legal-card reveal">
-      <p class="eyebrow">Юридические документы</p>
-      <h1 class="page-title">Политика конфиденциальности</h1>
-      <p class="legal-meta muted">Редакция от {{ LEGAL.offerDate }} · Сервис {{ LEGAL.brand }}</p>
+      <p class="eyebrow">{{ t('legal.termsEyebrow') }}</p>
+      <h1 class="page-title">{{ t('legal.privacyTitle') }}</h1>
+      <p class="legal-meta muted">{{ t('legal.termsMeta', { date: LEGAL.offerDate, brand: LEGAL.brand }) }}</p>
+      <p v-if="locale === 'en'" class="legal-meta muted">{{ t('legal.ruOnly') }}</p>
 
       <div class="legal-body">
         <p>
@@ -128,8 +130,8 @@ useSeoMeta({
       </div>
 
       <div class="legal-actions">
-        <NuxtLink to="/terms" class="site-button">Публичная оферта</NuxtLink>
-        <NuxtLink to="/contacts" class="site-button secondary">Контакты</NuxtLink>
+        <NuxtLink to="/terms" class="site-button">{{ t('nav.terms') }}</NuxtLink>
+        <NuxtLink to="/contacts" class="site-button secondary">{{ t('nav.contacts') }}</NuxtLink>
       </div>
     </div>
   </main>

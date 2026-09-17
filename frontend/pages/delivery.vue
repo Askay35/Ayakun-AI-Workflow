@@ -1,53 +1,44 @@
 <script setup lang="ts">
 import { LEGAL } from '~/utils/legal'
 
+const { t } = useI18n()
 useSeoMeta({
-  title: 'Как получить услугу',
-  description: 'Как получить доступ к Ayakun после оплаты: цифровая услуга без физической доставки'
+  title: () => t('legal.deliveryTitle'),
+  description: () => t('legal.deliveryDesc')
 })
 </script>
 
 <template>
   <main class="shell legal-page">
     <div class="legal-card reveal">
-      <p class="eyebrow">Цифровая услуга</p>
-      <h1 class="page-title">Как получить заказ</h1>
-      <p class="legal-meta muted">Ayakun не отправляет физические товары. После оплаты вы сразу получаете доступ в личном кабинете.</p>
+      <p class="eyebrow">{{ t('legal.deliveryEyebrow') }}</p>
+      <h1 class="page-title">{{ t('legal.deliveryHeading') }}</h1>
+      <p class="legal-meta muted">{{ t('legal.deliveryLead') }}</p>
 
       <div class="legal-body">
-        <h2>Что вы покупаете</h2>
-        <p>
-          Вы оплачиваете доступ к онлайн-сервису {{ LEGAL.brand }} и запас кредитов на выбранном тарифе.
-          Кредиты списываются за фактические запуски цепочек: поиск, обработку и доставку результата.
-        </p>
+        <h2>{{ t('legal.buyTitle') }}</h2>
+        <p>{{ t('legal.buyText', { brand: LEGAL.brand }) }}</p>
 
-        <h2>Как получить услугу после оплаты</h2>
+        <h2>{{ t('legal.afterTitle') }}</h2>
         <ol>
-          <li>Оплатите тариф картой или другим доступным способом на странице оплаты.</li>
-          <li>После подтверждения платежа кредиты сразу зачисляются на баланс аккаунта.</li>
-          <li>Войдите в личный кабинет — доступ к редактору цепочек, расписанию и истории запусков открывается автоматически.</li>
-          <li>Результат каждого запуска появляется в кабинете и, если вы настроили доставку, в Telegram.</li>
+          <li>{{ t('legal.after1') }}</li>
+          <li>{{ t('legal.after2') }}</li>
+          <li>{{ t('legal.after3') }}</li>
+          <li>{{ t('legal.after4') }}</li>
         </ol>
 
-        <h2>Срок предоставления</h2>
-        <p>
-          Услуга считается оказанной в момент зачисления кредитов и открытия доступа к функциям тарифа.
-          Отдельная отгрузка, трек-номер или пункт выдачи не предусмотрены.
-        </p>
+        <h2>{{ t('legal.termTitle') }}</h2>
+        <p>{{ t('legal.termText') }}</p>
 
-        <h2>Если доступ не появился</h2>
+        <h2>{{ t('legal.missingTitle') }}</h2>
         <p>
-          Напишите на
-          <a :href="`mailto:${LEGAL.email}`" class="legal-link">{{ LEGAL.email }}</a>
-          или позвоните
-          <a :href="`tel:${LEGAL.phone}`" class="legal-link">{{ LEGAL.phoneDisplay }}</a>.
-          Укажите email аккаунта и время оплаты — разберёмся.
+          {{ t('legal.missingText', { email: LEGAL.email }) }}
         </p>
       </div>
 
       <div class="legal-actions">
-        <NuxtLink to="/terms" class="site-button">Публичная оферта</NuxtLink>
-        <NuxtLink to="/contacts" class="site-button secondary">Контакты и реквизиты</NuxtLink>
+        <NuxtLink to="/terms" class="site-button">{{ t('nav.terms') }}</NuxtLink>
+        <NuxtLink to="/contacts" class="site-button secondary">{{ t('nav.contacts') }}</NuxtLink>
       </div>
     </div>
   </main>

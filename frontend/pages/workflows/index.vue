@@ -6,6 +6,7 @@ import { formatCredits } from '~/utils/credits'
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const api = useApi()
 const toast = useToast()
+const { t, formatDateOnly } = useI18n()
 const isMobileEditor = useIsMobileEditor()
 const showMobileGate = ref(false)
 const name = ref('')
@@ -27,7 +28,7 @@ const create = async () => {
     const workflow = await api.workflows.create({ name: name.value, description: '' })
     await navigateTo(`/workflows/${workflow.id}`)
   } catch (error: any) {
-    toast.add({ title: 'Не удалось создать цепочку', description: error?.data?.detail, color: 'error' })
+    toast.add({ title: t('workflows.createError'), description: error?.data?.detail, color: 'error' })
   } finally { creating.value = false }
 }
 
@@ -40,21 +41,21 @@ const openWorkflow = async (id: string) => {
 }
 
 const remove = async (id: string, workflowName: string) => {
-  if (!confirm(`Удалить цепочку «${workflowName}»? Это действие нельзя отменить.`)) return
+  if (!confirm(t('workflows.deleteConfirm', { name: workflowName }))) return
   deletingId.value = id
   try {
     await api.workflows.delete(id)
     workflows.value = (workflows.value || []).filter(workflow => workflow.id !== id)
-    toast.add({ title: 'Цепочка удалена', color: 'success' })
+    toast.add({ title: t('workflows.deleted'), color: 'success' })
     await refresh()
   } catch (error) {
-    toast.add({ title: 'Не удалось удалить', description: apiErrorMessage(error), color: 'error' })
+    toast.add({ title: t('workflows.deleteError'), description: apiErrorMessage(error, t('common.genericError')), color: 'error' })
   } finally {
     deletingId.value = undefined
   }
 }
 
-const formatCost = (value?: number) => `${formatCredits(value)} credits`
+const formatCost = (value?: number) => `${formatCredits(value)} ${t('common.credits')}`
 
 const startRename = (workflowId: string, workflowName: string) => {
   renamingId.value = workflowId
@@ -69,7 +70,7 @@ const cancelRename = () => {
 const commitRename = async (workflowId: string) => {
   const next = nameDraft.value.trim()
   if (!next) {
-    toast.add({ title: 'Укажите название', color: 'error' })
+    toast.add({ title: t('workflows.nameRequired'), color: 'error' })
     return
   }
   renamingBusy.value = true
@@ -77,9 +78,9 @@ const commitRename = async (workflowId: string) => {
     const saved = await api.workflows.rename(workflowId, next)
     workflows.value = (workflows.value || []).map(item => item.id === saved.id ? { ...item, name: saved.name } : item)
     cancelRename()
-    toast.add({ title: 'Цепочка переименована', color: 'success' })
+    toast.add({ title: t('workflows.renamed'), color: 'success' })
   } catch (error) {
-    toast.add({ title: 'Не удалось переименовать', description: apiErrorMessage(error), color: 'error' })
+    toast.add({ title: t('workflows.renameError'), description: apiErrorMessage(error, t('common.genericError')), color: 'error' })
   } finally {
     renamingBusy.value = false
   }
@@ -91,15 +92,15 @@ const commitRename = async (workflowId: string) => {
   <div class="page">
     <div class="page-head">
       <div>
-        <p class="eyebrow">Мои автоматизации</p>
-        <h1 class="page-title">Цепочки</h1>
-        <p class="muted">Всё, что Ayakun делает за вас — вручную или по расписанию.</p>
+        <p class="eyebrow">{{ t('workflows.eyebrow') }}</p>
+        <h1 class="page-title">{{ t('workflows.title') }}</h1>
+        <p class="muted">{{ t('workflows.lead') }}</p>
       </div>
     </div>
     <div class="panel mb-6 p-4">
       <div class="flex flex-col gap-3 sm:flex-row">
-        <UInput v-model="name" placeholder="Например: утренний обзор новостей" size="lg" icon="i-lucide-wand-sparkles" class="flex-1" @keyup.enter="create" />
-        <UButton label="Создать цепочку" size="lg" icon="i-lucide-plus" :loading="creating" @click="create" />
+        <UInput v-model="name" :placeholder="t('workflows.placeholder')" size="lg" icon="i-lucide-wand-sparkles" class="flex-1" @keyup.enter="create" />
+        <UButton :label="t('workflows.create')" size="lg" icon="i-lucide-plus" :loading="creating" @click="create" />
       </div>
     </div>
     <div v-if="pending" class="grid-cards"><div v-for="i in 3" :key="i" class="panel h-52 animate-pulse bg-white/50" /></div>
@@ -110,13 +111,13 @@ const commitRename = async (workflowId: string) => {
             <UIcon name="i-lucide-workflow" class="size-5" />
           </button>
           <div class="flex items-center gap-1">
-            <span class="cost-pill"><UIcon name="i-lucide-coins" />до {{ formatCost(workflow.estimated_run_cost) }} / запуск</span>
+            <span class="cost-pill"><UIcon name="i-lucide-coins" />{{ t('workflows.costUpTo', { cost: formatCost(workflow.estimated_run_cost) }) }}</span>
             <UButton
               icon="i-lucide-pencil"
               color="neutral"
               variant="ghost"
               size="sm"
-              aria-label="Переименовать цепочку"
+              :aria-label="t('workflows.renameAria')"
               @click="startRename(workflow.id, workflow.name)"
             />
             <UButton
@@ -125,7 +126,7 @@ const commitRename = async (workflowId: string) => {
               variant="ghost"
               size="sm"
               :loading="deletingId === workflow.id"
-              aria-label="Удалить цепочку"
+              :aria-label="t('workflows.deleteAria')"
               @click="remove(workflow.id, workflow.name)"
             />
           </div>
@@ -141,24 +142,24 @@ const commitRename = async (workflowId: string) => {
             @keyup.escape="cancelRename"
           />
           <div class="flex gap-2">
-            <UButton label="Сохранить" size="sm" :loading="renamingBusy" @click="commitRename(workflow.id)" />
-            <UButton label="Отмена" size="sm" variant="ghost" color="neutral" @click="cancelRename" />
+            <UButton :label="t('common.save')" size="sm" :loading="renamingBusy" @click="commitRename(workflow.id)" />
+            <UButton :label="t('common.cancel')" size="sm" variant="ghost" color="neutral" @click="cancelRename" />
           </div>
         </div>
         <button v-else type="button" class="block w-full cursor-pointer text-left" @click="openWorkflow(workflow.id)">
           <h2 class="mb-2 mt-5 text-xl font-extrabold">{{ workflow.name }}</h2>
-          <p class="mb-5 text-sm muted">{{ workflow.next_run_at || workflow.schedule_cron ? 'Запускается автоматически' : 'Запуск вручную' }}</p>
+          <p class="mb-5 text-sm muted">{{ workflow.next_run_at || workflow.schedule_cron ? t('workflows.auto') : t('workflows.manual') }}</p>
           <div class="workflow-card-footer">
-            <div class="flex items-center gap-2"><span class="status-dot" :class="{ online: workflow.status === 'published' }" /><span class="text-xs font-bold">{{ workflow.status === 'published' ? 'Активна' : 'Черновик' }}</span></div>
-            <span class="text-xs muted">Изменена {{ new Date(workflow.updated_at).toLocaleDateString('ru') }}</span>
+            <div class="flex items-center gap-2"><span class="status-dot" :class="{ online: workflow.status === 'published' }" /><span class="text-xs font-bold">{{ workflow.status === 'published' ? t('workflows.published') : t('workflows.draft') }}</span></div>
+            <span class="text-xs muted">{{ t('workflows.updated', { date: formatDateOnly(workflow.updated_at) }) }}</span>
           </div>
         </button>
       </div>
     </div>
     <div v-else class="panel py-16 text-center">
       <span class="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]"><UIcon name="i-lucide-workflow" class="size-7" /></span>
-      <h2 class="mb-2 text-xl font-extrabold">Пока здесь пусто</h2>
-      <p class="mx-auto mb-0 max-w-md muted">Придумайте название выше — и мы откроем редактор вашей первой автоматизации.</p>
+      <h2 class="mb-2 text-xl font-extrabold">{{ t('workflows.emptyTitle') }}</h2>
+      <p class="mx-auto mb-0 max-w-md muted">{{ t('workflows.emptyText') }}</p>
     </div>
   </div>
 </template>

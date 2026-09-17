@@ -1,7 +1,8 @@
 <script setup lang="ts">
 const { embedded = false } = defineProps<{ embedded?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
-useAppTitle('Редактор')
+const { t } = useI18n()
+useAppTitle(computed(() => t('titles.editor')))
 </script>
 
 <template>
@@ -11,19 +12,14 @@ useAppTitle('Редактор')
       <span class="editor-mobile-icon">
         <UIcon name="i-lucide-monitor-smartphone" class="size-7" />
       </span>
-      <p class="eyebrow">Только на компьютере</p>
-      <h1 class="editor-mobile-title">
-        Визуальный редактор<br>недоступен на телефоне
-      </h1>
-      <p class="editor-mobile-copy">
-        Сборка цепочек рассчитана на большой экран: холст, связи узлов и боковые панели.
-        Откройте Ayakun с ноутбука или компьютера — черновики сохранятся.
-      </p>
+      <p class="eyebrow">{{ t('mobileEditor.eyebrow') }}</p>
+      <h1 class="editor-mobile-title">{{ t('mobileEditor.title') }}</h1>
+      <p class="editor-mobile-copy">{{ t('mobileEditor.copy') }}</p>
       <div class="editor-mobile-actions">
         <UButton
           v-if="embedded"
           class="w-full sm:w-auto"
-          label="Понятно"
+          :label="t('mobileEditor.ok')"
           icon="i-lucide-check"
           size="lg"
           @click="emit('close')"
@@ -32,11 +28,11 @@ useAppTitle('Редактор')
           v-else
           class="w-full sm:w-auto"
           to="/workflows"
-          label="К списку цепочек"
+          :label="t('mobileEditor.toList')"
           icon="i-lucide-arrow-left"
           size="lg"
         />
-        <UButton class="w-full sm:w-auto" to="/dashboard" label="На главную" color="neutral" variant="ghost" size="lg" />
+        <UButton class="w-full sm:w-auto" to="/dashboard" :label="t('mobileEditor.home')" color="neutral" variant="ghost" size="lg" />
       </div>
     </div>
   </div>

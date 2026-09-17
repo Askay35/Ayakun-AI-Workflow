@@ -12,40 +12,41 @@ const props = defineProps<{
   hints?: VariableHint[]
 }>()
 
+const { t } = useI18n()
 const meta = computed(() => NODE_META[props.kind])
+const label = computed(() => props.data.label || t(`nodes.${props.kind}.label`))
+const caption = computed(() => t(`nodes.${props.kind}.caption`))
 const preview = computed(() => {
-  if (props.kind === 'web_search') return props.data.query?.trim() || 'Запрос ещё не задан'
-  if (props.kind === 'prompt') return props.data.prompt?.trim() || 'Инструкция ещё не задана'
-  if (props.kind === 'http_request') return props.data.request_json?.trim() || 'Данные запроса ещё не заданы'
-  if (props.kind === 'if_else') return props.data.condition?.trim() || 'Условие ещё не задано'
+  if (props.kind === 'web_search') return props.data.query?.trim() || t('nodePreview.queryEmpty')
+  if (props.kind === 'prompt') return props.data.prompt?.trim() || t('nodePreview.promptEmpty')
+  if (props.kind === 'http_request') return props.data.request_json?.trim() || t('nodePreview.httpEmpty')
+  if (props.kind === 'if_else') return props.data.condition?.trim() || t('nodePreview.conditionEmpty')
   if (props.kind === 'telegram_send') {
     const text = props.data.message?.trim()
     if (text) return text
-    return props.data.chat_id ? `Чат ${props.data.chat_id}` : 'В ваш Telegram'
+    return props.data.chat_id ? t('nodePreview.telegramChat', { id: props.data.chat_id }) : t('nodePreview.telegramYou')
   }
-  if (props.kind === 'webhook') return 'Ждёт событие из внешнего сервиса'
+  if (props.kind === 'webhook') return t('nodePreview.webhook')
   if (props.kind === 'google_sheets') {
-    const operation = props.data.operation === 'append' ? 'Добавить строки' : props.data.operation === 'update' ? 'Обновить строки' : 'Читать строки'
+    const operation = props.data.operation === 'append'
+      ? t('nodePreview.sheetsAppend')
+      : props.data.operation === 'update'
+        ? t('nodePreview.sheetsUpdate')
+        : t('nodePreview.sheetsRead')
     return props.data.spreadsheet_id?.trim() ? `${operation} · ${props.data.spreadsheet_id}` : operation
   }
   if (props.kind === 'email') {
-    return props.data.to?.trim() ? `Кому: ${props.data.to}` : 'Отправить письмо'
+    return props.data.to?.trim() ? t('nodePreview.emailTo', { to: props.data.to }) : t('nodePreview.emailSend')
   }
   if (props.kind === 'data_transform') {
-    const names: Record<string, string> = {
-      select: 'Select — оставить поля',
-      rename: 'Rename — переименовать',
-      set: 'Set — задать значения',
-      remove: 'Remove — удалить поля',
-      filter: 'Filter — отфильтровать',
-      sort: 'Sort — сортировка',
-      map: 'Map — преобразовать элементы'
-    }
-    return names[props.data.operation || 'select'] || 'Преобразование данных'
+    return t(`transformOps.${props.data.operation || 'select'}`) || t('nodePreview.transform')
   }
-  if (props.kind === 'sql_query') return props.data.query?.trim() || 'SQL-запрос ещё не задан'
-  return props.data.label || meta.value.label
+  if (props.kind === 'sql_query') return props.data.query?.trim() || t('nodePreview.sqlEmpty')
+  return label.value
 })
+const hintTitle = (mark: VariableHint['mark']) => (
+  mark === 'undefined' ? t('nodePreview.hintUndefined') : mark === 'write' ? t('nodePreview.hintWrite') : t('nodePreview.hintRead')
+)
 </script>
 
 <template>
@@ -64,8 +65,8 @@ const preview = computed(() => {
           <UIcon :name="meta.icon" class="size-4" />
         </span>
         <div class="min-w-0">
-          <strong class="n8n-node-title">{{ data.label || meta.label }}</strong>
-          <span class="n8n-node-type">{{ meta.caption }}</span>
+          <strong class="n8n-node-title">{{ label }}</strong>
+          <span class="n8n-node-type">{{ caption }}</span>
         </div>
       </div>
       <p class="n8n-node-preview">{{ preview }}</p>
@@ -75,12 +76,12 @@ const preview = computed(() => {
           :key="hint.name"
           class="var-chip"
           :class="`is-${hint.mark}`"
-          :title="hint.mark === 'undefined' ? 'Переменная пока не определена' : hint.mark === 'write' ? 'Создаётся или обновляется этим блоком' : 'Используется, не изменяется'"
+          :title="hintTitle(hint.mark)"
         >
           {{ hint.name }}
         </span>
       </div>
-      <p v-if="hints?.some(hint => hint.mark === 'undefined')" class="n8n-node-var-warning">Переменная пока не определена</p>
+      <p v-if="hints?.some(hint => hint.mark === 'undefined')" class="n8n-node-var-warning">{{ t('nodePreview.varUndefined') }}</p>
       <div v-if="kind === 'if_else'" class="if-else-outputs">
         <div class="if-else-row">
           <span class="if-else-label is-true">TRUE</span>

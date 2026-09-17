@@ -3,21 +3,17 @@
     <section class="hero">
       <div class="shell hero-grid">
         <div class="reveal">
-          <p class="eyebrow">Визуальные AI-цепочки</p>
-          <h1>Автоматизация,<br><span class="hero-shine">которую видно</span></h1>
-          <p class="hero-copy">
-            Соберите на холсте поиск, ИИ, таблицы, почту, HTTP и условия —
-            как конструктор. Одна цепочка заменяет рутину: от входящего события
-            до письма, строки в таблице или сообщения в Telegram.
-          </p>
+          <p class="eyebrow">{{ t('landing.eyebrow') }}</p>
+          <h1>{{ t('landing.heroTitleBefore') }}<br><span class="hero-shine">{{ t('landing.heroTitleAccent') }}</span></h1>
+          <p class="hero-copy">{{ t('landing.heroCopy') }}</p>
           <div class="hero-actions">
-            <UButton to="/login" size="xl" label="Начать бесплатно" trailing-icon="i-lucide-arrow-right" />
-            <UButton to="/#examples" size="xl" label="Смотреть примеры" class="text-white!" color="neutral" variant="outline" />
+            <UButton to="/login" size="xl" :label="t('landing.startFree')" trailing-icon="i-lucide-arrow-right" />
+            <UButton to="/#examples" size="xl" :label="t('landing.seeExamples')" class="text-white!" color="neutral" variant="outline" />
           </div>
           <div class="trust-row">
-            <span><UIcon name="i-lucide-check-circle-2" /> Без кода и серверов</span>
-            <span><UIcon name="i-lucide-check-circle-2" /> Цена видна до запуска</span>
-            <span><UIcon name="i-lucide-check-circle-2" /> 200 credits при регистрации</span>
+            <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustNoCode') }}</span>
+            <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustPrice') }}</span>
+            <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustCredits') }}</span>
           </div>
         </div>
         <LandingCanvas class="reveal" style="animation-delay: 140ms" />
@@ -37,9 +33,9 @@
     <section id="features" class="section alt">
       <div class="shell">
         <div class="section-heading">
-          <p class="eyebrow">Блоки цепочки</p>
-          <h2>Десять звеньев — любые сценарии</h2>
-          <p>Поиск и Telegram — только начало. Добавьте таблицы, почту, вебхук, базу и ветвления так, как устроена ваша задача.</p>
+          <p class="eyebrow">{{ t('landing.featuresEyebrow') }}</p>
+          <h2>{{ t('landing.featuresTitle') }}</h2>
+          <p>{{ t('landing.featuresLead') }}</p>
         </div>
         <div class="blocks-grid">
           <article v-for="card in blocks" :key="card.title" class="feature-card">
@@ -57,9 +53,9 @@
     <section id="examples" class="section">
       <div class="shell">
         <div class="section-heading">
-          <p class="eyebrow">Примеры цепочек</p>
-          <h2>Соберите сценарий под свою рутину</h2>
-          <p>Ниже — готовые идеи. В редакторе вы меняете запросы, условия и текст сообщений под себя.</p>
+          <p class="eyebrow">{{ t('landing.examplesEyebrow') }}</p>
+          <h2>{{ t('landing.examplesTitle') }}</h2>
+          <p>{{ t('landing.examplesLead') }}</p>
         </div>
         <div class="examples-grid">
           <article v-for="example in examples" :key="example.title" class="example-card">
@@ -86,9 +82,9 @@
     <section id="how" class="section how-section">
       <div class="shell">
         <div class="section-heading">
-          <p class="eyebrow">Как это выглядит</p>
-          <h2>От идеи до работающей цепочки</h2>
-          <p>Собрали на холсте, запустили, получили сообщение. Рядом — более сложный сценарий с ветками.</p>
+          <p class="eyebrow">{{ t('landing.howEyebrow') }}</p>
+          <h2>{{ t('landing.howTitle') }}</h2>
+          <p>{{ t('landing.howLead') }}</p>
         </div>
         <LandingShots />
         <div class="build-track">
@@ -109,8 +105,8 @@
     <section class="section audience">
       <div class="shell">
         <div class="section-heading">
-          <p class="eyebrow">Для кого</p>
-          <h2>Если задача повторяется — её можно отдать цепочке</h2>
+          <p class="eyebrow">{{ t('landing.audienceEyebrow') }}</p>
+          <h2>{{ t('landing.audienceTitle') }}</h2>
         </div>
         <div class="audience-grid audience-grid-wide">
           <article v-for="item in audience" :key="item.title" class="audience-card">
@@ -127,10 +123,10 @@
       <div class="shell">
         <div class="cta-band">
           <div>
-            <p class="eyebrow !mb-3 text-[#3d4a12]!">Бесплатный старт</p>
-            <h2>Соберите первую цепочку сегодня</h2>
+            <p class="eyebrow !mb-3 text-[#3d4a12]!">{{ t('landing.ctaEyebrow') }}</p>
+            <h2>{{ t('landing.ctaTitle') }}</h2>
           </div>
-          <UButton to="/login" size="xl" color="neutral" label="Создать аккаунт" trailing-icon="i-lucide-arrow-up-right" />
+          <UButton to="/login" size="xl" color="neutral" :label="t('landing.ctaButton')" trailing-icon="i-lucide-arrow-up-right" />
         </div>
       </div>
     </section>
@@ -138,143 +134,61 @@
 </template>
 
 <script setup lang="ts">
-const unique = [
-  { icon: 'i-lucide-mouse-pointer-click', title: 'Холст вместо кода', text: 'Каждое звено, связь и ветка на одном экране — цепочку видно целиком, как схему.' },
-  { icon: 'i-lucide-unplug', title: 'Таблицы, почта, события', text: 'Google Таблицы, Email, вебхуки и базы рядом с поиском и ИИ — без своего сервера.' },
-  { icon: 'i-lucide-calendar-clock', title: 'По кнопке, расписанию или событию', text: 'Работа по расписанию, реакция на вебхук или разовый запуск — в одном редакторе.' },
-  { icon: 'i-lucide-wallet', title: 'Платите за запуск', text: 'Максимальная стоимость видна до старта, а списывается только фактический расход.' }
-]
+const { t, tm } = useI18n()
+useSeoMeta({
+  title: () => t('meta.siteTitle'),
+  description: () => t('meta.siteDescription')
+})
 
-const blocks = [
-  { number: '01', title: 'Поиск в сети', text: 'Свежие новости, вакансии, цены, упоминания бренда — всё, что можно найти по запросу.', icon: 'i-lucide-search', accent: '#2bbf8e' },
-  { number: '02', title: 'Обработка', text: 'Сжать, сравнить, написать письмо или отчёт в нужном формате — своими словами.', icon: 'i-lucide-sparkles', accent: '#8b7cff' },
-  { number: '03', title: 'HTTP-запрос', text: 'Подтянуть данные из CRM, курса валют, своей админки или любого API.', icon: 'i-lucide-globe', accent: '#f59e0b' },
-  { number: '04', title: 'IF ELSE', text: 'Ветвление: если цена упала — одно действие, если нет — другое. Без лишнего шума.', icon: 'i-lucide-git-branch', accent: '#e8b84a' },
-  { number: '05', title: 'Telegram', text: 'Готовый результат уходит в чат сразу после запуска — вам или команде.', icon: 'i-lucide-send', accent: '#2aa8e0' },
-  { number: '06', title: 'Вебхук', text: 'Цепочка стартует по событию: новая заявка, оплата, форма на сайте.', icon: 'i-lucide-webhook', accent: '#f472b6' },
-  { number: '07', title: 'Google Таблицы', text: 'Читать и писать строки: лиды, прайс, отчёт — без ручного копирования.', icon: 'i-lucide-table', accent: '#22c55e' },
-  { number: '08', title: 'Email', text: 'Отправить письмо на указанный адрес: тема и текст с теми же переменными, JSON и циклами, что и в остальных узлах.', icon: 'i-lucide-mail', accent: '#ea4335' },
-  { number: '09', title: 'Преобразование', text: 'Отфильтровать, разложить и собрать JSON так, чтобы следующее звено поняло данные.', icon: 'i-lucide-replace', accent: '#38bdf8' },
-  { number: '10', title: 'База данных', text: 'SQL-запрос к PostgreSQL, MySQL или ClickHouse: остатки, заказы, метрики — сразу в цепочку.', icon: 'i-lucide-database', accent: '#6366f1' }
-]
+const uniqueIcons = ['i-lucide-mouse-pointer-click', 'i-lucide-unplug', 'i-lucide-calendar-clock', 'i-lucide-wallet']
+const unique = computed(() => tm<Array<{ title: string; text: string }>>('landing.unique').map((item, index) => ({
+  ...item,
+  icon: uniqueIcons[index]
+})))
 
-const examples = [
-  {
-    tag: 'Карьера',
-    schedule: 'Каждый день · 10:00',
-    title: 'Новые вакансии без ручного серфинга',
-    text: 'Утром сервис ищет свежие позиции, ИИ отбирает подходящие и формулирует короткое сообщение — вам остаётся открыть Telegram.',
-    chain: ['Поиск вакансий', 'ИИ: отбор и текст', 'Telegram'],
-    icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'],
-    accents: ['#2bbf8e', '#8b7cff', '#2aa8e0']
-  },
-  {
-    tag: 'Мониторинг',
-    schedule: 'По кнопке или по крону',
-    title: 'Цена конкурента с умным порогом',
-    text: 'HTTP забирает цену из API, условие проверяет порог, и только при снижении ИИ пишет алерт в Telegram.',
-    chain: ['HTTP API', 'IF: цена ниже', 'ИИ → Telegram'],
-    icons: ['i-lucide-globe', 'i-lucide-git-branch', 'i-lucide-send'],
-    accents: ['#f59e0b', '#e8b84a', '#2aa8e0']
-  },
-  {
-    tag: 'Контент',
-    schedule: 'Пн–Пт · 08:30',
-    title: 'Утренний дайджест ниши',
-    text: 'Поиск собирает новости, промпт делает выжимку в вашем тоне, Telegram присылает готовую сводку до кофе.',
-    chain: ['Поиск новостей', 'ИИ: дайджест', 'Telegram'],
-    icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'],
-    accents: ['#2bbf8e', '#8b7cff', '#2aa8e0']
-  },
-  {
-    tag: 'Операции',
-    schedule: 'После события',
-    title: 'Заявка с сайта → строка и чат',
-    text: 'Вебхук ловит форму, преобразование приводит поля к виду таблицы, строка пишется в Google Таблицы, команда получает апдейт в Telegram.',
-    chain: ['Вебхук', 'Таблица', 'Telegram'],
-    icons: ['i-lucide-webhook', 'i-lucide-table', 'i-lucide-send'],
-    accents: ['#f472b6', '#22c55e', '#2aa8e0']
-  },
-  {
-    tag: 'Продажи',
-    schedule: 'После события',
-    title: 'Заявка с сайта → письмо клиенту',
-    text: 'Вебхук ловит форму, ИИ собирает тему и текст, Email отправляет письмо на указанный адрес — без ручной переписки.',
-    chain: ['Вебхук', 'ИИ: письмо', 'Email'],
-    icons: ['i-lucide-webhook', 'i-lucide-sparkles', 'i-lucide-mail'],
-    accents: ['#f472b6', '#8b7cff', '#ea4335']
-  },
-  {
-    tag: 'Склад',
-    schedule: 'Каждый час',
-    title: 'Остатки из базы, если кончается товар',
-    text: 'SQL читает остатки, условие отсекает норму, и только по дефициту уходит письмо закупщику — без ложных тревог.',
-    chain: ['SQL', 'IF: мало', 'Email'],
-    icons: ['i-lucide-database', 'i-lucide-git-branch', 'i-lucide-mail'],
-    accents: ['#6366f1', '#e8b84a', '#ea4335']
-  }
+const blockMeta = [
+  { icon: 'i-lucide-search', accent: '#2bbf8e' },
+  { icon: 'i-lucide-sparkles', accent: '#8b7cff' },
+  { icon: 'i-lucide-globe', accent: '#f59e0b' },
+  { icon: 'i-lucide-git-branch', accent: '#e8b84a' },
+  { icon: 'i-lucide-send', accent: '#2aa8e0' },
+  { icon: 'i-lucide-webhook', accent: '#f472b6' },
+  { icon: 'i-lucide-table', accent: '#22c55e' },
+  { icon: 'i-lucide-mail', accent: '#ea4335' },
+  { icon: 'i-lucide-replace', accent: '#38bdf8' },
+  { icon: 'i-lucide-database', accent: '#6366f1' }
 ]
+const blocks = computed(() => tm<Array<{ number: string; title: string; text: string }>>('landing.blocks').map((item, index) => ({
+  ...item,
+  ...blockMeta[index]
+})))
 
-const steps = [
-  {
-    id: 'assemble',
-    number: '01',
-    title: 'Соберите блоки на холсте',
-    text: 'Перетащите поиск, ИИ, Email, таблицы, SQL, HTTP или Telegram и соедините выходы со входами — как в визуальном конструкторе.',
-    icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-mail', 'i-lucide-database', 'i-lucide-send']
-  },
-  {
-    id: 'describe',
-    number: '02',
-    title: 'Задайте правила обычным языком',
-    text: 'Что искать, какой промпт, какой запрос к базе, при каком условии идти дальше и куда отправить результат. Без кода и без отдельного сервера.',
-    icons: ['i-lucide-type', 'i-lucide-braces', 'i-lucide-git-branch']
-  },
-  {
-    id: 'run',
-    number: '03',
-    title: 'Запустите или поставьте расписание',
-    text: 'Оценка стоимости видна заранее. Запуск — по кнопке, по вебхуку или в нужное время; результат приходит в кабинет, на почту или в Telegram.',
-    icons: ['i-lucide-play', 'i-lucide-clock', 'i-lucide-mail']
-  }
+const exampleMeta = [
+  { icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'], accents: ['#2bbf8e', '#8b7cff', '#2aa8e0'] },
+  { icons: ['i-lucide-globe', 'i-lucide-git-branch', 'i-lucide-send'], accents: ['#f59e0b', '#e8b84a', '#2aa8e0'] },
+  { icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'], accents: ['#2bbf8e', '#8b7cff', '#2aa8e0'] },
+  { icons: ['i-lucide-webhook', 'i-lucide-table', 'i-lucide-send'], accents: ['#f472b6', '#22c55e', '#2aa8e0'] },
+  { icons: ['i-lucide-webhook', 'i-lucide-sparkles', 'i-lucide-mail'], accents: ['#f472b6', '#8b7cff', '#ea4335'] },
+  { icons: ['i-lucide-database', 'i-lucide-git-branch', 'i-lucide-mail'], accents: ['#6366f1', '#e8b84a', '#ea4335'] }
 ]
+const examples = computed(() => tm<Array<{ tag: string; schedule: string; title: string; text: string; chain: string[] }>>('landing.examples').map((item, index) => ({
+  ...item,
+  ...exampleMeta[index]
+})))
 
-const audience = [
-  {
-    icon: 'i-lucide-briefcase',
-    title: 'Специалисты и менеджеры',
-    text: 'Ежедневный мониторинг рынка, конкурентов и новостей без ручной сводки.',
-    example: 'Пример: поиск упоминаний → ИИ-резюме → Telegram'
-  },
-  {
-    icon: 'i-lucide-user-round-search',
-    title: 'Соискатели',
-    text: 'Не пролистывать десятки сайтов — получать отобранные вакансии одним сообщением.',
-    example: 'Пример: поиск вакансий → ИИ-отбор → Telegram'
-  },
-  {
-    icon: 'i-lucide-pen-line',
-    title: 'Авторы и аналитики',
-    text: 'Сбор источников и короткие выжимки приходят сами — остаётся мысль и публикация.',
-    example: 'Пример: поиск статей → ИИ-конспект → Telegram'
-  },
-  {
-    icon: 'i-lucide-trending-up',
-    title: 'Маркетологи и growth',
-    text: 'Следить за ценами, офферами и активностью конкурентов по расписанию.',
-    example: 'Пример: HTTP прайс → IF порог → алерт в Telegram'
-  },
-  {
-    icon: 'i-lucide-building-2',
-    title: 'Малый бизнес',
-    text: 'Регулярные отчёты и уведомления без разработчика и отдельной инфраструктуры.',
-    example: 'Пример: SQL заказы → ИИ-сводка → Email'
-  },
-  {
-    icon: 'i-lucide-code-2',
-    title: 'Разработчики и no-code',
-    text: 'Быстрые интеграции и ветвления без поднятия своего n8n или воркеров.',
-    example: 'Пример: вебхук → условие → таблица или Telegram'
-  }
+const stepMeta = [
+  { id: 'assemble', icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-mail', 'i-lucide-database', 'i-lucide-send'] },
+  { id: 'describe', icons: ['i-lucide-type', 'i-lucide-braces', 'i-lucide-git-branch'] },
+  { id: 'run', icons: ['i-lucide-play', 'i-lucide-clock', 'i-lucide-mail'] }
 ]
+const steps = computed(() => tm<Array<{ number: string; title: string; text: string }>>('landing.steps').map((item, index) => ({
+  ...item,
+  ...stepMeta[index]
+})))
+
+const audienceIcons = ['i-lucide-briefcase', 'i-lucide-user-round-search', 'i-lucide-pen-line', 'i-lucide-trending-up', 'i-lucide-building-2', 'i-lucide-code-2']
+const audience = computed(() => tm<Array<{ title: string; text: string; example: string }>>('landing.audience').map((item, index) => ({
+  ...item,
+  icon: audienceIcons[index]
+})))
 </script>

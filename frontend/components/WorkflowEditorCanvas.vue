@@ -35,6 +35,7 @@ import {
 const props = defineProps<{ workflowId: string }>()
 const api = useApi()
 const toast = useToast()
+const { t } = useI18n()
 const id = props.workflowId
 const flowId = `workflow-${id}`
 
@@ -45,7 +46,7 @@ const { data: workflow, error: workflowError, status } = await useAuthAsyncData<
 if (status.value === 'error' || !workflow.value) {
   throw createError({
     statusCode: (workflowError.value as any)?.statusCode || 404,
-    statusMessage: 'Цепочка не найдена',
+    statusMessage: t('editor.notFound'),
     fatal: false
   })
 }
@@ -71,7 +72,7 @@ const estimatedCost = ref(Number(workflow.value.estimated_run_cost || 0))
 const workflowName = ref(workflow.value.name || '')
 const renaming = ref(false)
 const nameDraft = ref(workflow.value.name || '')
-useAppTitle(computed(() => workflowName.value || workflow.value?.name || 'Редактор'))
+useAppTitle(computed(() => workflowName.value || workflow.value?.name || t('titles.editor')))
 const {
   screenToFlowCoordinate,
   zoomIn,
@@ -83,25 +84,30 @@ const {
 const hasSelectedNodes = computed(() => getSelectedNodes.value.length > 0)
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 
-const palette = (Object.keys(NODE_META) as NodeKind[]).map(type => ({ type, ...NODE_META[type] }))
-const qualityModes = [
-  { label: 'Быстрый', value: 'simple_text' },
-  { label: 'Точный', value: 'complex_text' }
-]
+const palette = computed(() => (Object.keys(NODE_META) as NodeKind[]).map(type => ({
+  type,
+  ...NODE_META[type],
+  label: t(`nodes.${type}.label`),
+  caption: t(`nodes.${type}.caption`)
+})))
+const qualityModes = computed(() => [
+  { label: t('editor.qualityFast'), value: 'simple_text' },
+  { label: t('editor.qualityExact'), value: 'complex_text' }
+])
 // USelect не принимает пустую строку как значение элемента — используем явный "any".
-const searchPeriods = [
-  { label: 'Любое время', value: 'any' },
-  { label: 'Последний час', value: 'h' },
-  { label: 'Последние 24 часа', value: 'd' },
-  { label: 'Последняя неделя', value: 'w' },
-  { label: 'Последний месяц', value: 'm' },
-  { label: 'Последний год', value: 'y' }
-]
-const sheetsOperations = [
-  { label: 'Читать строки', value: 'read' },
-  { label: 'Добавить строки', value: 'append' },
-  { label: 'Обновить строки', value: 'update' }
-]
+const searchPeriods = computed(() => [
+  { label: t('editor.periodAny'), value: 'any' },
+  { label: t('editor.periodH'), value: 'h' },
+  { label: t('editor.periodD'), value: 'd' },
+  { label: t('editor.periodW'), value: 'w' },
+  { label: t('editor.periodM'), value: 'm' },
+  { label: t('editor.periodY'), value: 'y' }
+])
+const sheetsOperations = computed(() => [
+  { label: t('editor.sheetsRead'), value: 'read' },
+  { label: t('editor.sheetsAppend'), value: 'append' },
+  { label: t('editor.sheetsUpdate'), value: 'update' }
+])
 const sqlEngines = [
   { label: 'PostgreSQL', value: 'postgresql' },
   { label: 'MySQL', value: 'mysql' },
@@ -113,19 +119,19 @@ const sqlDsnPlaceholder = computed(() => {
   if (engine === 'clickhouse') return 'clickhouse://user:pass@host:8123/dbname'
   return 'postgresql://user:pass@host:5432/dbname'
 })
-const transformOperations = [
-  { label: 'Select — оставить нужные поля', value: 'select' },
-  { label: 'Rename — переименовать поля', value: 'rename' },
-  { label: 'Set — добавить или изменить значение', value: 'set' },
-  { label: 'Remove — удалить поля', value: 'remove' },
-  { label: 'Filter — оставить только нужные элементы', value: 'filter' },
-  { label: 'Sort — отсортировать', value: 'sort' },
-  { label: 'Map — преобразовать каждый элемент массива', value: 'map' }
-]
-const sortDirections = [
-  { label: 'По возрастанию', value: 'asc' },
-  { label: 'По убыванию', value: 'desc' }
-]
+const transformOperations = computed(() => [
+  { label: t('editor.transformSelect'), value: 'select' },
+  { label: t('editor.transformRename'), value: 'rename' },
+  { label: t('editor.transformSet'), value: 'set' },
+  { label: t('editor.transformRemove'), value: 'remove' },
+  { label: t('editor.transformFilter'), value: 'filter' },
+  { label: t('editor.transformSort'), value: 'sort' },
+  { label: t('editor.transformMap'), value: 'map' }
+])
+const sortDirections = computed(() => [
+  { label: t('editor.sortAsc'), value: 'asc' },
+  { label: t('editor.sortDesc'), value: 'desc' }
+])
 const runtimeConfig = useRuntimeConfig()
 const webhookUrl = computed(() => {
   const token = workflow.value?.webhook_token
@@ -135,7 +141,7 @@ const webhookUrl = computed(() => {
 const copyWebhookUrl = async () => {
   if (!webhookUrl.value) return
   await navigator.clipboard.writeText(webhookUrl.value)
-  toast.add({ title: 'URL скопирован', color: 'success' })
+  toast.add({ title: t('editor.urlCopied'), color: 'success' })
 }
 const rotateWebhookToken = async () => {
   saveState.value = 'saving'
@@ -150,10 +156,10 @@ const rotateWebhookToken = async () => {
     workflow.value = saved
     estimatedCost.value = Number(saved.estimated_run_cost || 0)
     saveState.value = 'saved'
-    toast.add({ title: 'Новый ключ вебхука создан', color: 'success' })
+    toast.add({ title: t('editor.webhookRotated'), color: 'success' })
   } catch {
     saveState.value = 'dirty'
-    toast.add({ title: 'Не удалось обновить ключ', color: 'error' })
+    toast.add({ title: t('editor.webhookRotateError'), color: 'error' })
   }
 }
 const selectedPeriod = computed({
@@ -173,17 +179,17 @@ const TRANSFORM_MAP_PLACEHOLDER = '{ "title": "{{$name}}" }'
 const TRANSFORM_RENAME_PLACEHOLDER = 'old=new'
 const TRANSFORM_SET_PLACEHOLDER = 'status=active'
 const formatVariableToken = (name: string) => `{{${name}}}`
-const IF_ELSE_HELP_EXAMPLES = [
-  { code: '{{$data[0].field}} != null', note: 'поле есть и не null' },
-  { code: '{{$status}} == "active"', note: 'строка' },
-  { code: '{{count}} == 12', note: 'переменная; строка «12» и число 12 равны' },
-  { code: '{{$score}} >= 0.8', note: 'число' },
-  { code: '{{$flag}}', note: 'truthy-проверка' }
-] as const
+const IF_ELSE_HELP_EXAMPLES = computed(() => [
+  { code: '{{$data[0].field}} != null', note: t('editor.ifHelpField') },
+  { code: '{{$status}} == "active"', note: t('editor.ifHelpString') },
+  { code: '{{count}} == 12', note: t('editor.ifHelpVar') },
+  { code: '{{$score}} >= 0.8', note: t('editor.ifHelpNumber') },
+  { code: '{{$flag}}', note: t('editor.ifHelpTruthy') }
+] )
 const OUTPUT_FORMAT_PLACEHOLDER = [
   '{',
-  '  "userId": "{{id пользователя}}",',
-  '  "email": "{{email пользователя}}"',
+  '  "userId": "{{user_id}}",',
+  '  "email": "{{user_email}}"',
   '}'
 ].join('\n')
 const selectedInstructions = computed({
@@ -274,7 +280,7 @@ const save = async () => {
     return true
   } catch {
     saveState.value = 'dirty'
-    toast.add({ title: 'Черновик не сохранён', color: 'error' })
+    toast.add({ title: t('editor.saveError'), color: 'error' })
     return false
   }
 }
@@ -289,7 +295,7 @@ const cancelRename = () => {
 const commitRename = async () => {
   const next = nameDraft.value.trim()
   if (!next) {
-    toast.add({ title: 'Укажите название', color: 'error' })
+    toast.add({ title: t('editor.nameRequired'), color: 'error' })
     return
   }
   if (next === workflowName.value) {
@@ -313,7 +319,7 @@ const commitRename = async () => {
     renaming.value = false
   } catch {
     saveState.value = 'dirty'
-    toast.add({ title: 'Не удалось переименовать цепочку', color: 'error' })
+    toast.add({ title: t('editor.renameError'), color: 'error' })
   }
 }
 const hydrated = ref(false)
@@ -340,7 +346,6 @@ onMounted(async () => {
 })
 
 const addNode = (type: NodeKind, position: { x: number; y: number }) => {
-  const item = NODE_META[type]
   const node: WorkflowNode = {
     id: crypto.randomUUID(),
     type,
@@ -348,7 +353,7 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
     parents: [],
     children: [],
     data: {
-      label: item.label,
+      label: t(`nodes.${type}.label`),
       complexity: type === 'prompt' ? 'simple_text' : undefined,
       max_output_tokens: type === 'prompt' ? 8000 : undefined,
       instructions: type === 'prompt' ? '' : undefined,
@@ -381,11 +386,11 @@ const connectionEnds = (connection: Connection) => ({
 })
 const connectBlockedTitle = (targetId: string) => {
   const type = nodes.value.find(node => node.id === targetId)?.type
-  if (type === 'webhook') return 'Вебхук запускает цепочку и не принимает входящие связи'
+  if (type === 'webhook') return t('editor.webhookNoIn')
   if (type && SINGLE_INCOMING_TYPES.includes(type)) {
-    return `${NODE_META[type].label} принимает только одну входящую связь`
+    return t('editor.singleIn', { label: t(`nodes.${type}.label`) })
   }
-  return 'Так соединить нельзя'
+  return t('editor.cannotConnect')
 }
 const onConnect = (connection: Connection) => {
   const { source, target, branch } = connectionEnds(connection)
@@ -468,7 +473,7 @@ const validate = async () => {
   if (!(await save())) return false
   const result = await api.workflows.validate(id)
   validationErrors.value = result.errors
-  toast.add({ title: result.valid ? 'Цепочка готова' : 'Есть ошибки', color: result.valid ? 'success' : 'warning' })
+  toast.add({ title: result.valid ? t('editor.validateOk') : t('editor.validateFail'), color: result.valid ? 'success' : 'warning' })
   return result.valid
 }
 const checkGraph = async () => {
@@ -478,10 +483,10 @@ const publish = async () => {
   if (!(await validate())) return
   try {
     workflow.value = await api.workflows.publish(id)
-    toast.add({ title: 'Цепочка опубликована', color: 'success' })
+    toast.add({ title: t('editor.published'), color: 'success' })
   } catch (error) {
     toast.add({
-      title: 'Не удалось опубликовать',
+      title: t('editor.publishError'),
       description: apiErrorMessage(error),
       color: 'error'
     })
@@ -507,7 +512,7 @@ const runSelectedNode = async () => {
     await navigateTo(`/runs/${result.id}`)
   } catch (error) {
     toast.add({
-      title: 'Не удалось запустить узел',
+      title: t('editor.nodeRunError'),
       description: apiErrorMessage(error),
       color: 'error'
     })
@@ -533,36 +538,36 @@ const runSelectedNode = async () => {
               @keyup.enter="commitRename"
               @keyup.escape="cancelRename"
             />
-            <UButton icon="i-lucide-check" size="xs" color="neutral" variant="soft" aria-label="Сохранить название" @click="commitRename" />
-            <UButton icon="i-lucide-x" size="xs" color="neutral" variant="ghost" class="text-white/70" aria-label="Отменить" @click="cancelRename" />
+            <UButton icon="i-lucide-check" size="xs" color="neutral" variant="soft" :aria-label="t('editor.saveNameAria')" @click="commitRename" />
+            <UButton icon="i-lucide-x" size="xs" color="neutral" variant="ghost" class="text-white/70" :aria-label="t('editor.cancelAria')" @click="cancelRename" />
           </div>
           <button
             v-else
             type="button"
             class="group flex max-w-full items-center gap-1.5 text-left"
-            title="Переименовать"
+            :title="t('editor.renameAria')"
             @click="startRename"
           >
             <h1 class="mb-0 truncate text-[15px] font-extrabold tracking-tight text-white">{{ workflowName }}</h1>
             <UIcon name="i-lucide-pencil" class="size-3.5 shrink-0 text-white/35 transition group-hover:text-white/80" />
           </button>
           <p class="mb-0 text-[11px] text-white/45">
-            {{ saveState === 'saving' ? 'Сохраняем…' : saveState === 'saved' ? 'Черновик сохранён' : 'Несохранённые изменения' }}
+            {{ saveState === 'saving' ? t('editor.saving') : saveState === 'saved' ? t('editor.saved') : t('editor.unsaved') }}
           </p>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <span class="editor-cost"><UIcon name="i-lucide-coins" />до {{ formatCredits(estimatedCost) }} credits</span>
-        <UButton label="Проверить" icon="i-lucide-circle-check" color="neutral" variant="ghost" class="text-white/80" @click="checkGraph" />
-        <UButton label="Опубликовать" color="neutral" variant="outline" class="border-white/15 bg-white/5 text-white" @click="publish" />
-        <UButton label="Запустить" icon="i-lucide-play" @click="run" />
+        <span class="editor-cost"><UIcon name="i-lucide-coins" />{{ t('editor.costUpTo', { cost: formatCredits(estimatedCost) }) }}</span>
+        <UButton :label="t('editor.check')" icon="i-lucide-circle-check" color="neutral" variant="ghost" class="text-white/80" @click="checkGraph" />
+        <UButton :label="t('editor.publish')" color="neutral" variant="outline" class="border-white/15 bg-white/5 text-white" @click="publish" />
+        <UButton :label="t('editor.run')" icon="i-lucide-play" @click="run" />
       </div>
     </header>
     <div class="editor-body">
       <aside class="editor-pane editor-pane-left">
         <div class="palette-block">
-          <p class="editor-kicker">Узлы</p>
-          <p class="mb-3 text-[11px] leading-4 text-white/40">Перетащите на холст или кликните</p>
+          <p class="editor-kicker">{{ t('editor.nodes') }}</p>
+          <p class="mb-3 text-[11px] leading-4 text-white/40">{{ t('editor.nodesHint') }}</p>
           <div class="palette-list" role="list">
             <button
               v-for="item in palette"
@@ -652,13 +657,13 @@ const runSelectedNode = async () => {
             </template>
           </VueFlow>
           <template #fallback>
-            <div class="grid h-full place-items-center text-sm text-white/40">Загрузка редактора…</div>
+            <div class="grid h-full place-items-center text-sm text-white/40">{{ t('editor.loading') }}</div>
           </template>
         </ClientOnly>
         <div v-if="!nodes.length" class="editor-empty">
           <span class="editor-empty-icon"><UIcon name="i-lucide-workflow" class="size-6" /></span>
-          <p class="mb-1 text-sm font-extrabold text-white">Соберите цепочку</p>
-          <p class="mb-0 max-w-xs text-center text-xs leading-5 text-white/45">Перетащите узлы на холст и соедините выход справа со входом слева.</p>
+          <p class="mb-1 text-sm font-extrabold text-white">{{ t('editor.emptyTitle') }}</p>
+          <p class="mb-0 max-w-xs text-center text-xs leading-5 text-white/45">{{ t('editor.emptyText') }}</p>
         </div>
         <div class="editor-zoom">
           <button type="button" class="editor-zoom-btn" @click="zoomOut()">−</button>
@@ -670,22 +675,22 @@ const runSelectedNode = async () => {
       </div>
       <aside class="editor-pane editor-pane-right">
         <template v-if="selectedEdgeId && !hasSelectedNodes">
-          <p class="editor-kicker">Связь</p>
-          <h2 class="mb-2 text-lg font-extrabold text-white">Стрелка</h2>
-          <p class="text-sm leading-6 text-white/45">Delete, кнопка ниже или крестик на стрелке убирает связь. Узлы остаются на холсте.</p>
-          <UButton class="mt-4" label="Удалить связь" icon="i-lucide-unlink" color="error" variant="soft" @click="unlinkSelectedEdge" />
+          <p class="editor-kicker">{{ t('editor.edgeKicker') }}</p>
+          <h2 class="mb-2 text-lg font-extrabold text-white">{{ t('editor.edgeTitle') }}</h2>
+          <p class="text-sm leading-6 text-white/45">{{ t('editor.edgeHint') }}</p>
+          <UButton class="mt-4" :label="t('editor.deleteEdge')" icon="i-lucide-unlink" color="error" variant="soft" @click="unlinkSelectedEdge" />
         </template>
         <template v-else-if="selected">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="editor-kicker">Узел</p>
-              <h2 class="mb-0 text-lg font-extrabold text-white">{{ NODE_META[selected.type].label }}</h2>
+              <p class="editor-kicker">{{ t('editor.nodeKicker') }}</p>
+              <h2 class="mb-0 text-lg font-extrabold text-white">{{ t(`nodes.${selected.type}.label`) }}</h2>
             </div>
             <div class="flex items-center gap-1">
               <UButton
                 v-if="canSoloRunSelected"
                 icon="i-lucide-play"
-                label="Запустить"
+                :label="t('editor.runNode')"
                 size="sm"
                 :loading="nodeRunLoading"
                 @click="runSelectedNode"
@@ -694,26 +699,26 @@ const runSelectedNode = async () => {
             </div>
           </div>
           <div class="mt-5 space-y-4">
-            <UFormField label="Название">
+            <UFormField :label="t('editor.fieldName')">
               <UInput v-model="selected.data.label" class="w-full" />
             </UFormField>
-            <UFormField v-if="selected.type === 'web_search'" label="Что найти">
-              <UTextarea v-model="selected.data.query" :rows="7" class="w-full" placeholder="Главные новости рынка за последние сутки" />
+            <UFormField v-if="selected.type === 'web_search'" :label="t('editor.searchQuery')">
+              <UTextarea v-model="selected.data.query" :rows="7" class="w-full" :placeholder="t('editor.searchPlaceholder')" />
             </UFormField>
-            <UFormField v-if="selected.type === 'web_search'" label="Период">
+            <UFormField v-if="selected.type === 'web_search'" :label="t('editor.period')">
               <USelect v-model="selectedPeriod" :items="searchPeriods" value-key="value" class="w-full" />
             </UFormField>
             <template v-if="selected.type === 'prompt'">
-              <UFormField label="Режим">
+              <UFormField :label="t('editor.mode')">
                 <USelect v-model="selected.data.complexity" :items="qualityModes" value-key="value" class="w-full" />
               </UFormField>
-              <UFormField label="Промпт">
-                <UTextarea v-model="selected.data.prompt" :rows="7" class="w-full" placeholder="Выдели 5 фактов и сделай краткий вывод" />
+              <UFormField :label="t('editor.prompt')">
+                <UTextarea v-model="selected.data.prompt" :rows="7" class="w-full" :placeholder="t('editor.promptPlaceholder')" />
               </UFormField>
-              <UFormField label="Инструкция">
-                <UTextarea v-model="selectedInstructions" :rows="4" class="w-full" placeholder="Отвечай кратко, без вступлений" />
+              <UFormField :label="t('editor.instructions')">
+                <UTextarea v-model="selectedInstructions" :rows="4" class="w-full" :placeholder="t('editor.instructionsPlaceholder')" />
               </UFormField>
-              <UFormField label="Формат вывода">
+              <UFormField :label="t('editor.outputFormat')">
                 <UTextarea
                   v-model="selectedOutputFormat"
                   :rows="8"
@@ -721,46 +726,46 @@ const runSelectedNode = async () => {
                   :placeholder="OUTPUT_FORMAT_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Инструкция необязательна и уходит модели как системное сообщение. Если задан формат вывода, модель должна вернуть строго его. Переменные: <code>{{ VARIABLE_NAME_EXAMPLE }}</code>.</p>
-              <UFormField label="Максимальная стоимость запуска">
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.promptHint', { example: VARIABLE_NAME_EXAMPLE }) }}</p>
+              <UFormField :label="t('editor.maxRunCost')">
                 <UInput v-model="selectedMaxRunCredits" type="number" min="1" step="1" class="w-full" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Меньший лимит может обрезать длинный ответ. Списывается только фактический расход.</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.maxRunCostHint') }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'http_request'">
-              <UFormField label="Данные запроса">
+              <UFormField :label="t('editor.requestJson')">
                 <UTextarea v-model="selectedRequestJson" :rows="14" class="w-full font-mono text-xs" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Подстановки вида {{ JSON_EXPRESSION_EXAMPLE }} читаются от корня вывода предыдущего узла, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — из переменных. После подстановки значение должно остаться валидным JSON.</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.httpHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'if_else'">
-              <UFormField label="Условие">
+              <UFormField :label="t('editor.condition')">
                 <UTextarea v-model="selectedCondition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
               </UFormField>
-              <p class="mb-0 text-xs leading-5 text-white/40">Одна входящая связь, выходы TRUE (Условие выполнено) и FALSE (Условие не выполнено). Передает данные дальше, без изменений. Условие с переменной: <code>{{ VARIABLE_COMPARE_EXAMPLE }}</code> (число и строка «12» считаются равными). Условия с входными данными: <code>{{ IF_ELSE_CONDITION_PLACEHOLDER }}</code>.</p>
+              <p class="mb-0 text-xs leading-5 text-white/40">{{ t('editor.ifHint', { compare: VARIABLE_COMPARE_EXAMPLE, placeholder: IF_ELSE_CONDITION_PLACEHOLDER }) }}</p>
               <details class="editor-help mt-1! text-xs leading-5 text-white/40">
-                <summary class="text-[15px]">Как писать условие</summary>
+                <summary class="text-[15px]">{{ t('editor.ifHelpTitle') }}</summary>
                 <div class="editor-help-body">
-                  <p class="mt-1! ml-1">Сравнивайте поля вывода предыдущего узла. Путь в фигурных скобках, например <code>{{ JSON_EXPRESSION_EXAMPLE }}</code>.</p>
-                  <p class="mt-1! ml-1"><strong>Операторы:</strong> <code>==</code> <code>!=</code> <code>&gt;</code> <code>&lt;</code> <code>&gt;=</code> <code>&lt;=</code>. Также можно написать только поле — пустое / null / отсутствующее = FALSE.</p>
-                  <p class="mt-1! ml-1"><strong>Литералы:</strong> строки в кавычках, числа, <code>true</code>, <code>false</code>, <code>null</code>, <code>undefined</code> (то же, что null).</p>
-                  <p class="mt-1! ml-1"><strong>Есть ли поле:</strong> если API не вернул ключ, в условии это <code>null</code> — запуск не падает.</p>
+                  <p class="mt-1! ml-1">{{ t('editor.ifHelpCompare', { example: JSON_EXPRESSION_EXAMPLE }) }}</p>
+                  <p class="mt-1! ml-1">{{ t('editor.ifHelpOps') }}</p>
+                  <p class="mt-1! ml-1">{{ t('editor.ifHelpLits') }}</p>
+                  <p class="mt-1! ml-1">{{ t('editor.ifHelpMissing') }}</p>
                   <ul>
                     <li v-for="item in IF_ELSE_HELP_EXAMPLES" :key="item.code">
                       <code>{{ item.code }}</code> — {{ item.note }}
                     </li>
                   </ul>
-                  <p>Сравнения <code>&gt;</code> / <code>&lt;</code> только для чисел: если поля нет, сначала проверьте <code>!= null</code>.</p>
+                  <p>{{ t('editor.ifHelpNumbers') }}</p>
                 </div>
               </details>
             </template>
             <template v-if="selected.type === 'telegram_send'">
-              <UFormField label="Получатель">
-                <UInput v-model="selected.data.chat_id" class="w-full" placeholder="Пусто — ваш аккаунт" />
+              <UFormField :label="t('editor.recipient')">
+                <UInput v-model="selected.data.chat_id" class="w-full" :placeholder="t('editor.telegramPlaceholder')" />
               </UFormField>
-              <UFormField label="Текст сообщения">
+              <UFormField :label="t('editor.messageText')">
                 <UTextarea
                   v-model="selectedTelegramMessage"
                   :rows="6"
@@ -768,52 +773,52 @@ const runSelectedNode = async () => {
                   :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Если текст пустой, отправится весь JSON или текст предыдущего узла. <code>{{ ROOT_JSON_EXAMPLE }}</code> — все входные данные, <code>{{ JSON_EXPRESSION_EXAMPLE }}</code> — поле, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> — переменная цепочки. Цикл: <code>{{ TELEGRAM_LOOP_EXAMPLE }}</code>.</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.telegramHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
             </template>
             <template v-if="selected.type === 'webhook'">
-              <p class="text-xs leading-5 text-white/40">Стартовый узел: внешний сервис вызывает URL методом POST, PUT или PATCH, и цепочка запускается. Тело запроса доступно дальше как <code>{{ WEBHOOK_BODY_EXAMPLE }}</code>.</p>
-              <UFormField label="URL вебхука">
-                <UInput :model-value="webhookUrl" readonly class="w-full font-mono text-xs" placeholder="Сохраните черновик, чтобы получить URL" />
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.webhookIntro', { body: WEBHOOK_BODY_EXAMPLE }) }}</p>
+              <UFormField :label="t('editor.webhookUrl')">
+                <UInput :model-value="webhookUrl" readonly class="w-full font-mono text-xs" :placeholder="t('editor.webhookUrlPlaceholder')" />
               </UFormField>
               <div class="flex flex-wrap gap-2">
-                <UButton label="Скопировать" icon="i-lucide-copy" color="neutral" variant="outline" :disabled="!webhookUrl" @click="copyWebhookUrl" />
-                <UButton label="Новый ключ" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :disabled="!webhookUrl" @click="rotateWebhookToken" />
+                <UButton :label="t('editor.copy')" icon="i-lucide-copy" color="neutral" variant="outline" :disabled="!webhookUrl" @click="copyWebhookUrl" />
+                <UButton :label="t('editor.newKey')" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :disabled="!webhookUrl" @click="rotateWebhookToken" />
               </div>
-              <p class="text-xs leading-5 text-white/40">Работает после публикации цепочки. Заголовок Authorization не передаётся в данные узла.</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.webhookAfter') }}</p>
             </template>
             <template v-if="selected.type === 'google_sheets'">
-              <UFormField label="Действие">
+              <UFormField :label="t('editor.action')">
                 <USelect v-model="selected.data.operation" :items="sheetsOperations" value-key="value" class="w-full" />
               </UFormField>
-              <UFormField label="ID таблицы">
+              <UFormField :label="t('editor.spreadsheetId')">
                 <UInput v-model="selected.data.spreadsheet_id" class="w-full font-mono text-xs" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" />
               </UFormField>
-              <UFormField label="Диапазон">
+              <UFormField :label="t('editor.sheetRange')">
                 <UInput v-model="selected.data.sheet_range" class="w-full font-mono text-xs" placeholder="Sheet1!A1:Z" />
               </UFormField>
-              <UFormField label="OAuth-токен">
+              <UFormField :label="t('editor.oauthToken')">
                 <UInput v-model="selected.data.access_token" type="password" class="w-full" placeholder="ya29...." />
               </UFormField>
-              <UFormField label="API-ключ (только чтение)">
+              <UFormField :label="t('editor.apiKey')">
                 <UInput v-model="selected.data.api_key" type="password" class="w-full" />
               </UFormField>
-              <UFormField label="JSON сервисного аккаунта">
+              <UFormField :label="t('editor.serviceJson')">
                 <UTextarea v-model="selected.data.service_account_json" :rows="6" class="w-full font-mono text-xs" placeholder='{"type":"service_account",...}' />
               </UFormField>
-              <UFormField v-if="selected.data.operation !== 'read'" label="Значения строк">
-                <UTextarea v-model="selected.data.values_json" :rows="8" class="w-full font-mono text-xs" placeholder='[["Ada", 3]] или [{"name":"Ada","score":3}]' />
+              <UFormField v-if="selected.data.operation !== 'read'" :label="t('editor.rowValues')">
+                <UTextarea v-model="selected.data.values_json" :rows="8" class="w-full font-mono text-xs" placeholder='[["Ada", 3]] / [{"name":"Ada","score":3}]' />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Чтение возвращает JSON <code>rows</code>. Для записи можно подставить {{ JSON_EXPRESSION_EXAMPLE }} или оставить значения пустыми — тогда возьмутся данные предыдущего узла. Нужен токен, API-ключ или сервисный аккаунт.</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.sheetsHint', { json: JSON_EXPRESSION_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'email'">
-              <UFormField label="Кому">
+              <UFormField :label="t('editor.emailTo')">
                 <UInput v-model="selected.data.to" class="w-full" placeholder="ada@example.com" />
               </UFormField>
-              <UFormField label="Тема">
-                <UInput v-model="selected.data.subject" class="w-full" placeholder="Тема письма" />
+              <UFormField :label="t('editor.emailSubject')">
+                <UInput v-model="selected.data.subject" class="w-full" :placeholder="t('editor.emailSubjectPlaceholder')" />
               </UFormField>
-              <UFormField label="Сообщение">
+              <UFormField :label="t('editor.emailBody')">
                 <UTextarea
                   v-model="selected.data.body"
                   :rows="6"
@@ -821,20 +826,20 @@ const runSelectedNode = async () => {
                   :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Письмо уходит через почтовый сервер сервиса. В адресе, теме и тексте работают <code>{{ ROOT_JSON_EXAMPLE }}</code>, <code>{{ JSON_EXPRESSION_EXAMPLE }}</code>, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> и циклы <code>{{ TELEGRAM_LOOP_EXAMPLE }}</code>.</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.emailHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'data_transform'">
-              <UFormField label="Операция">
+              <UFormField :label="t('editor.operation')">
                 <USelect v-model="selected.data.operation" :items="transformOperations" value-key="value" class="w-full" />
               </UFormField>
-              <UFormField label="Путь к данным">
-                <UInput v-model="selected.data.path" class="w-full font-mono text-xs" placeholder="rows или body.items — пусто = весь вход" />
+              <UFormField :label="t('editor.dataPath')">
+                <UInput v-model="selected.data.path" class="w-full font-mono text-xs" :placeholder="t('editor.dataPathPlaceholder')" />
               </UFormField>
-              <UFormField v-if="selected.data.operation === 'select' || selected.data.operation === 'remove'" label="Поля">
+              <UFormField v-if="selected.data.operation === 'select' || selected.data.operation === 'remove'" :label="t('editor.fields')">
                 <UInput v-model="selected.data.fields" class="w-full font-mono text-xs" placeholder="id, name, email" />
               </UFormField>
-              <UFormField v-if="selected.data.operation === 'rename' || selected.data.operation === 'set' || selected.data.operation === 'map'" :label="selected.data.operation === 'map' ? 'Шаблон элемента' : 'Соответствие полей'">
+              <UFormField v-if="selected.data.operation === 'rename' || selected.data.operation === 'set' || selected.data.operation === 'map'" :label="selected.data.operation === 'map' ? t('editor.mapTemplate') : t('editor.fieldMap')">
                 <UTextarea
                   v-model="selected.data.mapping_json"
                   :rows="8"
@@ -842,52 +847,52 @@ const runSelectedNode = async () => {
                   :placeholder="selected.data.operation === 'rename' ? TRANSFORM_RENAME_PLACEHOLDER : selected.data.operation === 'set' ? TRANSFORM_SET_PLACEHOLDER : TRANSFORM_MAP_PLACEHOLDER"
                 />
               </UFormField>
-              <UFormField v-if="selected.data.operation === 'filter'" label="Условие">
+              <UFormField v-if="selected.data.operation === 'filter'" :label="t('editor.condition')">
                 <UTextarea v-model="selected.data.condition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
               </UFormField>
               <template v-if="selected.data.operation === 'sort'">
-                <UFormField label="Поле сортировки">
+                <UFormField :label="t('editor.sortField')">
                   <UInput v-model="selected.data.sort_field" class="w-full font-mono text-xs" placeholder="score" />
                 </UFormField>
-                <UFormField label="Направление">
+                <UFormField :label="t('editor.sortDirection')">
                   <USelect v-model="selected.data.sort_direction" :items="sortDirections" value-key="value" class="w-full" />
                 </UFormField>
               </template>
-              <p class="text-xs leading-5 text-white/40">Универсальный блок над JSON предыдущего узла. Filter использует тот же синтаксис условий, что IF ELSE. Map применяет шаблон к каждому элементу массива.</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.transformHint') }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'sql_query'">
-              <UFormField label="База данных">
+              <UFormField :label="t('editor.database')">
                 <USelect v-model="selected.data.engine" :items="sqlEngines" value-key="value" class="w-full" />
               </UFormField>
-              <UFormField label="Строка подключения">
+              <UFormField :label="t('editor.dsn')">
                 <UInput v-model="selected.data.dsn" type="password" class="w-full font-mono text-xs" :placeholder="sqlDsnPlaceholder" />
               </UFormField>
-              <UFormField label="SQL-запрос">
+              <UFormField :label="t('editor.sqlQuery')">
                 <UTextarea v-model="selected.data.query" :rows="8" class="w-full font-mono text-xs" placeholder="SELECT id, email FROM users LIMIT 50" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Результат всегда JSON: <code>{"rows":[...],"row_count":N}</code>. В запросе можно использовать {{ JSON_EXPRESSION_EXAMPLE }} и <code>{{ VARIABLE_NAME_EXAMPLE }}</code>. Подключение идёт к вашей PostgreSQL, MySQL или ClickHouse, не к служебной базе сервиса.</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.sqlHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="mb-0 mt-3 space-y-1 text-xs text-amber-200">
               <li v-for="hint in selectedVariableHints.filter(item => item.mark === 'undefined')" :key="hint.name">
-                <code>{{ formatVariableToken(hint.name) }}</code> — Переменная пока не определена
+                {{ t('editor.varUndefinedLine', { token: formatVariableToken(hint.name) }) }}
               </li>
             </ul>
           </div>
         </template>
         <div v-else>
-          <p class="editor-kicker">Свойства</p>
-          <h2 class="mb-2 text-lg font-extrabold text-white">Ничего не выбрано</h2>
-          <p class="text-sm leading-6 text-white/45">Кликните узел, чтобы настроить его. Соединяйте выход (справа) со входом (слева).</p>
+          <p class="editor-kicker">{{ t('editor.propsKicker') }}</p>
+          <h2 class="mb-2 text-lg font-extrabold text-white">{{ t('editor.noneSelected') }}</h2>
+          <p class="text-sm leading-6 text-white/45">{{ t('editor.noneHint') }}</p>
           <div class="editor-cost-card">
-            <p class="mb-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/35">Максимум запуска</p>
-            <p class="mb-0 text-3xl font-extrabold text-white">до {{ formatCredits(estimatedCost) }}</p>
-            <p class="mb-0 mt-1 text-xs text-white/40">верхняя граница; списывается фактический расход</p>
+            <p class="mb-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/35">{{ t('editor.maxCost') }}</p>
+            <p class="mb-0 text-3xl font-extrabold text-white">{{ t('editor.maxCostValue', { cost: formatCredits(estimatedCost) }) }}</p>
+            <p class="mb-0 mt-1 text-xs text-white/40">{{ t('editor.maxCostHint') }}</p>
           </div>
         </div>
         <div v-if="validationErrors.length" class="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">
-          <h3 class="mb-2 text-sm font-extrabold text-amber-200">Ошибки</h3>
+          <h3 class="mb-2 text-sm font-extrabold text-amber-200">{{ t('editor.errors') }}</h3>
           <ul class="mb-0 list-disc space-y-1 pl-5 text-xs text-amber-100/80">
             <li v-for="err in validationErrors" :key="err">{{ err }}</li>
           </ul>
