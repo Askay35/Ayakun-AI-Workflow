@@ -86,11 +86,11 @@
     <section id="how" class="section how-section">
       <div class="shell">
         <div class="section-heading">
-          <p class="eyebrow">Как собрать</p>
+          <p class="eyebrow">Как это выглядит</p>
           <h2>От идеи до работающей цепочки</h2>
-          <p>Реальный редактор: блоки с палитры, связи и запуск. Ниже — те же три шага текстом.</p>
+          <p>Собрали на холсте, запустили, получили сообщение. Рядом — более сложный сценарий с ветками.</p>
         </div>
-        <LandingDemo class="reveal" />
+        <LandingShots />
         <div class="build-track">
           <article v-for="(step, index) in steps" :key="step.title" class="build-step">
             <div class="build-visual" :class="`is-${step.id}`">
