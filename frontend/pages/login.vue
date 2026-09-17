@@ -65,7 +65,7 @@ const googleAuth = async () => {
         Ваши цепочки, расписания и результаты надёжно сохраняются в личном кабинете.
       </p>
       <div class="auth-points">
-        <div v-for="item in ['Забудьте про рутину', 'Результаты приходят прямо в мессенджер', 'Расписание доступно на любом тарифе']" :key="item" class="auth-point">
+        <div v-for="item in ['Забудьте про рутину', 'Результаты приходят прямо в мессенджер', 'Покупаете credits — без подписки']" :key="item" class="auth-point">
           <span class="auth-point-icon"><UIcon name="i-lucide-check" /></span>
           {{ item }}
         </div>

@@ -40,7 +40,7 @@ export function ledgerDescription(item: LedgerItem) {
     case 'credit':
       return 'Стартовые credits'
     case 'purchase':
-      return 'Покупка тарифа'
+      return 'Покупка credits'
     case 'refund':
       return shortRunId(item.reference) ? `Возврат · ${shortRunId(item.reference)}` : 'Возврат'
     case 'charge':

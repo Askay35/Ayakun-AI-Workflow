@@ -8,7 +8,7 @@ export const PAGE_TITLES: Record<string, string> = {
   'runs-id': 'Запуск',
   billing: 'Биллинг',
   profile: 'Профиль',
-  pricing: 'Тарифы',
+  pricing: 'Цены',
   terms: 'Оферта',
   privacy: 'Конфиденциальность',
   docs: 'Документация',

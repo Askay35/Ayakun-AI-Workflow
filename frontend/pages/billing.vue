@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatCredits } from '~/utils/credits'
+import { bestValuePackCode, formatCredits, packCredits, sortCreditPacks } from '~/utils/credits'
 import { apiErrorMessage } from '~/composables/useApi'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
@@ -10,11 +10,8 @@ const [{ data: summary }, { data: plans }] = await Promise.all([
   useAuthAsyncData('billing', () => api.billing.summary()),
   useAuthAsyncData('billing-plans', () => api.billing.plans())
 ])
-const orderedPlans = computed(() => {
-  const rank = { free: 0, starter: 1, pro: 2, max: 3 } as Record<string, number>
-  return [...(plans.value || [])].sort((a, b) => (rank[a.code] ?? 9) - (rank[b.code] ?? 9))
-})
-const planName = (code?: string, fallback?: string) => ({ free: 'Пробный', starter: 'Старт', pro: 'Про', max: 'Макс' } as Record<string, string>)[code || ''] || fallback || 'Пробный'
+const orderedPlans = computed(() => sortCreditPacks(plans.value || []))
+const featuredCode = computed(() => bestValuePackCode(orderedPlans.value))
 const checkoutKeys = new Map<number, string>()
 const checkoutBusy = ref<number | null>(null)
 const emailModalOpen = ref(false)
@@ -73,32 +70,49 @@ const onEmailModalOpen = (open: boolean) => {
       <div>
         <p class="eyebrow">Баланс</p>
         <h1 class="page-title">Пополнение credits</h1>
-        <p class="muted">Оплатили пакет — кредиты сразу на балансе, без срока действия.</p>
+        <p class="muted">Пакет credits — разовая покупка. Списывается фактический расход запуска, остаток не сгорает.</p>
       </div>
     </div>
     <div class="grid-cards">
       <div class="panel metric-card" style="--card-accent:#c9f169"><p class="mb-0 text-sm font-bold muted">На балансе</p><p class="metric-value">{{ formatCredits(summary?.balance) }}</p><p class="mb-0 mt-1 text-xs muted">credits для запусков</p></div>
       <div class="panel metric-card" style="--card-accent:#ffb681"><p class="mb-0 text-sm font-bold muted">Потрачено за месяц</p><p class="metric-value">{{ formatCredits(summary?.usage_this_month) }}</p><p class="mb-0 mt-1 text-xs muted">credits</p></div>
     </div>
-    <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold">Выберите запас credits</h2><p class="mb-0 muted">Списывается фактическая стоимость; в редакторе показан максимум запуска.</p></div>
+    <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold">Пополнить баланс</h2><p class="mb-0 muted">Цена пакета = число credits. В редакторе до запуска виден максимум списания.</p></div>
     <div class="grid-cards">
-      <div v-for="plan in orderedPlans" :key="plan.id" class="panel flex flex-col p-6" :class="{ 'border-violet-500': plan.code === 'starter' }">
-        <div class="flex justify-between gap-3">
-          <h3 class="text-xl font-extrabold">{{ planName(plan.code, plan.name) }}</h3>
-          <span class="font-extrabold">{{ Number(plan.price).toLocaleString('ru') }} ₽</span>
-        </div>
-        <p class="my-5 text-3xl font-extrabold">{{ Number(plan.limits?.included_credits || 0).toLocaleString('ru') }} <span class="text-sm font-medium muted">credits</span></p>
-        <ul class="mb-6 space-y-2 text-sm">
-          <li class="flex gap-2"><UIcon name="i-lucide-check" class="text-[#6758ee]" />Любое число цепочек</li>
-          <li class="flex gap-2"><UIcon name="i-lucide-check" class="text-[#6758ee]" />Запуски по расписанию</li>
-        </ul>
+      <div
+        v-for="plan in orderedPlans"
+        :key="plan.id"
+        class="panel credit-pack"
+        :class="{
+          'is-gift': !Number(plan.price),
+          'is-featured': plan.code === featuredCode
+        }"
+      >
+        <span v-if="plan.code === featuredCode" class="credit-pack-badge">Выгоднее</span>
+        <span class="credit-pack-icon">
+          <UIcon :name="Number(plan.price) ? 'i-lucide-coins' : 'i-lucide-gift'" class="size-5" />
+        </span>
+        <p class="credit-pack-credits">{{ formatCredits(packCredits(plan)) }}</p>
+        <p class="credit-pack-unit">credits</p>
+        <span class="credit-pack-rule" aria-hidden="true" />
+        <p class="credit-pack-price">
+          <template v-if="Number(plan.price)">
+            <strong>{{ Number(plan.price).toLocaleString('ru-RU') }}</strong>
+            <span>₽</span>
+          </template>
+          <template v-else>
+            <strong>Бесплатно</strong>
+          </template>
+        </p>
         <UButton
-          :label="plan.code === 'free' ? 'Бесплатный пакет' : 'Купить credits'"
+          :label="Number(plan.price) ? 'Купить' : 'Уже на старте'"
           block
           size="lg"
-          class="mt-auto"
+          class="credit-pack-cta mt-auto"
+          :color="plan.code === featuredCode ? 'neutral' : 'primary'"
+          :variant="Number(plan.price) ? 'solid' : 'outline'"
           :loading="checkoutBusy === plan.id"
-          :disabled="plan.code === 'free' || checkoutBusy === plan.id"
+          :disabled="!Number(plan.price) || checkoutBusy === plan.id"
           @click="startCheckout(plan.id)"
         />
       </div>

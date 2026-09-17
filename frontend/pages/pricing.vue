@@ -1,34 +1,28 @@
 <script setup lang="ts">
 import type { Plan } from '~/types/api'
+import { bestValuePackCode, formatCredits, packCredits, sortCreditPacks } from '~/utils/credits'
+
+useSeoMeta({
+  title: 'Цены',
+  description: 'Покупаете credits — списывается только фактический расход запуска. Без подписки и срока действия.'
+})
 
 const api = useApi()
 const fallback: Plan[] = [
-  { id: 1, code: 'free', name: 'Пробный', price: 0, currency: 'RUB', limits: { included_credits: 1000 } },
-  { id: 2, code: 'starter', name: 'Старт', price: 390, currency: 'RUB', limits: { included_credits: 2000 } },
-  { id: 3, code: 'pro', name: 'Про', price: 990, currency: 'RUB', limits: { included_credits: 6500 } },
-  { id: 4, code: 'max', name: 'Макс', price: 1990, currency: 'RUB', limits: { included_credits: 15000 } }
+  { id: 1, code: 'free', name: 'Старт', price: 0, currency: 'RUB', limits: { included_credits: 1000 } },
+  { id: 2, code: 'starter', name: 'Запас', price: 390, currency: 'RUB', limits: { included_credits: 2000 } },
+  { id: 3, code: 'pro', name: 'Запас', price: 990, currency: 'RUB', limits: { included_credits: 6500 } },
+  { id: 4, code: 'max', name: 'Запас', price: 1990, currency: 'RUB', limits: { included_credits: 15000 } }
 ]
 const { data: plans } = await useAsyncData('public-plans', () => api.billing.plans().catch(() => fallback))
-const ordered = computed(() => {
-  const list = plans.value || fallback
-  const rank = { free: 0, starter: 1, pro: 2, max: 3 } as Record<string, number>
-  return [...list].sort((a, b) => (rank[a.code] ?? 9) - (rank[b.code] ?? 9))
-})
-const planMeta: Record<string, { title: string; pitch: string; action: string }> = {
-  free: { title: 'Пробный', pitch: 'Чтобы собрать первые цепочки и проверить идею.', action: 'Попробовать бесплатно' },
-  starter: { title: 'Старт', pitch: 'Достаточно для начала работы.', action: 'Выбрать Старт' },
-  pro: { title: 'Про', pitch: 'Запас кредитов для множества регулярных задач.', action: 'Выбрать Про' },
-  max: { title: 'Макс', pitch: 'Для самых активных пользователей.', action: 'Выбрать Макс' }
-}
-const meta = (plan: Plan) => planMeta[plan.code] || { title: plan.name, pitch: 'Гибкий тариф для ваших задач.', action: 'Выбрать' }
-const featuresFor = (plan: Plan) => {
-  const balance = Number(plan.limits.included_credits || 0)
-  return [
-    `${balance.toLocaleString('ru')} credits на балансе`,
-    'любое число цепочек',
-    'запуск вручную и по расписанию',
-  ]
-}
+const ordered = computed(() => sortCreditPacks(plans.value || fallback))
+const featuredCode = computed(() => bestValuePackCode(ordered.value))
+const facts = [
+  { icon: 'i-lucide-wallet', title: 'Пакет = credits', text: 'Платите один раз — на баланс сразу приходит указанный запас.' },
+  { icon: 'i-lucide-gauge', title: 'Списание по факту', text: 'Уходит только стоимость запуска, а не весь пакет сразу.' },
+  { icon: 'i-lucide-eye', title: 'Цена до старта', text: 'В редакторе виден максимум запуска, до того как цепочка пойдёт.' },
+  { icon: 'i-lucide-infinity', title: 'Не сгорают', text: 'Остаток лежит на балансе, пока вы его не потратите.' }
+]
 </script>
 
 <template>
@@ -36,43 +30,49 @@ const featuresFor = (plan: Plan) => {
     <section class="section">
       <div class="shell">
         <div class="mx-auto mb-14 max-w-3xl text-center reveal">
-          <p class="eyebrow">Простая экономика</p>
-          <h1 class="page-title !text-[clamp(42px,6vw,76px)]">Платите за результат,<br>а не за ограничения</h1>
+          <p class="eyebrow">Credits</p>
+          <h1 class="page-title !text-[clamp(42px,6vw,76px)]">Платите только за нужный объём</h1>
           <p class="mx-auto mt-5 max-w-2xl text-lg leading-8 muted">
-            На каждом тарифе доступны все действия, расписания и любое число цепочек.
-            Дороже тариф — больше кредитов на балансе.
+            Никаких подписок или скрытых ступеней — вы приобретаете пакет credits и тратите их по мере использования.
           </p>
+  
         </div>
         <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           <article
             v-for="(plan, index) in ordered"
             :key="plan.id"
-            class="panel relative flex flex-col p-7 reveal"
-            :class="plan.code === 'starter' ? 'border-violet-500 shadow-[0_24px_60px_rgba(103,88,238,.16)]' : ''"
+            class="panel credit-pack reveal"
+            :class="{
+              'is-gift': !Number(plan.price),
+              'is-featured': plan.code === featuredCode
+            }"
             :style="{ animationDelay: `${index * 90}ms` }"
           >
-            <span v-if="plan.code === 'pro'" class="absolute -top-3 right-6 rounded-full bg-[#6758ee] px-3 py-1 text-xs font-extrabold text-white">Выгодно</span>
-            <p class="eyebrow">{{ plan.code === 'free' ? 'Для знакомства' : plan.code === 'starter' ? 'Базовый минимум' : plan.code === 'pro' ? 'Больше кредитов' : 'Максимальный запас' }}</p>
-            <h2 class="mb-2 text-3xl font-extrabold">{{ meta(plan).title }}</h2>
-            <p class="min-h-12 text-sm leading-6 muted">{{ meta(plan).pitch }}</p>
-            <div class="my-7 flex items-end gap-2">
-              <strong class="text-5xl font-extrabold">{{ Number(plan.price) ? Number(plan.price).toLocaleString('ru') : '0' }}</strong>
-              <span class="mb-1 muted">{{ Number(plan.price) ? '₽ / месяц' : '₽' }}</span>
-            </div>
-            <ul class="mb-8 space-y-3">
-              <li v-for="feature in featuresFor(plan)" :key="feature" class="flex gap-3 text-sm">
-                <span class="grid size-5 shrink-0 place-items-center rounded-full bg-[#eeecff] text-[#6758ee]"><UIcon name="i-lucide-check" class="size-3.5" /></span>
-                {{ feature }}
-              </li>
-            </ul>
+            <span v-if="plan.code === featuredCode" class="credit-pack-badge">Выгоднее</span>
+            <span class="credit-pack-icon">
+              <UIcon :name="Number(plan.price) ? 'i-lucide-coins' : 'i-lucide-gift'" class="size-5" />
+            </span>
+            <p class="credit-pack-credits">{{ formatCredits(packCredits(plan)) }}</p>
+            <p class="credit-pack-unit">credits</p>
+            <span class="credit-pack-rule" aria-hidden="true" />
+            <p class="credit-pack-price">
+              <template v-if="Number(plan.price)">
+                <strong>{{ Number(plan.price).toLocaleString('ru-RU') }}</strong>
+                <span>₽</span>
+              </template>
+              <template v-else>
+                <strong>Бесплатно</strong>
+              </template>
+            </p>
             <UButton
               to="/login"
-              :label="meta(plan).action"
+              :label="Number(plan.price) ? 'Купить' : 'Начать бесплатно'"
               block
               size="lg"
-              class="mt-auto text-white!"
-              :color="plan.code !== 'free' ? 'primary' : 'neutral'"
-              :variant="plan.code !== 'free' ? 'solid' : 'outline'"
+              class="credit-pack-cta mt-auto"
+              :class="{ 'text-white!': plan.code === 'free' }"
+              :color="plan.code === featuredCode ? 'neutral' : Number(plan.price) ? 'primary' : 'neutral'"
+              :variant="Number(plan.price) ? 'solid' : 'outline'"
             />
           </article>
         </div>
@@ -82,14 +82,17 @@ const featuresFor = (plan: Plan) => {
     <section class="section alt">
       <div class="shell grid items-center gap-10 md:grid-cols-2">
         <div class="section-heading mb-0!">
-          <p class="eyebrow">Без искусственных рамок</p>
-          <h2>Создавайте столько, сколько нужно</h2>
-          <p>Не нужно выбирать тариф из-за одной дополнительной цепочки. Пока на балансе есть credits — все ваши автоматизации работают.</p>
+          <p class="eyebrow">Как это работает</p>
+          <h2>Один баланс на все цепочки</h2>
+          <p>Не нужно сравнивать функции пакетов. Отличается только число credits, которое вы кладёте на счёт.</p>
         </div>
         <div class="grid gap-3">
-          <div v-for="item in ['Без лимита цепочек', 'Расписание доступно сразу', 'Все режимы обработки', 'История запусков и результатов']" :key="item" class="flex items-center gap-3 rounded-2xl bg-white/5 p-4">
-            <span class="grid size-9 place-items-center rounded-xl bg-[#c9f169] text-[#1b2408]"><UIcon name="i-lucide-check" /></span>
-            <strong>{{ item }}</strong>
+          <div v-for="item in facts" :key="item.title" class="flex items-start gap-3 rounded-2xl bg-white/5 p-4">
+            <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-[#c9f169] text-[#1b2408]"><UIcon :name="item.icon" /></span>
+            <div>
+              <strong class="block">{{ item.title }}</strong>
+              <p class="mb-0 mt-1 text-sm leading-5 text-white/55">{{ item.text }}</p>
+            </div>
           </div>
         </div>
       </div>
