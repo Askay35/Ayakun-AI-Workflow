@@ -89,7 +89,7 @@ export const en: typeof ru = {
       { number: '05', title: 'Telegram', text: 'The finished result goes to chat right after the run — to you or the team.' },
       { number: '06', title: 'Webhook', text: 'The chain starts on an event: a new lead, a payment, a form on your site.' },
       { number: '07', title: 'Google Sheets', text: 'Read and write rows: leads, a price list, a report — no manual copy-paste.' },
-      { number: '08', title: 'Email', text: 'Send a message to a given address: subject and body with the same variables, JSON paths and loops as other nodes.' },
+      { number: '08', title: 'Email', text: 'Send a message to a given address.' },
       { number: '09', title: 'Transform', text: 'Filter, reshape and assemble JSON so the next node understands the data.' },
       { number: '10', title: 'Database', text: 'SQL against PostgreSQL, MySQL or ClickHouse: stock, orders, metrics — straight into the chain.' }
     ],
@@ -578,10 +578,18 @@ export const en: typeof ru = {
   },
   docs: {
     title: 'Docs',
-    description: 'How to build Ayakun chains: variables, JSON, loops and the editor',
+    description: 'How to build Ayakun chains: the editor, substitutions and every node',
     eyebrow: 'Help',
     heading: 'Documentation',
-    lead: 'Editor basics, substitutions and loops.',
+    lead: 'Editor basics and a guide for every node. The outline on the left highlights the section currently on screen.',
+    tocGeneral: 'General',
+    tocNodes: 'Nodes',
+    what: 'What it does',
+    how: 'How it works',
+    settingsTitle: 'Settings',
+    outputTitle: 'What it passes on',
+    notesTitle: 'Good to know',
+    linksTitle: 'Links',
     editor: 'Editor',
     editorItems: [
       'Drag a node from the palette onto the canvas or click it — the block appears in the center.',
@@ -640,7 +648,188 @@ export const en: typeof ru = {
     mapP: 'Builds a new object from a template for each item. Unlike Select, you can set different field names and take nested paths.',
     mapAfter: 'Next you can send the array to Telegram as a whole or list it with a loop.',
     ifTitle: 'IF condition',
-    ifP: 'Compare fields of the previous node: {a}, {b}. Empty / null / missing field in a standalone check is treated as false.'
+    ifP: 'Compare fields of the previous node: {a}, {b}. Empty / null / missing field in a standalone check is treated as false.',
+    ifOps: 'Operators: == != > < >= <=. You can write only a field — empty, null or missing counts as false.',
+    guides: {
+      web_search: {
+        what: 'Searches the web for your query and returns a list of pages.',
+        how: [
+          'Can be the first node in a chain — an incoming link is not required.',
+          'The service runs the search, then passes results to the next node — usually Processing.',
+          'The query can be built from chain variables.'
+        ],
+        settings: [
+          { name: 'What to find', text: 'The query in plain language, for example “Laravel jobs from the last week”.' },
+          { name: 'Period', text: 'Freshness: hour, day, week, month, year, or any time.' }
+        ],
+        output: 'A list of search results (titles, links, snippets). The next node reads it as JSON.',
+        notes: [
+          'Search charges credits for the actual query.',
+          'A tighter query and period means less noise in the results.'
+        ]
+      },
+      prompt: {
+        what: 'Sends text to the AI: compress, pick, rewrite, or return JSON in your schema.',
+        how: [
+          'Takes the previous node’s data and your prompt.',
+          'Instructions go to the model as a system message — optional.',
+          'If an output format is set, the model must return exactly that.',
+          'After the answer you can write fields into chain variables.'
+        ],
+        settings: [
+          { name: 'Mode', text: 'Fast — shorter answers, cheaper. Precise — heavier reasoning, more expensive.' },
+          { name: 'Prompt', text: 'The task in your own words. Variables as {{name}}, input fields as {{$field}}.' },
+          { name: 'Instructions', text: 'Tone and rules: “answer briefly”, “no preamble”.' },
+          { name: 'Output format', text: 'A JSON schema or sample object. If filled, the answer must match it.' },
+          { name: 'Maximum cost', text: 'Upper bound of credits for this run. A lower cap may truncate a long answer.' }
+        ],
+        output: 'The model’s answer: text, or JSON if a format is set. Telegram, Email, conditions and other nodes can read it next.',
+        notes: [
+          'Only actual usage is charged, not the whole cap.',
+          'You can run this node alone with Run in the right panel.'
+        ]
+      },
+      http_request: {
+        what: 'Calls any HTTP API: a CRM, an FX rate, your admin panel.',
+        how: [
+          'Accepts only one incoming link.',
+          'The setting is a request JSON. After substitutions it must stay valid JSON.',
+          'The API response is passed on as JSON.'
+        ],
+        settings: [
+          { name: 'Request data', text: 'method, url, headers, query, body in one JSON. {{$field}} is read from the previous node’s root, {{name}} from variables.' }
+        ],
+        output: 'The server response as JSON. If the API returned text, that is included in the node data too.',
+        notes: [
+          'Validate the chain with the editor’s Validate button first.',
+          'Keep secrets in chain variables rather than pasting them into the URL.'
+        ]
+      },
+      if_else: {
+        what: 'Branches the chain: TRUE if the condition holds, FALSE otherwise. It does not change the data.',
+        how: [
+          'One incoming link.',
+          'Two outputs: TRUE (condition met) and FALSE (not met).',
+          'The same JSON that arrived is sent down both branches.'
+        ],
+        settings: [
+          { name: 'Condition', text: 'Compare fields of the previous node or variables. Path in curly braces.' }
+        ],
+        output: 'The same data that came in. Only the branch the chain follows changes.',
+        notes: [
+          'The number 12 and the string “12” are equal.',
+          'Comparisons > and < are for numbers only: if the field may be missing, check != null first.',
+          'A field with no operator: empty / null / missing key = FALSE.'
+        ]
+      },
+      telegram_send: {
+        what: 'Sends a Telegram message — to you or to a given chat.',
+        how: [
+          'One incoming link.',
+          'If the text is empty, the full JSON or text of the previous node is sent, not only titles.',
+          'The text supports substitutions, JSON paths and loops.'
+        ],
+        settings: [
+          { name: 'Recipient', text: 'Empty — your linked account. Otherwise the chat_id of a chat or channel the bot can write to.' },
+          { name: 'Message text', text: '{{$}} — all input data, {{$field}} — a field, {{name}} — a variable. Use a loop to list an array.' }
+        ],
+        output: 'A service result of the send. This is usually the last node in the chain.',
+        notes: [
+          'Connect Telegram in the profile if you write “to myself”.',
+          'To send JSON explicitly, put {{$}} in the text.'
+        ]
+      },
+      webhook: {
+        what: 'Start node: an external service calls the URL — and the chain runs.',
+        how: [
+          'Does not accept incoming links: the webhook starts the chain.',
+          'The external service sends POST, PUT or PATCH to the node URL.',
+          'The request body is available downstream as {{$body}}, plus method, headers and query.'
+        ],
+        settings: [
+          { name: 'Webhook URL', text: 'Appears after you save the draft. Copy it into a form, payment or another service.' },
+          { name: 'New key', text: 'Reissues the secret in the address. The old URL stops working at once.' }
+        ],
+        output: 'JSON with method, headers, query and body. Downstream nodes read, for example, {{$body.email}}.',
+        notes: [
+          'The chain must be published, otherwise the call will not start the automation.',
+          'The Authorization header is not passed into the node data.'
+        ]
+      },
+      google_sheets: {
+        what: 'Reads, appends or updates rows in a Google Spreadsheet.',
+        how: [
+          'One incoming link.',
+          'A read returns JSON rows — an array of objects from the sheet headers.',
+          'For a write you can substitute the previous node’s data or set values by hand.'
+        ],
+        settings: [
+          { name: 'Action', text: 'Read, append or update rows.' },
+          { name: 'Spreadsheet ID', text: 'From the sheet URL: between /d/ and /edit.' },
+          { name: 'Range', text: 'For example Sheet1!A1:Z — the tab and cells.' },
+          { name: 'Access', text: 'An OAuth token, an API key (read-only) or service-account JSON is required.' },
+          { name: 'Row values', text: 'For a write: an array of arrays or objects. Empty — use the previous node’s data.' }
+        ],
+        output: 'On read — { rows, ... }. On write — a confirmation and, if needed, the new rows.',
+        notes: [
+          'The first row of the range is treated as column headers when reading.',
+          'Do not leave keys in shared chains — they are access to the spreadsheet.'
+        ]
+      },
+      email: {
+        what: 'Sends an email to the given address through the service mail server.',
+        how: [
+          'One incoming link.',
+          'The node only sends: it cannot read the inbox.',
+          'Address, subject and body support the same substitutions, JSON paths and loops as Telegram.'
+        ],
+        settings: [
+          { name: 'To', text: 'Recipient address. You can substitute an input field, for example {{$email}}.' },
+          { name: 'Subject', text: 'Email subject, also with substitutions.' },
+          { name: 'Message', text: 'Email body. {{$}} — all input data, a loop — for a list.' }
+        ],
+        output: 'The send result. Often finishes the chain with Telegram or instead of it.',
+        notes: [
+          'You do not connect Google Mail separately.',
+          'Check the address: a bad To field stops the node.'
+        ]
+      },
+      data_transform: {
+        what: 'Changes the previous step’s JSON: keep fields, rename, filter, sort or build new objects.',
+        how: [
+          'One incoming link.',
+          'Data path picks a slice of the input: empty — the whole input, data — an array inside an object.',
+          'If the path is an array, the operation runs on each item. Sort always expects an array.'
+        ],
+        settings: [
+          { name: 'Operation', text: 'Select, Rename, Set, Remove, Filter, Sort or Map — see the examples below.' },
+          { name: 'Data path', text: 'rows or body.items. Empty = the whole input.' }
+        ],
+        output: 'Transformed JSON: usually an array of objects, ready for Telegram, a sheet or a condition.',
+        notes: [
+          'Filter uses the same condition syntax as IF ELSE, but paths are read from the item, not the whole input.',
+          'Map sets new field names and nested paths — unlike Select, which only drops keys.'
+        ]
+      },
+      sql_query: {
+        what: 'Runs SQL against your PostgreSQL, MySQL or ClickHouse and returns rows into the chain.',
+        how: [
+          'One incoming link.',
+          'The connection goes to your database, not Ayakun’s service database.',
+          'The query text can use {{$field}} and {{name}}.'
+        ],
+        settings: [
+          { name: 'Database', text: 'PostgreSQL, MySQL or ClickHouse.' },
+          { name: 'Connection string', text: 'A DSN such as postgresql://user:pass@host:5432/dbname. Stored as a secret.' },
+          { name: 'SQL query', text: 'SELECT, or another query that returns rows. Limit the result set.' }
+        ],
+        output: 'Always JSON: rows — an array of rows, row_count — the count. Downstream use {{$rows}} or {{$rows[0].email}}.',
+        notes: [
+          'The query has a timeout. Do not run heavy reports without LIMIT.',
+          'Do not splice unchecked user input into SQL — substitutions insert values into the query text.'
+        ]
+      }
+    }
   },
   legal: {
     ruOnly: 'The legally binding text is published in Russian.',
