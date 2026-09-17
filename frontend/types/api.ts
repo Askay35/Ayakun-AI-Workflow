@@ -68,6 +68,7 @@ export interface WorkflowNode {
     request_json?: string
     condition?: string
     chat_id?: string
+    bot_token?: string
     message?: string
     assignments?: Array<{ key: string; value: string }>
     operation?: string

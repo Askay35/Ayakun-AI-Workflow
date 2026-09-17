@@ -31,6 +31,7 @@ from schemas.workflow import (
     RunStepResponse,
     ScheduleSlot,
     SqlQueryNode,
+    TelegramSendNode,
     WeeklyScheduleSlot,
     WorkflowCreate,
     WorkflowGraph,
@@ -112,6 +113,9 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
         overlap = set(node.true_children) & set(node.false_children)
         if overlap:
             errors.append(f"Узел {label}: TRUE и FALSE не могут вести в один узел")
+    elif isinstance(node, TelegramSendNode):
+        if node.uses_custom_bot() and node.chat_id_blank():
+            errors.append(f"Узел {label}: укажите chat_id для отправки через своего бота")
     elif isinstance(node, GoogleSheetsNode):
         if not node.spreadsheet_id.strip():
             errors.append(f"Узел {label}: укажите идентификатор таблицы")
@@ -382,7 +386,12 @@ class WorkflowService:
         graph.variables = dict(workflow.variables or {})
         errors = validate_graph(graph, strict=True)
         # chat_id в узле можно не указывать, если у пользователя привязан Telegram.
-        if any(node.type == NodeType.TELEGRAM_SEND and node.chat_id is None for node in graph.nodes):
+        if any(
+            isinstance(node, TelegramSendNode)
+            and not node.uses_custom_bot()
+            and node.chat_id_blank()
+            for node in graph.nodes
+        ):
             has_telegram = await self.db.scalar(
                 select(AuthIdentity.id).where(
                     AuthIdentity.user_id == user.id,
@@ -475,7 +484,7 @@ class WorkflowService:
         if node is None:
             raise HTTPException(404, "Узел не найден")
         errors = validate_solo_node(node)
-        if node.type == NodeType.TELEGRAM_SEND and node.chat_id is None:
+        if isinstance(node, TelegramSendNode) and not node.uses_custom_bot() and node.chat_id_blank():
             has_telegram = await self.db.scalar(
                 select(AuthIdentity.id).where(
                     AuthIdentity.user_id == user.id,

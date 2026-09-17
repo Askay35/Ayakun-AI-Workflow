@@ -99,9 +99,11 @@ def test_unescape_telegram_markdown_for_run_page() -> None:
 class FakeNotifications:
     def __init__(self) -> None:
         self.sent: list[tuple[str, str]] = []
+        self.bot_tokens: list[str | None] = []
 
-    async def send(self, chat_id: str, text: str) -> None:
+    async def send(self, chat_id: str, text: str, bot_token: str | None = None) -> None:
         self.sent.append((chat_id, text))
+        self.bot_tokens.append(bot_token)
 
 
 @pytest.mark.asyncio
@@ -253,3 +255,110 @@ async def test_telegram_provider_uses_markdown_and_hides_http_errors(monkeypatch
     assert "SECRET_BOT_TOKEN_VALUE" not in str(raised.value)
     assert "400" not in str(raised.value)
     assert "api.telegram.org" not in str(raised.value)
+
+
+def test_telegram_send_node_coerces_numeric_chat_id() -> None:
+    node = TelegramSendNode(id="tg", chat_id=42, message="hi")
+    assert node.chat_id == "42"
+    assert node.chat_id_blank() is False
+    assert node.uses_custom_bot() is False
+
+
+@pytest.mark.asyncio
+async def test_telegram_send_renders_chat_id_from_json_path() -> None:
+    executors = object.__new__(DefaultExecutors)
+    executors.notifications = FakeNotifications()
+    node = TelegramSendNode(
+        id="tg",
+        chat_id="{{$body.message.chat.id}}",
+        message="Привет",
+        parents=["webhook"],
+    )
+    result = await executors.telegram_send(node, {
+        "nodes": {
+            "webhook": {
+                "type": "webhook",
+                "output": {"body": {"message": {"chat": {"id": 555}}}},
+            }
+        }
+    })
+    assert result["sent"] is True
+    assert executors.notifications.sent == [("555", "Привет")]
+    assert executors.notifications.bot_tokens == [None]
+
+
+@pytest.mark.asyncio
+async def test_telegram_send_renders_chat_id_from_variable() -> None:
+    executors = object.__new__(DefaultExecutors)
+    executors.notifications = FakeNotifications()
+    node = TelegramSendNode(id="tg", chat_id="{{field}}", message="ok", parents=["http"])
+    result = await executors.telegram_send(node, {
+        "variables": {"field": "-100123"},
+        "nodes": {
+            "http": {
+                "type": "http_request",
+                "output": {"ok": True},
+            }
+        }
+    })
+    assert result == {"sent": True, "text": "ok"}
+    assert executors.notifications.sent == [("-100123", "ok")]
+
+
+@pytest.mark.asyncio
+async def test_telegram_send_passes_custom_bot_token() -> None:
+    executors = object.__new__(DefaultExecutors)
+    executors.notifications = FakeNotifications()
+    node = TelegramSendNode(
+        id="tg",
+        chat_id="99",
+        bot_token="123456789:CUSTOM_BOT_TOKEN",
+        message="hi",
+        parents=["http"],
+    )
+    await executors.telegram_send(node, {
+        "nodes": {
+            "http": {
+                "type": "http_request",
+                "output": {"ok": True},
+            }
+        }
+    })
+    assert executors.notifications.sent == [("99", "hi")]
+    assert executors.notifications.bot_tokens == ["123456789:CUSTOM_BOT_TOKEN"]
+
+
+@pytest.mark.asyncio
+async def test_telegram_provider_uses_custom_bot_token(monkeypatch) -> None:
+    import json
+    import httpx
+
+    from core.config import settings
+    from services.providers import TelegramNotificationProvider
+
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["url"] = str(request.url)
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"ok": True})
+
+    monkeypatch.setattr(settings, "telegram_bot_token", "PLATFORM_TOKEN")
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        provider = TelegramNotificationProvider(client)
+        await provider.send("42", "hi", bot_token="999:CUSTOM_TOKEN")
+    assert captured["url"] == "https://api.telegram.org/bot999:CUSTOM_TOKEN/sendMessage"
+    assert captured["body"]["chat_id"] == "42"
+    assert "PLATFORM_TOKEN" not in captured["url"]
+
+
+def test_telegram_custom_bot_requires_chat_id() -> None:
+    from schemas.workflow import WorkflowGraph
+    from services.workflow import validate_graph
+
+    graph = WorkflowGraph(nodes=[
+        TelegramSendNode(id="tg", bot_token="123:ABC", message="hi"),
+    ])
+    errors = validate_graph(graph, strict=True)
+    assert any("chat_id" in item for item in errors)

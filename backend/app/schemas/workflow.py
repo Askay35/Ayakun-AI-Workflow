@@ -107,9 +107,23 @@ class PromptNode(Node):
 
 class TelegramSendNode(Node):
     type: Literal[NodeType.TELEGRAM_SEND] = NodeType.TELEGRAM_SEND
-    chat_id: int | None = None
+    chat_id: str = Field(default="", max_length=2000)
+    bot_token: str = Field(default="", max_length=200)
     message: str = Field(default="", max_length=8000)
     position: dict[str, float] | None = None
+
+    @field_validator("chat_id", mode="before")
+    @classmethod
+    def coerce_chat_id(cls, value: object) -> str:
+        if value is None:
+            return ""
+        return str(value)
+
+    def uses_custom_bot(self) -> bool:
+        return bool((self.bot_token or "").strip())
+
+    def chat_id_blank(self) -> bool:
+        return not str(self.chat_id or "").strip()
 
 
 class HttpRequestNode(Node):

@@ -71,7 +71,7 @@ class PaymentProvider(Protocol):
 
 
 class NotificationProvider(Protocol):
-    async def send(self, destination: str, text: str) -> None: ...
+    async def send(self, destination: str, text: str, bot_token: str | None = None) -> None: ...
 
 
 class EmailProvider(Protocol):
@@ -366,12 +366,13 @@ class TelegramNotificationProvider:
         self.client = client
         self.config = config
 
-    async def send(self, destination: str, text: str) -> None:
-        if not self.config.telegram_bot_token:
+    async def send(self, destination: str, text: str, bot_token: str | None = None) -> None:
+        token = (bot_token or "").strip() or (self.config.telegram_bot_token or "").strip()
+        if not token:
             raise ValueError(ERROR_TELEGRAM)
         try:
             response = await self.client.post(
-                f"https://api.telegram.org/bot{self.config.telegram_bot_token}/sendMessage",
+                f"https://api.telegram.org/bot{token}/sendMessage",
                 json={"chat_id": destination, "text": text, "parse_mode": "MarkdownV2"},
                 timeout=self.config.provider_timeout_seconds,
             )

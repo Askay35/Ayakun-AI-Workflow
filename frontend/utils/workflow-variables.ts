@@ -41,7 +41,7 @@ export function nodeUsedKeys(node: WorkflowNode): string[] {
   } else if (node.type === 'if_else' || node.type === 'data_transform') {
     chunks.push(node.data.condition, node.data.mapping_json, node.data.fields, node.data.sort_field, node.data.path)
   } else if (node.type === 'telegram_send') {
-    chunks.push(node.data.message)
+    chunks.push(node.data.chat_id, node.data.message)
   } else if (node.type === 'google_sheets') {
     chunks.push(node.data.spreadsheet_id, node.data.sheet_range, node.data.values_json)
   } else if (node.type === 'email') {

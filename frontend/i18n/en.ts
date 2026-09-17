@@ -342,9 +342,11 @@ export const en: typeof ru = {
     ifHelpNumber: 'number',
     ifHelpTruthy: 'truthy check',
     recipient: 'Recipient',
-    telegramPlaceholder: 'Empty — your account',
+    telegramPlaceholder: '{{field}}, {{$body.message.chat.id}} or chat_id — empty = your account',
+    botToken: 'Bot token',
+    botTokenPlaceholder: 'Empty — Ayakun bot',
     messageText: 'Message text',
-    telegramHint: 'At most one incoming link. If the text is empty, the full JSON or text of the previous node is sent. {root} — all input data, {json} — a field, {variable} — a chain variable. Loop: {loop}.',
+    telegramHint: 'At most one incoming link. If a bot token is set, the message is sent through that bot to the given chat_id. If the text is empty, the full JSON or text of the previous node is sent. In recipient and text: {root} — all input data, {json} — a field, {variable} — a chain variable. Loop: {loop}.',
     webhookIntro: 'Start node: an external service calls the URL with POST, PUT or PATCH, and the chain runs. The request body is available downstream as {body}.',
     webhookUrl: 'Webhook URL',
     webhookUrlPlaceholder: 'Save the draft to get a URL',
@@ -727,15 +729,17 @@ export const en: typeof ru = {
         how: [
           'One incoming link.',
           'If the text is empty, the full JSON or text of the previous node is sent, not only titles.',
-          'The text supports substitutions, JSON paths and loops.'
+          'The text and chat_id support substitutions, JSON paths and variables.'
         ],
         settings: [
-          { name: 'Recipient', text: 'Empty — your linked account. Otherwise the chat_id of a chat or channel the bot can write to.' },
+          { name: 'Recipient', text: 'Empty — your linked account. Otherwise the chat_id of a chat or channel. You can use {{field}} or {{$body.message.chat.id}}.' },
+          { name: 'Bot token', text: 'Empty — the Ayakun bot. If filled, the message is sent through that bot to the given chat_id.' },
           { name: 'Message text', text: '{{$}} — all input data, {{$field}} — a field, {{name}} — a variable. Use a loop to list an array.' }
         ],
         output: 'A service result of the send. This is usually the last node in the chain.',
         notes: [
-          'Connect Telegram in the profile if you write “to myself”.',
+          'Connect Telegram in the profile if you write “to myself” without your own token.',
+          'With your own token, chat_id is required: the Ayakun bot will not fill in your personal chat.',
           'To send JSON explicitly, put {{$}} in the text.'
         ]
       },

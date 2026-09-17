@@ -131,7 +131,8 @@ export const useApi = () => {
     if (node.type === 'telegram_send') {
       return {
         ...base,
-        chat_id: node.data.chat_id ? Number(node.data.chat_id) : undefined,
+        chat_id: node.data.chat_id || '',
+        bot_token: node.data.bot_token || '',
         message: node.data.message || ''
       }
     }
@@ -228,7 +229,8 @@ export const useApi = () => {
               ? JSON.stringify(node.request_json, null, 2)
               : undefined,
           condition: node.condition,
-          chat_id: node.chat_id ? String(node.chat_id) : undefined,
+          chat_id: node.chat_id != null && node.chat_id !== '' ? String(node.chat_id) : undefined,
+          bot_token: node.bot_token || undefined,
           message: node.message || '',
           assignments: node.assignments || [],
           operation: node.operation,

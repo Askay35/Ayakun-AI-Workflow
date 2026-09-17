@@ -361,6 +361,8 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       request_json: type === 'http_request' ? DEFAULT_HTTP_REQUEST_JSON : undefined,
       condition: type === 'if_else' ? '' : undefined,
       message: type === 'telegram_send' ? '' : undefined,
+      chat_id: type === 'telegram_send' ? '' : undefined,
+      bot_token: type === 'telegram_send' ? '' : undefined,
       operation: type === 'google_sheets' ? 'read' : type === 'data_transform' ? 'select' : undefined,
       sheet_range: type === 'google_sheets' ? 'Sheet1!A1:Z' : undefined,
       values_json: type === 'google_sheets' ? '[]' : undefined,
@@ -764,6 +766,15 @@ const runSelectedNode = async () => {
             <template v-if="selected.type === 'telegram_send'">
               <UFormField :label="t('editor.recipient')">
                 <UInput v-model="selected.data.chat_id" class="w-full" :placeholder="t('editor.telegramPlaceholder')" />
+              </UFormField>
+              <UFormField :label="t('editor.botToken')">
+                <UInput
+                  v-model="selected.data.bot_token"
+                  type="password"
+                  autocomplete="new-password"
+                  class="w-full font-mono text-xs"
+                  :placeholder="t('editor.botTokenPlaceholder')"
+                />
               </UFormField>
               <UFormField :label="t('editor.messageText')">
                 <UTextarea
