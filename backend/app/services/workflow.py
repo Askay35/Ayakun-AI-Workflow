@@ -106,10 +106,8 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
     elif node.type == NodeType.IF_ELSE:
         if not node.condition.strip():
             errors.append(f"Узел {label}: укажите условие IF ELSE")
-        if not node.true_children:
-            errors.append(f"Узел {label}: подключите ветку TRUE")
-        if not node.false_children:
-            errors.append(f"Узел {label}: подключите ветку FALSE")
+        if not node.true_children and not node.false_children:
+            errors.append(f"Узел {label}: подключите ветку TRUE или FALSE")
         overlap = set(node.true_children) & set(node.false_children)
         if overlap:
             errors.append(f"Узел {label}: TRUE и FALSE не могут вести в один узел")

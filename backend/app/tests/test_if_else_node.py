@@ -54,8 +54,8 @@ def test_condition_array_path() -> None:
     assert evaluate_condition('{{$data.0.price}} == 123', {"data": [{"price": 123}]}) is True
 
 
-def test_if_else_graph_requires_both_branches() -> None:
-    graph = WorkflowGraph(nodes=[
+def test_if_else_graph_accepts_one_branch() -> None:
+    both = WorkflowGraph(nodes=[
         PromptNode(id="prompt", prompt="ok", children=["iff"]),
         IfElseNode(
             id="iff",
@@ -68,7 +68,46 @@ def test_if_else_graph_requires_both_branches() -> None:
         TelegramSendNode(id="tg_true", parents=["iff"]),
         TelegramSendNode(id="tg_false", parents=["iff"]),
     ])
-    assert validate_graph(graph, strict=True) == []
+    assert validate_graph(both, strict=True) == []
+
+    only_true = WorkflowGraph(nodes=[
+        PromptNode(id="prompt", prompt="ok", children=["iff"]),
+        IfElseNode(
+            id="iff",
+            condition='{{$json.score}} >= 0.8',
+            parents=["prompt"],
+            true_children=["tg_true"],
+            children=["tg_true"],
+        ),
+        TelegramSendNode(id="tg_true", parents=["iff"]),
+    ])
+    assert validate_graph(only_true, strict=True) == []
+
+    only_false = WorkflowGraph(nodes=[
+        PromptNode(id="prompt", prompt="ok", children=["iff"]),
+        IfElseNode(
+            id="iff",
+            condition='{{$json.score}} >= 0.8',
+            parents=["prompt"],
+            false_children=["tg_false"],
+            children=["tg_false"],
+        ),
+        TelegramSendNode(id="tg_false", parents=["iff"]),
+    ])
+    assert validate_graph(only_false, strict=True) == []
+
+
+def test_if_else_graph_requires_at_least_one_branch() -> None:
+    graph = WorkflowGraph(nodes=[
+        PromptNode(id="prompt", prompt="ok", children=["iff"]),
+        IfElseNode(
+            id="iff",
+            condition='{{$json.score}} >= 0.8',
+            parents=["prompt"],
+        ),
+    ])
+    errors = validate_graph(graph, strict=True)
+    assert any("TRUE или FALSE" in item for item in errors)
 
 
 @pytest.mark.asyncio

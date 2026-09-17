@@ -329,7 +329,7 @@ export const en: typeof ru = {
     requestJson: 'Request data',
     httpHint: 'At most one incoming link. Substitutions like {json} are read from the previous node’s output root, {variable} from chain variables. After substitution the value must stay valid JSON.',
     condition: 'Condition',
-    ifHint: 'One incoming link, TRUE (condition met) and FALSE (condition not met) outputs. Data is passed through unchanged. Condition with a variable: {compare} (the number and the string “12” are equal). Conditions on input data: {placeholder}.',
+    ifHint: 'One incoming link, TRUE (condition met) and FALSE (condition not met) outputs — connecting one branch is enough. Data is passed through unchanged. Condition with a variable: {compare} (the number and the string “12” are equal). Conditions on input data: {placeholder}.',
     ifHelpTitle: 'How to write a condition',
     ifHelpCompare: 'Compare fields from the previous node’s output. Path in curly braces, for example {example}.',
     ifHelpOps: 'Operators: == != > < >= <=. You can also write only a field — empty / null / missing = FALSE.',
@@ -711,8 +711,8 @@ export const en: typeof ru = {
         what: 'Branches the chain: TRUE if the condition holds, FALSE otherwise. It does not change the data.',
         how: [
           'One incoming link.',
-          'Two outputs: TRUE (condition met) and FALSE (not met).',
-          'The same JSON that arrived is sent down both branches.'
+          'Two outputs: TRUE (condition met) and FALSE (not met). Connecting one branch is enough — the other simply ends the chain.',
+          'The same JSON that arrived is sent down the connected branch.'
         ],
         settings: [
           { name: 'Condition', text: 'Compare fields of the previous node or variables. Path in curly braces.' }
