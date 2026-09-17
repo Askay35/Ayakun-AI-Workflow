@@ -1104,6 +1104,92 @@ a { color: inherit; text-decoration: none; }
   flex: 0 0 auto;
 }
 
+.demo-stage {
+  position: relative;
+  margin: 0 0 48px;
+}
+.demo-stage::before {
+  position: absolute;
+  inset: 12% 8% auto;
+  height: 58%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(103, 88, 238, 0.22), rgba(201, 241, 105, 0.12) 46%, transparent 72%);
+  filter: blur(28px);
+  content: '';
+  pointer-events: none;
+}
+.demo-window {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  background: #111218;
+  box-shadow: 0 34px 90px rgba(43, 35, 105, 0.28);
+}
+.demo-chrome {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.demo-dots {
+  display: flex;
+  gap: 6px;
+}
+.demo-dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3a3b48;
+}
+.demo-dots i:first-child { background: #ff7b72; }
+.demo-dots i:nth-child(2) { background: #e8b84a; }
+.demo-dots i:last-child { background: #36b37e; }
+.demo-chrome-title {
+  flex: 1;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.demo-screen {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: #0c0d14;
+  cursor: pointer;
+  aspect-ratio: 1920 / 908;
+}
+.demo-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.demo-play {
+  position: absolute;
+  inset: auto 18px 18px auto;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  color: #1b2408;
+  background: var(--lime);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+.demo-caption {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .build-track { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .build-step { padding-top: 8px; border-top: 2px solid var(--ink); }
 .build-step b { display: block; margin: 18px 0 16px; color: var(--violet); }
@@ -2107,6 +2193,8 @@ body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"]:ho
   .auth-providers { grid-template-columns: 1fr; }
   .legal-card { padding: 24px 18px; border-radius: 20px; }
   .hero { padding-top: 64px; }
+  .demo-window { border-radius: 20px; }
+  .demo-chrome-title { display: none; }
   .hero h1 { font-size: 48px; }
   .landing-canvas { min-height: 400px; }
   .landing-node { width: 58%; }

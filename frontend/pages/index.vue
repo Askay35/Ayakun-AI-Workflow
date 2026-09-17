@@ -88,7 +88,9 @@
         <div class="section-heading">
           <p class="eyebrow">Как собрать</p>
           <h2>От идеи до работающей цепочки</h2>
+          <p>Реальный редактор: блоки с палитры, связи и запуск. Ниже — те же три шага текстом.</p>
         </div>
+        <LandingDemo class="reveal" />
         <div class="build-track">
           <article v-for="(step, index) in steps" :key="step.title" class="build-step">
             <div class="build-visual" :class="`is-${step.id}`">
