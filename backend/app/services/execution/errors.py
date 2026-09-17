@@ -9,8 +9,8 @@ from fastapi import HTTPException
 
 from core.user_errors import (
     ERROR_DATA_TRANSFORM,
+    ERROR_EMAIL,
     ERROR_GENERIC,
-    ERROR_GMAIL,
     ERROR_GOOGLE_SHEETS,
     ERROR_HTTP,
     ERROR_IF_ELSE,
@@ -24,8 +24,8 @@ from schemas.workflow import NodeType
 
 __all__ = [
     "ERROR_DATA_TRANSFORM",
+    "ERROR_EMAIL",
     "ERROR_GENERIC",
-    "ERROR_GMAIL",
     "ERROR_GOOGLE_SHEETS",
     "ERROR_HTTP",
     "ERROR_IF_ELSE",
@@ -52,7 +52,7 @@ _FALLBACKS: dict[str, str] = {
     NodeType.IF_ELSE.value: ERROR_IF_ELSE,
     NodeType.WEBHOOK.value: ERROR_WEBHOOK,
     NodeType.GOOGLE_SHEETS.value: ERROR_GOOGLE_SHEETS,
-    NodeType.GMAIL.value: ERROR_GMAIL,
+    NodeType.EMAIL.value: ERROR_EMAIL,
     NodeType.DATA_TRANSFORM.value: ERROR_DATA_TRANSFORM,
     NodeType.SQL_QUERY.value: ERROR_SQL,
 }

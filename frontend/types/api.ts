@@ -11,7 +11,7 @@ export type NodeKind =
   | 'telegram_send'
   | 'webhook'
   | 'google_sheets'
-  | 'gmail'
+  | 'email'
   | 'data_transform'
   | 'sql_query'
 export type SearchPeriod = 'h' | 'd' | 'w' | 'm' | 'y'
@@ -77,13 +77,9 @@ export interface WorkflowNode {
     service_account_json?: string
     api_key?: string
     values_json?: string
-    gmail_account_id?: number | null
-    from_email?: string
     to?: string
     subject?: string
     body?: string
-    gmail_query?: string
-    max_results?: number | string
     fields?: string
     mapping_json?: string
     sort_field?: string

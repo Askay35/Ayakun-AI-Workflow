@@ -30,11 +30,10 @@ from models.workflow import (
     WorkflowStatus,
     WorkflowVersion,
 )
-from schemas.workflow import GmailNode, NodeType, WorkflowGraph, WorkflowNode, normalize_workflow_variables
+from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode, normalize_workflow_variables
 from services.billing import BillingService
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
 from services.execution.errors import user_visible_error
-from services.google_oauth import access_token_for_account
 from services.pricing import PricingService, billable_credits, billed_credits, provider_cost_usd
 from services.schedule import advance_due_slots, dump_slots, earliest_next, load_slots, slots_from_legacy
 from services.workflow import topological_nodes
@@ -55,7 +54,7 @@ _ZERO_COST_TYPES = {
     NodeType.IF_ELSE,
     NodeType.WEBHOOK,
     NodeType.GOOGLE_SHEETS,
-    NodeType.GMAIL,
+    NodeType.EMAIL,
     NodeType.DATA_TRANSFORM,
     NodeType.SQL_QUERY,
 }
@@ -295,20 +294,7 @@ class WorkflowRunExecutor:
             "nodes": {},
             "taken_branches": {},
             "variables": dict(self.graph.variables or {}),
-            "gmail_tokens": {},
         }
-        tokens: dict[int, str] = context["gmail_tokens"]
-        for node in self.graph.nodes:
-            if not isinstance(node, GmailNode) or not node.gmail_account_id:
-                continue
-            account_id = node.gmail_account_id
-            if account_id in tokens:
-                continue
-            try:
-                token = await access_token_for_account(self.db, self.user.id, account_id)
-                tokens[account_id] = token or ""
-            except ValueError:
-                tokens[account_id] = ""
         return context
 
     def _is_reachable(

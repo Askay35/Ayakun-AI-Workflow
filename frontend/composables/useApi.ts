@@ -148,17 +148,12 @@ export const useApi = () => {
         assignments: assignmentsOf(node)
       }
     }
-    if (node.type === 'gmail') {
+    if (node.type === 'email') {
       return {
         ...base,
-        operation: node.data.operation || 'send',
-        gmail_account_id: node.data.gmail_account_id || null,
-        from_email: node.data.from_email || '',
         to: node.data.to || '',
         subject: node.data.subject || '',
         body: node.data.body || '',
-        query: node.data.gmail_query || '',
-        max_results: Number(node.data.max_results) || 10,
         assignments: assignmentsOf(node)
       }
     }
@@ -191,15 +186,18 @@ export const useApi = () => {
   const normalizeWorkflow = (workflow: any): Workflow => {
     const graph = workflow.draft_graph || workflow.graph || { nodes: [] }
     const nodes = (graph.nodes || []).map((node: any, index: number) => {
+      const kind = node.type === 'gmail' ? 'email' : node.type
       if (node.data) {
         return {
           ...node,
+          type: kind,
           parents: [...(node.parents || node.data.parents || [])],
           children: [...(node.children || node.data.children || [])],
           true_children: [...(node.true_children || node.data.true_children || [])],
           false_children: [...(node.false_children || node.data.false_children || [])],
           data: {
             ...node.data,
+            body: node.data.body || node.data.message || '',
             max_output_tokens: Number(node.data.max_output_tokens ?? node.max_output_tokens) || 8000,
             assignments: node.data.assignments || node.assignments || []
           }
@@ -207,14 +205,14 @@ export const useApi = () => {
       }
       return {
         id: node.id,
-        type: node.type,
+        type: kind,
         parents: [...(node.parents || [])],
         children: [...(node.children || [])],
         true_children: [...(node.true_children || [])],
         false_children: [...(node.false_children || [])],
         position: node.position || { x: 80 + index * 280, y: 160 },
         data: {
-          label: node.label || node.type,
+          label: node.label || kind,
           query: node.query,
           period: node.period || undefined,
           prompt: node.prompt,
@@ -243,13 +241,9 @@ export const useApi = () => {
             : node.values_json
               ? JSON.stringify(node.values_json, null, 2)
               : undefined,
-          gmail_account_id: node.gmail_account_id ?? undefined,
-          from_email: node.from_email,
           to: node.to,
           subject: node.subject,
-          body: node.body,
-          gmail_query: node.type === 'gmail' ? node.query : undefined,
-          max_results: node.max_results,
+          body: node.body || node.message || '',
           fields: node.fields,
           mapping_json: typeof node.mapping_json === 'string'
             ? node.mapping_json

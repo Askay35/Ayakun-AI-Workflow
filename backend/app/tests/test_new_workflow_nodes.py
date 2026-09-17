@@ -1,5 +1,4 @@
 import json
-from types import SimpleNamespace
 
 import pytest
 
@@ -8,7 +7,7 @@ from core.user_errors import ERROR_GOOGLE_SHEETS
 from helper import apply_variable_assignments
 from schemas.workflow import (
     DataTransformNode,
-    GmailNode,
+    EmailNode,
     GoogleSheetsNode,
     NodeType,
     PromptNode,
@@ -17,7 +16,7 @@ from schemas.workflow import (
     WorkflowGraph,
 )
 from services.execution.actions.data_transform import DataTransformAction
-from services.execution.actions.gmail import GmailAction
+from services.execution.actions.email import EmailAction
 from services.execution.actions.google_sheets import GoogleSheetsAction
 from services.execution.actions.sql_query import SqlQueryAction, _is_app_database
 from services.execution.actions.webhook import WebhookAction
@@ -242,53 +241,68 @@ async def test_google_sheets_network_error_is_generic() -> None:
 
 
 @pytest.mark.asyncio
-async def test_gmail_send_uses_connected_account() -> None:
-    class FakeGmailClient:
-        async def post(self, url, **kwargs):
-            assert kwargs["headers"]["Authorization"] == "Bearer account-tok"
-            return FakeSheetsResponse({"id": "m1", "threadId": "t1"})
+async def test_email_send_renders_templates() -> None:
+    class FakeMail:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, str, str]] = []
 
-    result = await GmailAction(FakeGmailClient()).execute(
-        GmailNode(
+        async def send(self, recipient: str, subject: str, text: str) -> None:
+            self.calls.append((recipient, subject, text))
+
+    mail = FakeMail()
+    result = await EmailAction(mail).execute(
+        EmailNode(
             id="mail",
-            operation="send",
-            gmail_account_id=7,
-            to="ada@example.com",
-            subject="Hi {{$name}}",
-            body="Hello",
+            to="{{$email}}",
+            subject="Hi {{name}}",
+            body="{% for item in $items %}{{item.title}}\n{% endfor %}",
             parents=["src"],
         ),
         {
-            "nodes": {"src": {"type": "webhook", "output": {"name": "Ada"}}},
-            "variables": {},
-            "gmail_tokens": {7: "account-tok"},
+            "nodes": {
+                "src": {
+                    "type": "webhook",
+                    "output": {
+                        "email": "ada@example.com",
+                        "items": [{"title": "A"}, {"title": "B"}],
+                    },
+                }
+            },
+            "variables": {"name": "Ada"},
         },
     )
     assert result["sent"] is True
     assert result["to"] == ["ada@example.com"]
     assert result["subject"] == "Hi Ada"
+    assert mail.calls == [("ada@example.com", "Hi Ada", "A\nB\n")]
 
 
 @pytest.mark.asyncio
-async def test_gmail_list_uses_connected_account() -> None:
-    class FakeGmailClient:
-        async def get(self, url, **kwargs):
-            assert kwargs["headers"]["Authorization"] == "Bearer account-tok"
-            if url.endswith("/messages"):
-                return FakeSheetsResponse({"messages": [{"id": "m1"}]})
-            return FakeSheetsResponse({
-                "id": "m1",
-                "threadId": "t1",
-                "snippet": "Hello",
-                "payload": {"headers": [{"name": "Subject", "value": "Hi"}, {"name": "From", "value": "a@b.c"}]},
-            })
+async def test_email_send_requires_recipient() -> None:
+    class FakeMail:
+        async def send(self, recipient: str, subject: str, text: str) -> None:
+            raise AssertionError("should not send")
 
-    result = await GmailAction(FakeGmailClient()).execute(
-        GmailNode(id="mail", operation="list", gmail_account_id=7),
-        {"nodes": {}, "variables": {}, "gmail_tokens": {7: "account-tok"}},
-    )
-    assert result["count"] == 1
-    assert result["messages"][0]["subject"] == "Hi"
+    with pytest.raises(ValueError, match="Укажите получателя письма"):
+        await EmailAction(FakeMail()).execute(
+            EmailNode(id="mail", to=""),
+            {"nodes": {}, "variables": {}},
+        )
+
+
+@pytest.mark.asyncio
+async def test_email_send_when_smtp_missing() -> None:
+    from fastapi import HTTPException
+
+    class BrokenMail:
+        async def send(self, recipient: str, subject: str, text: str) -> None:
+            raise HTTPException(503, "Email provider не настроен")
+
+    with pytest.raises(ValueError, match="Почта не настроена"):
+        await EmailAction(BrokenMail()).execute(
+            EmailNode(id="mail", to="ada@example.com", subject="Hi", body="Hello"),
+            {"nodes": {}, "variables": {}},
+        )
 
 
 @pytest.mark.asyncio
@@ -355,6 +369,7 @@ def test_snapshot_redacts_secrets() -> None:
 
 def test_new_types_have_output() -> None:
     assert NodeType.WEBHOOK in NodeType.with_output()
+    assert NodeType.EMAIL in NodeType.with_output()
     assert NodeType.SQL_QUERY in NodeType.with_output()
     assert NodeType.DATA_TRANSFORM in NodeType.with_output()
 
@@ -365,26 +380,25 @@ def test_default_executors_register_new_types() -> None:
     for node_type in (
         NodeType.WEBHOOK,
         NodeType.GOOGLE_SHEETS,
-        NodeType.GMAIL,
+        NodeType.EMAIL,
         NodeType.DATA_TRANSFORM,
         NodeType.SQL_QUERY,
     ):
         assert node_type in registry._executors
 
 
-@pytest.mark.asyncio
-async def test_gmail_requires_google_login() -> None:
-    with pytest.raises(ValueError, match="Войдите в Google"):
-        await GmailAction(SimpleNamespace()).execute(
-            GmailNode(id="mail", operation="list", gmail_account_id=7),
-            {"nodes": {}, "variables": {}},
-        )
+def test_gmail_graph_migrates_to_email() -> None:
+    graph = WorkflowGraph.model_validate({
+        "nodes": [{"id": "mail", "type": "gmail", "to": "ada@example.com", "subject": "Hi", "body": "Hello"}],
+    })
+    assert graph.nodes[0].type == NodeType.EMAIL
+    assert graph.nodes[0].to == "ada@example.com"
 
 
-def test_gmail_validation_requires_google_login() -> None:
-    errors = validate_solo_node(GmailNode(id="mail", operation="send", to="ada@example.com"))
-    assert any("войдите в Google" in item for item in errors)
-    connected = validate_solo_node(GmailNode(id="mail", operation="send", gmail_account_id=3, to="ada@example.com"))
+def test_email_validation_requires_recipient() -> None:
+    errors = validate_solo_node(EmailNode(id="mail"))
+    assert any("получателя письма" in item for item in errors)
+    connected = validate_solo_node(EmailNode(id="mail", to="ada@example.com"))
     assert connected == []
 
 

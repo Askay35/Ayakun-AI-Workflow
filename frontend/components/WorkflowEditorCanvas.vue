@@ -33,9 +33,7 @@ import {
 } from '~/utils/workflow-graph'
 
 const props = defineProps<{ workflowId: string }>()
-const route = useRoute()
 const api = useApi()
-const auth = useAuth()
 const toast = useToast()
 const id = props.workflowId
 const flowId = `workflow-${id}`
@@ -104,26 +102,6 @@ const sheetsOperations = [
   { label: 'Добавить строки', value: 'append' },
   { label: 'Обновить строки', value: 'update' }
 ]
-const gmailOperations = [
-  { label: 'Отправить письмо', value: 'send' },
-  { label: 'Получить письма', value: 'list' }
-]
-const gmailAccounts = computed(() => auth.user.value?.gmail_accounts || [])
-const gmailAccountItems = computed(() => gmailAccounts.value.map(item => ({
-  label: item.email || `Почта ${item.id}`,
-  value: item.id
-})))
-const selectedGmail = computed(() => {
-  const accountId = Number(selected.value?.data?.gmail_account_id || 0)
-  return gmailAccounts.value.find(item => item.id === accountId) || null
-})
-const selectedGmailAccountId = computed<number | undefined>({
-  get: () => selected.value?.data?.gmail_account_id ?? undefined,
-  set: (value) => {
-    if (selected.value?.type === 'gmail') selected.value.data.gmail_account_id = value ?? null
-  }
-})
-const gmailLinking = ref(false)
 const sqlEngines = [
   { label: 'PostgreSQL', value: 'postgresql' },
   { label: 'MySQL', value: 'mysql' },
@@ -300,33 +278,6 @@ const save = async () => {
     return false
   }
 }
-const connectGmail = async () => {
-  const node = selected.value
-  if (!node || node.type !== 'gmail') return
-  gmailLinking.value = true
-  try {
-    const saved = await save()
-    if (!saved) return
-    const bytes = crypto.getRandomValues(new Uint8Array(64))
-    const verifier = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
-    const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-    const redirectUri = `${location.origin}/auth/google/callback`
-    sessionStorage.setItem('ayakun_google_verifier', verifier)
-    sessionStorage.setItem('ayakun_google_redirect_uri', redirectUri)
-    sessionStorage.setItem('ayakun_google_purpose', 'gmail')
-    sessionStorage.setItem('ayakun_gmail_workflow', id)
-    sessionStorage.setItem('ayakun_gmail_node', node.id)
-    const { authorization_url } = await api.auth.googleStart(redirectUri, challenge, 'gmail')
-    location.href = authorization_url
-  } catch (error: any) {
-    toast.add({ title: 'Не удалось войти в Google', description: apiErrorMessage(error, 'Попробуйте ещё раз.'), color: 'error' })
-    gmailLinking.value = false
-  }
-}
-const disconnectGmailFromNode = () => {
-  if (selected.value?.type === 'gmail') selected.value.data.gmail_account_id = null
-}
 const startRename = () => {
   nameDraft.value = workflowName.value
   renaming.value = true
@@ -386,17 +337,6 @@ const onEditorKey = (event: KeyboardEvent) => {
 onMounted(async () => {
   hydrated.value = true
   window.addEventListener('keydown', onEditorKey)
-  const accountId = Number(route.query.gmail_account || 0)
-  const nodeId = String(route.query.gmail_node || '')
-  if (accountId && nodeId) {
-    const node = nodes.value.find(item => item.id === nodeId)
-    if (node?.type === 'gmail') {
-      node.data.gmail_account_id = accountId
-      selectedId.value = nodeId
-      await save()
-    }
-    await navigateTo({ path: route.path, query: {} }, { replace: true })
-  }
 })
 
 const addNode = (type: NodeKind, position: { x: number; y: number }) => {
@@ -416,15 +356,17 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       request_json: type === 'http_request' ? DEFAULT_HTTP_REQUEST_JSON : undefined,
       condition: type === 'if_else' ? '' : undefined,
       message: type === 'telegram_send' ? '' : undefined,
-      operation: type === 'google_sheets' ? 'read' : type === 'gmail' ? 'send' : type === 'data_transform' ? 'select' : undefined,
+      operation: type === 'google_sheets' ? 'read' : type === 'data_transform' ? 'select' : undefined,
       sheet_range: type === 'google_sheets' ? 'Sheet1!A1:Z' : undefined,
       values_json: type === 'google_sheets' ? '[]' : undefined,
-      max_results: type === 'gmail' ? 10 : undefined,
       mapping_json: type === 'data_transform' ? '' : undefined,
       sort_direction: type === 'data_transform' ? 'asc' : undefined,
       engine: type === 'sql_query' ? 'postgresql' : undefined,
       query: type === 'sql_query' ? 'SELECT 1 AS ok' : undefined,
-      assignments: type === 'prompt' || type === 'http_request' || type === 'google_sheets' || type === 'gmail' || type === 'data_transform' || type === 'sql_query' ? [] : undefined
+      to: type === 'email' ? '' : undefined,
+      subject: type === 'email' ? '' : undefined,
+      body: type === 'email' ? '' : undefined,
+      assignments: type === 'prompt' || type === 'http_request' || type === 'google_sheets' || type === 'email' || type === 'data_transform' || type === 'sql_query' ? [] : undefined
     }
   }
   nodes.value = [...nodes.value, node]
@@ -699,8 +641,8 @@ const runSelectedNode = async () => {
             <template #node-google_sheets="{ id: nodeId, data, selected: active }">
               <WorkflowNodeCard :node-id="nodeId" kind="google_sheets" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
-            <template #node-gmail="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="gmail" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            <template #node-email="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="email" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
             <template #node-data_transform="{ id: nodeId, data, selected: active }">
               <WorkflowNodeCard :node-id="nodeId" kind="data_transform" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
@@ -864,51 +806,22 @@ const runSelectedNode = async () => {
               <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Чтение возвращает JSON <code>rows</code>. Для записи можно подставить {{ JSON_EXPRESSION_EXAMPLE }} или оставить значения пустыми — тогда возьмутся данные предыдущего узла. Нужен токен, API-ключ или сервисный аккаунт.</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
-            <template v-if="selected.type === 'gmail'">
-              <UFormField label="Действие">
-                <USelect v-model="selected.data.operation" :items="gmailOperations" value-key="value" class="w-full" />
+            <template v-if="selected.type === 'email'">
+              <UFormField label="Кому">
+                <UInput v-model="selected.data.to" class="w-full" placeholder="ada@example.com" />
               </UFormField>
-              <div class="rounded-xl border border-white/10 p-3">
-                <p class="mb-2 text-xs leading-5 text-white/55">
-                  <template v-if="selectedGmail">Письма идут через {{ selectedGmail.email || 'подключённый Google' }}.</template>
-                  <template v-else>Войдите в Google — так цепочка сможет читать и отправлять письма с выбранной почты.</template>
-                </p>
-                <UFormField v-if="gmailAccountItems.length" label="Почта" class="mb-2">
-                  <USelect v-model="selectedGmailAccountId" :items="gmailAccountItems" value-key="value" class="w-full" />
-                </UFormField>
-                <div class="flex flex-wrap gap-2">
-                  <UButton
-                    :label="selectedGmail ? 'Сменить почту' : 'Войти через Google'"
-                    icon="i-simple-icons-google"
-                    :loading="gmailLinking"
-                    @click="connectGmail"
-                  />
-                  <UButton v-if="selected.data.gmail_account_id" label="Отключить" variant="outline" color="neutral" @click="disconnectGmailFromNode" />
-                </div>
-              </div>
-              <template v-if="selected.data.operation === 'list'">
-                <UFormField label="Поиск писем">
-                  <UInput v-model="selected.data.gmail_query" class="w-full" placeholder="is:unread newer_than:1d" />
-                </UFormField>
-                <UFormField label="Максимум писем">
-                  <UInput v-model="selected.data.max_results" type="number" min="1" max="50" class="w-full" />
-                </UFormField>
-              </template>
-              <template v-else>
-                <UFormField label="От кого">
-                  <UInput v-model="selected.data.from_email" class="w-full" placeholder="Необязательно" />
-                </UFormField>
-                <UFormField label="Кому">
-                  <UInput v-model="selected.data.to" class="w-full" placeholder="ada@example.com" />
-                </UFormField>
-                <UFormField label="Тема">
-                  <UInput v-model="selected.data.subject" class="w-full" />
-                </UFormField>
-                <UFormField label="Текст письма">
-                  <UTextarea v-model="selected.data.body" :rows="6" class="w-full" />
-                </UFormField>
-              </template>
-              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Подстановки {{ JSON_EXPRESSION_EXAMPLE }} и <code>{{ VARIABLE_NAME_EXAMPLE }}</code>. В каждом звене можно войти в свою Google-почту.</p>
+              <UFormField label="Тема">
+                <UInput v-model="selected.data.subject" class="w-full" placeholder="Тема письма" />
+              </UFormField>
+              <UFormField label="Сообщение">
+                <UTextarea
+                  v-model="selected.data.body"
+                  :rows="6"
+                  class="w-full font-mono text-xs"
+                  :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
+                />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">Не больше одной входящей связи. Письмо уходит через почтовый сервер сервиса. В адресе, теме и тексте работают <code>{{ ROOT_JSON_EXAMPLE }}</code>, <code>{{ JSON_EXPRESSION_EXAMPLE }}</code>, <code>{{ VARIABLE_NAME_EXAMPLE }}</code> и циклы <code>{{ TELEGRAM_LOOP_EXAMPLE }}</code>.</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'data_transform'">

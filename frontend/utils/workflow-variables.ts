@@ -44,8 +44,8 @@ export function nodeUsedKeys(node: WorkflowNode): string[] {
     chunks.push(node.data.message)
   } else if (node.type === 'google_sheets') {
     chunks.push(node.data.spreadsheet_id, node.data.sheet_range, node.data.values_json)
-  } else if (node.type === 'gmail') {
-    chunks.push(node.data.to, node.data.subject, node.data.body, node.data.gmail_query, node.data.from_email)
+  } else if (node.type === 'email') {
+    chunks.push(node.data.to, node.data.subject, node.data.body)
   } else if (node.type === 'sql_query') {
     chunks.push(node.data.dsn, node.data.query)
   }

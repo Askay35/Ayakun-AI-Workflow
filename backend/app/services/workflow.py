@@ -25,7 +25,7 @@ from models.workflow import (
 from models.user import AuthIdentity, IdentityProvider, User
 from schemas.workflow import (
     DataTransformNode,
-    GmailNode,
+    EmailNode,
     GoogleSheetsNode,
     NodeType,
     RunStepResponse,
@@ -87,7 +87,7 @@ def _single_incoming_label(node_type: NodeType) -> str:
         NodeType.HTTP_REQUEST: "HTTP Request",
         NodeType.IF_ELSE: "IF ELSE",
         NodeType.GOOGLE_SHEETS: "Google Таблицы",
-        NodeType.GMAIL: "Gmail",
+        NodeType.EMAIL: "Email",
         NodeType.DATA_TRANSFORM: "Преобразование",
         NodeType.SQL_QUERY: "База данных",
     }.get(node_type, node_type.value)
@@ -121,10 +121,8 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
             errors.append(f"Узел {label}: укажите токен Google, API-ключ или JSON сервисного аккаунта")
         elif node.operation != "read" and not has_write_auth:
             errors.append(f"Узел {label}: для записи нужен токен Google или JSON сервисного аккаунта")
-    elif isinstance(node, GmailNode):
-        if not node.gmail_account_id:
-            errors.append(f"Узел {label}: войдите в Google")
-        if node.operation != "list" and not node.to.strip():
+    elif isinstance(node, EmailNode):
+        if not node.to.strip():
             errors.append(f"Узел {label}: укажите получателя письма")
     elif isinstance(node, DataTransformNode):
         if node.operation in {"select", "remove"} and not node.fields.strip():

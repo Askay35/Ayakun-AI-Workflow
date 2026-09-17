@@ -5,7 +5,7 @@ import httpx
 
 from schemas.workflow import (
     DataTransformNode,
-    GmailNode,
+    EmailNode,
     GoogleSheetsNode,
     HttpRequestNode,
     IfElseNode,
@@ -18,7 +18,7 @@ from schemas.workflow import (
 )
 from services.execution.actions import (
     DataTransformAction,
-    GmailAction,
+    EmailAction,
     GoogleSheetsAction,
     HttpRequestAction,
     IfElseAction,
@@ -76,8 +76,8 @@ class DefaultExecutors:
     async def google_sheets(self, node: GoogleSheetsNode, context: dict) -> dict:
         return await GoogleSheetsAction(self.client).execute(node, self.prepare(context))
 
-    async def gmail(self, node: GmailNode, context: dict) -> dict:
-        return await GmailAction(self.client).execute(node, self.prepare(context))
+    async def email(self, node: EmailNode, context: dict) -> dict:
+        return await EmailAction().execute(node, self.prepare(context))
 
     async def data_transform(self, node: DataTransformNode, context: dict) -> dict | list:
         return await DataTransformAction().execute(node, self.prepare(context))
@@ -94,7 +94,7 @@ class DefaultExecutors:
         registry.register(NodeType.IF_ELSE, self.if_else)
         registry.register(NodeType.WEBHOOK, self.webhook)
         registry.register(NodeType.GOOGLE_SHEETS, self.google_sheets)
-        registry.register(NodeType.GMAIL, self.gmail)
+        registry.register(NodeType.EMAIL, self.email)
         registry.register(NodeType.DATA_TRANSFORM, self.data_transform)
         registry.register(NodeType.SQL_QUERY, self.sql_query)
         return registry

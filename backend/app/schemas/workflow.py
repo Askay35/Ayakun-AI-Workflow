@@ -45,7 +45,7 @@ class NodeType(str, Enum):
     IF_ELSE = "if_else"
     WEBHOOK = "webhook"
     GOOGLE_SHEETS = "google_sheets"
-    GMAIL = "gmail"
+    EMAIL = "email"
     DATA_TRANSFORM = "data_transform"
     SQL_QUERY = "sql_query"
 
@@ -58,7 +58,7 @@ class NodeType(str, Enum):
             NodeType.IF_ELSE,
             NodeType.WEBHOOK,
             NodeType.GOOGLE_SHEETS,
-            NodeType.GMAIL,
+            NodeType.EMAIL,
             NodeType.DATA_TRANSFORM,
             NodeType.SQL_QUERY,
         })
@@ -70,7 +70,7 @@ class NodeType(str, Enum):
             NodeType.HTTP_REQUEST,
             NodeType.IF_ELSE,
             NodeType.GOOGLE_SHEETS,
-            NodeType.GMAIL,
+            NodeType.EMAIL,
             NodeType.DATA_TRANSFORM,
             NodeType.SQL_QUERY,
         })
@@ -167,32 +167,13 @@ class GoogleSheetsNode(Node):
         return _coerce_json_text(value)
 
 
-class GmailNode(Node):
-    type: Literal[NodeType.GMAIL] = NodeType.GMAIL
-    operation: Literal["send", "list"] = "send"
-    gmail_account_id: int | None = None
-    from_email: str = Field(default="", max_length=320)
+class EmailNode(Node):
+    type: Literal[NodeType.EMAIL] = NodeType.EMAIL
     to: str = Field(default="", max_length=2000)
     subject: str = Field(default="", max_length=500)
     body: str = Field(default="", max_length=20000)
-    query: str = Field(default="", max_length=2000)
-    max_results: int = Field(default=10, ge=1, le=50)
     assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
     position: dict[str, float] | None = None
-
-    @field_validator("gmail_account_id", mode="before")
-    @classmethod
-    def coerce_gmail_account_id(cls, value: object) -> object:
-        if value in {None, "", 0, "0"}:
-            return None
-        return value
-
-    @field_validator("max_results", mode="before")
-    @classmethod
-    def coerce_max_results(cls, value: object) -> object:
-        if value is None or value == "":
-            return 10
-        return value
 
 
 class DataTransformNode(Node):
@@ -230,7 +211,7 @@ WorkflowNode = Annotated[
     | IfElseNode
     | WebhookNode
     | GoogleSheetsNode
-    | GmailNode
+    | EmailNode
     | DataTransformNode
     | SqlQueryNode,
     Field(discriminator="type"),
@@ -252,6 +233,11 @@ class WorkflowGraph(BaseModel):
         if not isinstance(data, dict):
             return data
         nodes = [dict(node) if isinstance(node, dict) else node for node in (data.get("nodes") or [])]
+        for node in nodes:
+            if isinstance(node, dict) and node.get("type") == "gmail":
+                node["type"] = "email"
+                if not node.get("body") and node.get("message"):
+                    node["body"] = node.get("message")
         for edge in data.get("edges") or []:
             if not isinstance(edge, dict):
                 continue

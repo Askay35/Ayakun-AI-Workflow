@@ -28,8 +28,7 @@ const preview = computed(() => {
     const operation = props.data.operation === 'append' ? 'Добавить строки' : props.data.operation === 'update' ? 'Обновить строки' : 'Читать строки'
     return props.data.spreadsheet_id?.trim() ? `${operation} · ${props.data.spreadsheet_id}` : operation
   }
-  if (props.kind === 'gmail') {
-    if (props.data.operation === 'list') return props.data.gmail_query?.trim() || 'Получить письма'
+  if (props.kind === 'email') {
     return props.data.to?.trim() ? `Кому: ${props.data.to}` : 'Отправить письмо'
   }
   if (props.kind === 'data_transform') {

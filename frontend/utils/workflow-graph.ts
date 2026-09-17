@@ -8,7 +8,7 @@ export const NODE_META: Record<NodeKind, { label: string; caption: string; icon:
   telegram_send: { label: 'Telegram', caption: 'Отправить сообщение', icon: 'i-lucide-send', accent: '#2aa8e0' },
   webhook: { label: 'Вебхук', caption: 'Запуск по событию', icon: 'i-lucide-webhook', accent: '#f472b6' },
   google_sheets: { label: 'Google Таблицы', caption: 'Строки таблицы', icon: 'i-lucide-table', accent: '#22c55e' },
-  gmail: { label: 'Gmail', caption: 'Электронная почта', icon: 'i-lucide-mail', accent: '#ea4335' },
+  email: { label: 'Email', caption: 'Отправить письмо', icon: 'i-lucide-mail', accent: '#ea4335' },
   data_transform: { label: 'Преобразование', caption: 'Данные', icon: 'i-lucide-replace', accent: '#38bdf8' },
   sql_query: { label: 'База данных', caption: 'SQL-запрос', icon: 'i-lucide-database', accent: '#6366f1' }
 }
@@ -18,7 +18,7 @@ export const SINGLE_INCOMING_TYPES: NodeKind[] = [
   'http_request',
   'if_else',
   'google_sheets',
-  'gmail',
+  'email',
   'data_transform',
   'sql_query'
 ]

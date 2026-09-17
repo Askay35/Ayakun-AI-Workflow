@@ -1,6 +1,6 @@
 from services.execution.actions.base import NodeAction
 from services.execution.actions.data_transform import DataTransformAction
-from services.execution.actions.gmail import GmailAction
+from services.execution.actions.email import EmailAction
 from services.execution.actions.google_sheets import GoogleSheetsAction
 from services.execution.actions.http_request import HttpRequestAction
 from services.execution.actions.if_else import IfElseAction
@@ -13,7 +13,7 @@ from services.execution.actions.webhook import WebhookAction
 __all__ = [
     "NodeAction",
     "DataTransformAction",
-    "GmailAction",
+    "EmailAction",
     "GoogleSheetsAction",
     "HttpRequestAction",
     "IfElseAction",

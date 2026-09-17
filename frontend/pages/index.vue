@@ -140,7 +140,7 @@
 <script setup lang="ts">
 const unique = [
   { icon: 'i-lucide-mouse-pointer-click', title: 'Холст вместо кода', text: 'Каждое звено, связь и ветка на одном экране — цепочку видно целиком, как схему.' },
-  { icon: 'i-lucide-unplug', title: 'Таблицы, почта, события', text: 'Google Таблицы, Gmail, вебхуки и базы рядом с поиском и ИИ — без своего сервера.' },
+  { icon: 'i-lucide-unplug', title: 'Таблицы, почта, события', text: 'Google Таблицы, Email, вебхуки и базы рядом с поиском и ИИ — без своего сервера.' },
   { icon: 'i-lucide-calendar-clock', title: 'По кнопке, расписанию или событию', text: 'Работа по расписанию, реакция на вебхук или разовый запуск — в одном редакторе.' },
   { icon: 'i-lucide-wallet', title: 'Платите за запуск', text: 'Максимальная стоимость видна до старта, а списывается только фактический расход.' }
 ]
@@ -153,7 +153,7 @@ const blocks = [
   { number: '05', title: 'Telegram', text: 'Готовый результат уходит в чат сразу после запуска — вам или команде.', icon: 'i-lucide-send', accent: '#2aa8e0' },
   { number: '06', title: 'Вебхук', text: 'Цепочка стартует по событию: новая заявка, оплата, форма на сайте.', icon: 'i-lucide-webhook', accent: '#f472b6' },
   { number: '07', title: 'Google Таблицы', text: 'Читать и писать строки: лиды, прайс, отчёт — без ручного копирования.', icon: 'i-lucide-table', accent: '#22c55e' },
-  { number: '08', title: 'Gmail', text: 'Отправить письмо или забрать входящие через Google-аккаунт и передать дальше по цепочке.', icon: 'i-lucide-mail', accent: '#ea4335' },
+  { number: '08', title: 'Email', text: 'Отправить письмо на указанный адрес: тема и текст с теми же переменными, JSON и циклами, что и в остальных узлах.', icon: 'i-lucide-mail', accent: '#ea4335' },
   { number: '09', title: 'Преобразование', text: 'Отфильтровать, разложить и собрать JSON так, чтобы следующее звено поняло данные.', icon: 'i-lucide-replace', accent: '#38bdf8' },
   { number: '10', title: 'База данных', text: 'SQL-запрос к PostgreSQL, MySQL или ClickHouse: остатки, заказы, метрики — сразу в цепочку.', icon: 'i-lucide-database', accent: '#6366f1' }
 ]
@@ -197,19 +197,19 @@ const examples = [
   },
   {
     tag: 'Продажи',
-    schedule: 'По входящему письму',
-    title: 'Письмо клиента → задача в таблице',
-    text: 'Gmail забирает новое письмо, ИИ выделяет суть и следующий шаг, строка появляется в таблице — ничего не теряется во входящих.',
-    chain: ['Gmail', 'ИИ: суть', 'Google Таблицы'],
-    icons: ['i-lucide-mail', 'i-lucide-sparkles', 'i-lucide-table'],
-    accents: ['#ea4335', '#8b7cff', '#22c55e']
+    schedule: 'После события',
+    title: 'Заявка с сайта → письмо клиенту',
+    text: 'Вебхук ловит форму, ИИ собирает тему и текст, Email отправляет письмо на указанный адрес — без ручной переписки.',
+    chain: ['Вебхук', 'ИИ: письмо', 'Email'],
+    icons: ['i-lucide-webhook', 'i-lucide-sparkles', 'i-lucide-mail'],
+    accents: ['#f472b6', '#8b7cff', '#ea4335']
   },
   {
     tag: 'Склад',
     schedule: 'Каждый час',
     title: 'Остатки из базы, если кончается товар',
     text: 'SQL читает остатки, условие отсекает норму, и только по дефициту уходит письмо закупщику — без ложных тревог.',
-    chain: ['SQL', 'IF: мало', 'Gmail'],
+    chain: ['SQL', 'IF: мало', 'Email'],
     icons: ['i-lucide-database', 'i-lucide-git-branch', 'i-lucide-mail'],
     accents: ['#6366f1', '#e8b84a', '#ea4335']
   }
@@ -220,7 +220,7 @@ const steps = [
     id: 'assemble',
     number: '01',
     title: 'Соберите блоки на холсте',
-    text: 'Перетащите поиск, ИИ, Gmail, таблицы, SQL, HTTP или Telegram и соедините выходы со входами — как в визуальном конструкторе.',
+    text: 'Перетащите поиск, ИИ, Email, таблицы, SQL, HTTP или Telegram и соедините выходы со входами — как в визуальном конструкторе.',
     icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-mail', 'i-lucide-database', 'i-lucide-send']
   },
   {
@@ -234,7 +234,7 @@ const steps = [
     id: 'run',
     number: '03',
     title: 'Запустите или поставьте расписание',
-    text: 'Оценка стоимости видна заранее. Запуск — по кнопке, по вебхуку или в нужное время; результат приходит в кабинет, в Gmail или в Telegram.',
+    text: 'Оценка стоимости видна заранее. Запуск — по кнопке, по вебхуку или в нужное время; результат приходит в кабинет, на почту или в Telegram.',
     icons: ['i-lucide-play', 'i-lucide-clock', 'i-lucide-mail']
   }
 ]
@@ -268,7 +268,7 @@ const audience = [
     icon: 'i-lucide-building-2',
     title: 'Малый бизнес',
     text: 'Регулярные отчёты и уведомления без разработчика и отдельной инфраструктуры.',
-    example: 'Пример: SQL заказы → ИИ-сводка → Gmail'
+    example: 'Пример: SQL заказы → ИИ-сводка → Email'
   },
   {
     icon: 'i-lucide-code-2',
