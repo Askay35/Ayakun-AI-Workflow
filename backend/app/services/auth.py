@@ -87,13 +87,11 @@ class AuthService:
             }),
             ex=ttl,
         )
-        await self.email_provider.send(
+        await self._send_email_code(
             email,
             "Код подтверждения Ayakun",
-            (
-                f"Ваш код для регистрации: {code}\n\n"
-                f"Он действителен в течение {settings.login_code_expiration_time} минут."
-            ),
+            f"Ваш код для регистрации: {code}\n\n"
+            f"Он действителен в течение {settings.login_code_expiration_time} минут.",
         )
 
     async def confirm_email_register(self, email: str, code: str) -> TokenPair:
@@ -119,6 +117,95 @@ class AuthService:
         await self.db.flush()
         self.db.add(AuthIdentity(user_id=user.id, provider=IdentityProvider.email, subject=email))
         return await self._tokens(user)
+
+    async def request_email_link(self, user: User, email: str) -> None:
+        email = email.lower()
+        if not self.email_provider:
+            raise HTTPException(503, "Email provider не настроен")
+        current = (user.email or "").lower()
+        if current == email:
+            raise HTTPException(400, "Эта почта уже указана в профиле")
+        taken = await self.db.scalar(select(User).where(User.email == email))
+        if taken and taken.id != user.id:
+            raise HTTPException(409, "Email уже используется")
+        identity = await self.db.scalar(select(AuthIdentity).where(
+            AuthIdentity.provider == IdentityProvider.email, AuthIdentity.subject == email
+        ))
+        if identity and identity.user_id != user.id:
+            raise HTTPException(409, "Email уже используется")
+        rate_key = f"email_link_rate:{user.id}"
+        attempts = await self.redis.incr(rate_key)
+        if attempts == 1:
+            await self.redis.expire(rate_key, 60)
+        if attempts > 5:
+            raise HTTPException(429, "Слишком много запросов кода")
+        code = helper.generate_login_code()
+        ttl = 60 * settings.login_code_expiration_time
+        await self.redis.set(
+            f"email_link_pending:{user.id}",
+            json.dumps({"email": email, "code_hash": helper.hash_token(code)}),
+            ex=ttl,
+        )
+        await self._send_email_code(
+            email,
+            "Код подтверждения почты Ayakun",
+            f"Ваш код для привязки почты: {code}\n\n"
+            f"Он действителен в течение {settings.login_code_expiration_time} минут.",
+        )
+
+    async def confirm_email_link(self, user: User, email: str, code: str) -> UserResponse:
+        email = email.lower()
+        pending_key = f"email_link_pending:{user.id}"
+        pending_raw = await self.redis.get(pending_key)
+        if not pending_raw:
+            raise HTTPException(401, "Неверный код")
+        pending = json.loads(pending_raw)
+        if str(pending.get("email") or "").lower() != email:
+            raise HTTPException(401, "Неверный код")
+        code_hash = helper.hash_token(code.strip().upper())
+        if not secrets.compare_digest(str(pending.get("code_hash") or ""), code_hash):
+            raise HTTPException(401, "Неверный код")
+        await self.redis.delete(pending_key)
+        taken = await self.db.scalar(select(User).where(User.email == email))
+        if taken and taken.id != user.id:
+            raise HTTPException(409, "Email уже используется")
+        identity = await self.db.scalar(select(AuthIdentity).where(
+            AuthIdentity.provider == IdentityProvider.email, AuthIdentity.subject == email
+        ))
+        if identity and identity.user_id != user.id:
+            raise HTTPException(409, "Email уже используется")
+        user.email = email
+        user.email_verified = True
+        if not identity:
+            self.db.add(AuthIdentity(user_id=user.id, provider=IdentityProvider.email, subject=email))
+        elif identity.subject != email:
+            identity.subject = email
+        await self.db.commit()
+        loaded = await self.db.scalar(
+            select(User).options(selectinload(User.identities)).where(User.id == user.id)
+        )
+        if loaded is None:
+            raise HTTPException(401, "Пользователь недоступен")
+        return await user_response(self.db, loaded)
+
+    async def update_profile(self, user: User, name: str | None) -> UserResponse:
+        if name is not None:
+            cleaned = name.strip()
+            if not cleaned:
+                raise HTTPException(400, "Укажите имя")
+            user.name = cleaned
+            await self.db.commit()
+        loaded = await self.db.scalar(
+            select(User).options(selectinload(User.identities)).where(User.id == user.id)
+        )
+        if loaded is None:
+            raise HTTPException(401, "Пользователь недоступен")
+        return await user_response(self.db, loaded)
+
+    async def _send_email_code(self, email: str, subject: str, body: str) -> None:
+        if not self.email_provider:
+            raise HTTPException(503, "Email provider не настроен")
+        await self.email_provider.send(email, subject, body)
 
     async def login_email(self, email: str, password: str) -> TokenPair:
         user = await self.db.scalar(select(User).where(User.email == email.lower()))
@@ -263,7 +350,7 @@ class AuthService:
         providers = {item.provider for item in stub.identities}
         if providers - {IdentityProvider.telegram}:
             return False
-        has_workflows = await self.db.scalar(select(Workflow.id).where(Workflow.user_id == stub.id).limit(1))
+        has_workflows = await self.db.scalar(select(Workflow.id).where(Workflow.owner_id == stub.id).limit(1))
         if has_workflows:
             return False
         stub.chat_id = None

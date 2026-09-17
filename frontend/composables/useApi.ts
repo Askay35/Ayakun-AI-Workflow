@@ -298,6 +298,8 @@ export const useApi = () => {
         request<AuthTokens>('/auth/register/confirm', { method: 'POST', body: { email, code } }),
       telegram: (code: string) => request<AuthTokens>('/auth/login/telegram', { method: 'POST', body: { code } }),
       telegramLink: (code: string) => request<User>('/auth/telegram/link', { method: 'POST', body: { code } }),
+      updateProfile: (body: { name?: string; email?: string }) => request<User>('/auth/profile', { method: 'PATCH', body }),
+      confirmEmailLink: (email: string, code: string) => request<User>('/auth/email/link', { method: 'POST', body: { email, code } }),
       googleStart: (redirectUri: string, codeChallenge: string, purpose: 'login' | 'gmail' | 'link' = 'login') => request<{ authorization_url: string; state: string }>('/auth/google/authorize', {
         method: 'POST', body: { redirect_uri: redirectUri, code_challenge: codeChallenge, purpose }
       }),

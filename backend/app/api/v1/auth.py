@@ -9,9 +9,11 @@ from deps.auth import CurrentUser, OptionalUser
 from deps.database import get_db
 from deps.services import get_auth_service
 from schemas.auth import (
+    EmailLinkConfirmRequest,
     EmailLoginRequest,
     EmailRegisterConfirmRequest,
     EmailRegisterRequest,
+    ProfileUpdateRequest,
     GoogleAuthorizeRequest,
     GoogleCodeRequest,
     PurposeTokenRequest,
@@ -61,6 +63,29 @@ async def telegram_link(
     service: AuthService = Depends(get_auth_service),
 ):
     return ApiResponse(success=True, data=await service.telegram_link_by_code(user, data.code))
+
+
+@router.patch("/profile", response_model=ApiResponse[UserResponse])
+async def update_profile(
+    data: ProfileUpdateRequest,
+    user: CurrentUser,
+    service: AuthService = Depends(get_auth_service),
+):
+    if data.email:
+        await service.request_email_link(user, data.email)
+    if data.name is not None:
+        return ApiResponse(success=True, data=await service.update_profile(user, data.name))
+    loaded = await service.update_profile(user, None)
+    return ApiResponse(success=True, data=loaded)
+
+
+@router.post("/email/link", response_model=ApiResponse[UserResponse])
+async def email_link(
+    data: EmailLinkConfirmRequest,
+    user: CurrentUser,
+    service: AuthService = Depends(get_auth_service),
+):
+    return ApiResponse(success=True, data=await service.confirm_email_link(user, data.email, data.code))
 
 
 @router.post("/google/code", response_model=ApiResponse[TokenPair])

@@ -61,3 +61,13 @@ class GoogleAuthorizeRequest(BaseModel):
 
 class TelegramCodeRequest(BaseModel):
     code: str = Field(min_length=6, max_length=6)
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    email: EmailStr | None = None
+
+
+class EmailLinkConfirmRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6)
