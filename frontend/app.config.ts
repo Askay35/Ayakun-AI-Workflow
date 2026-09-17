@@ -6,7 +6,7 @@ export default defineAppConfig({
     },
     button: {
       slots: {
-        base: 'rounded-xl font-extrabold inline-flex items-center disabled:cursor-not-allowed disabled:opacity-60 transition-all duration-200'
+        base: 'rounded-xl font-extrabold inline-flex items-center cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all duration-200'
       },
       variants: {
         size: {

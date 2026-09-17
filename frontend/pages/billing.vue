@@ -2,7 +2,7 @@
 import { bestValuePackCode, formatCredits, packCredits, sortCreditPacks } from '~/utils/credits'
 import { apiErrorMessage } from '~/composables/useApi'
 
-definePageMeta({ layout: 'app', middleware: 'auth' })
+definePageMeta({ layout: 'app' })
 const api = useApi()
 const auth = useAuth()
 const toast = useToast()
@@ -127,7 +127,7 @@ const onEmailModalOpen = (open: boolean) => {
     >
       <template #body>
         <form class="space-y-4" @submit.prevent="confirmReceiptEmail">
-          <UFormField label="Email">
+          <UFormField label="Email" :ui="{ label: 'text-white!' }">
             <UInput
               v-model="receiptEmail"
               type="email"
