@@ -30,6 +30,8 @@ export const ru = {
     login: 'Войти',
     myWorkflows: 'Мои цепочки',
     startFree: 'Начать бесплатно',
+    menuOpen: 'Открыть меню',
+    menuClose: 'Закрыть меню',
     telegramChannel: 'Telegram-канал',
     telegramChannelAria: 'Telegram-канал Ayakun',
     delivery: 'Как получить услугу',

@@ -327,14 +327,15 @@ async def test_webhook_unknown_payment_is_404() -> None:
 
 
 @pytest.mark.asyncio
-async def test_yookassa_webhook_accepts_valid_payload() -> None:
+async def test_yookassa_webhook_accepts_canceled_status() -> None:
     provider = object.__new__(YooKassaProvider)
     payment_id, status = await provider.process_payment_webhook({
-        "event": "payment.succeeded",
-        "object": {"id": "pay_1", "status": "succeeded"},
+        "event": "payment.canceled",
+        "object": {"id": "pay_1", "status": "canceled"},
     })
     assert payment_id == "pay_1"
-    assert status == PaymentStatus.succeeded
+    assert status == PaymentStatus.canceled
+    assert status.value == "canceled"
 
 
 @pytest.mark.asyncio

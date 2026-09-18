@@ -277,19 +277,26 @@ a { color: inherit; text-decoration: none; }
   top: 0;
   z-index: 20;
   padding: 14px 0;
-  background: rgba(249, 248, 244, 0.78);
-  backdrop-filter: blur(18px);
 }
 .public-header-inner {
+  position: relative;
   display: flex;
   min-height: 56px;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 7px 8px 7px 18px;
+  background:#fff;
   border: 1px solid rgba(18, 19, 26, .08);
   border-radius: 18px;
-  background: rgba(255, 255, 255, .9);
-  box-shadow: 0 12px 35px rgba(18, 19, 26, .07);
+}
+.public-menu-toggle,
+.public-menu-backdrop {
+  display: none;
+}
+.public-nav-meta,
+.public-nav-actions {
+  display: contents;
 }
 .public-logo {
   display: flex;
@@ -1517,16 +1524,20 @@ a { color: inherit; text-decoration: none; }
 }
 .app-logo {
   display: flex;
+  min-width: 0;
+  flex-shrink: 0;
   align-items: center;
   gap: 10px;
   font-size: 26px;
   color: inherit;
+  white-space: nowrap;
   text-decoration: none;
 }
 .app-logo-mark {
+  width: 45px;
   height: 45px;
   flex-shrink: 0;
-  object-fit: cover;
+  object-fit: contain;
 }
 .app-nav { display: grid; gap: 5px; }
 .app-user { margin-top: auto; padding: 16px 10px 0; border-top: 1px solid rgba(255,255,255,.1); }
@@ -2354,15 +2365,79 @@ body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"]:ho
   .editor-mobile-title { font-size: clamp(22px, 6vw, 28px); letter-spacing: -0.03em; }
   .editor-mobile-copy { margin-bottom: 20px; font-size: 14px; }
   .editor-mobile-actions { flex-direction: column; align-items: stretch; }
+  .public-header { padding: 10px 0; }
+  .public-header-inner {
+    z-index: 22;
+    min-height: 48px;
+    padding: 6px 8px 6px 12px;
+  }
+  .public-header .app-logo { gap: 7px; font-size: 18px; }
+  .public-header .app-logo-mark { width: 28px; height: 28px; }
+  .public-menu-toggle {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    margin-left: auto;
+    place-items: center;
+    border: 1px solid rgba(18, 19, 26, .1);
+    border-radius: 12px;
+    color: var(--ink);
+    background: #fff;
+    cursor: pointer;
+  }
+  .public-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 21;
+    background: rgba(18, 19, 26, .28);
+  }
+  .public-nav {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    z-index: 23;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid rgba(18, 19, 26, .08);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 18px 40px rgba(18, 19, 26, .14);
+  }
+  .public-nav.is-open { display: flex; }
+  .public-nav-meta,
+  .public-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .public-nav-meta { padding: 4px 2px 8px; }
+  .public-nav-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding-top: 6px;
+  }
+  .public-nav .nav-link {
+    padding: 12px 12px;
+    font-size: 15px;
+  }
+  .public-nav .site-button { width: 100%; }
 }
 
 @media (max-width: 640px) {
   .shell, .page { width: min(100% - 24px, 1180px); }
-  .public-nav .nav-hide, .public-nav .login-link { display: none; }
   .public-header { padding: 8px 0; }
-  .public-header-inner { min-height: 52px; padding-left: 12px; }
-  .public-logo { font-size: 20px; }
-  .logo-mark { width: 32px; height: 32px; }
+  .public-header-inner { min-height: 44px; padding: 4px 6px 4px 10px; }
+  .public-header .app-logo { gap: 6px; font-size: 16px; }
+  .public-header .app-logo-mark { width: 24px; height: 24px; }
+  .public-menu-toggle { width: 36px; height: 36px; border-radius: 14px; }
+  .public-logo { font-size: 18px; }
+  .logo-mark { width: 28px; height: 28px; }
   .site-button { min-height: 40px; padding-inline: 13px; }
   .auth-page { min-height: calc(100vh - 76px); padding-top: 22px; }
   .auth-card { padding: 24px 18px; border-radius: 20px; }

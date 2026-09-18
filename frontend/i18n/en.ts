@@ -32,6 +32,8 @@ export const en: typeof ru = {
     login: 'Log in',
     myWorkflows: 'My chains',
     startFree: 'Start for free',
+    menuOpen: 'Open menu',
+    menuClose: 'Close menu',
     telegramChannel: 'Telegram channel',
     telegramChannelAria: 'Ayakun Telegram channel',
     delivery: 'How you receive the service',
