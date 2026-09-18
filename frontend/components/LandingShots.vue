@@ -43,8 +43,7 @@ const { t } = useI18n()
 </script>
 <style scoped>
 .step-2-img {
-  height: 100%;
+  width: 100%;
   object-fit: cover;
-  object-position: -290px -1px!important;
 }
 </style>
