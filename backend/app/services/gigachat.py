@@ -29,11 +29,11 @@ API_BASE = "https://api.giga.chat/v1"
 SCOPE = "GIGACHAT_API_PERS"
 USER_AGENT = "ayakun"
 TOKEN_TTL_SECONDS = 30 * 60
-# Файлы в хранилище GigaChat живут только пока жив access_token, выданный
-# в момент запроса: 30 минут с получения. Операцию с файлом не начинаем,
-# если до конца этого окна осталось меньше запаса — иначе загрузка или
-# скачивание оборвутся вместе с токеном. Идентификатор файла наружу не
-# отдаём: байты забираем и удаляем в той же сессии токена.
+# Новый access token удаляет файлы, созданные предыдущим. Они не доживают
+# свои 30 минут: обновление токена стирает их сразу. Поэтому файл открываем
+# и закрываем на одном токене, а новый токен запрашиваем только когда ни
+# одной файловой операции нет. Запас нужен, чтобы не обновлять токен уже
+# после загрузки, если до истечения осталось меньше времени, чем длится запрос.
 TOKEN_FILE_MARGIN_SECONDS = 5 * 60
 # Генерация картинок в гайде Sber идёт моделью GigaChat + function_call=auto.
 IMAGE_MODEL = "GigaChat"
@@ -45,16 +45,19 @@ AUDIO_MODEL = "GigaChat"
 _IMG_SRC_RE = re.compile(r"""<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
 
 _cache_lock = asyncio.Lock()
+_files_lock = asyncio.Lock()
 _cached_token: str | None = None
 _cached_key: str | None = None
 _cached_fetched_at: float = 0.0
+_open_file_ops = 0
 
 
 def reset_gigachat_token_cache() -> None:
-    global _cached_token, _cached_key, _cached_fetched_at
+    global _cached_token, _cached_key, _cached_fetched_at, _open_file_ops
     _cached_token = None
     _cached_key = None
     _cached_fetched_at = 0.0
+    _open_file_ops = 0
 
 
 def parse_generated_image_id(content: str) -> str:
@@ -85,6 +88,19 @@ class GigaChatMediaProvider:
         async with httpx.AsyncClient(verify=False, timeout=180.0, headers={"User-Agent": USER_AGENT}) as client:
             yield client
 
+    @asynccontextmanager
+    async def _file_turn(self):
+        """Держит один токен на всю операцию и не пускает параллельный OAuth."""
+        global _open_file_ops
+        async with _files_lock:
+            async with self._session() as client:
+                token = await self._access_token(client)
+                _open_file_ops += 1
+                try:
+                    yield client, token
+                finally:
+                    _open_file_ops -= 1
+
     async def _access_token(self, client: httpx.AsyncClient) -> str:
         global _cached_token, _cached_key, _cached_fetched_at
         key = (settings.gigachat_auth_key or "").strip()
@@ -99,6 +115,8 @@ class GigaChatMediaProvider:
                 and age < TOKEN_TTL_SECONDS - TOKEN_FILE_MARGIN_SECONDS
             )
             if fresh and _cached_token is not None:
+                return _cached_token
+            if _open_file_ops and _cached_token and _cached_key == key:
                 return _cached_token
             token = await self._fetch_token(client, key)
             _cached_token = token
@@ -173,8 +191,7 @@ class GigaChatMediaProvider:
         )
 
     async def generate_image(self, prompt: str) -> bytes:
-        async with self._session() as client:
-            token = await self._access_token(client)
+        async with self._file_turn() as (client, token):
             content = await self._chat(
                 client,
                 token,
@@ -212,8 +229,7 @@ class GigaChatMediaProvider:
     ) -> str:
         # Загрузка файла и chat.attachments — как в гайде по файлам и example_vision.ipynb.
         # Для vision function_call не передаём (ноутбук). Для аудио — "auto" (гайд).
-        async with self._session() as client:
-            token = await self._access_token(client)
+        async with self._file_turn() as (client, token):
             file_id = await self._upload(client, token, data, mime, filename)
             message: dict = {
                 "role": "user",

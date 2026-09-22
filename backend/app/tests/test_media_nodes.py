@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import time
@@ -251,6 +252,47 @@ async def test_gigachat_refreshes_token_before_file_window_closes(monkeypatch) -
         reused = await GigaChatMediaProvider(client)._access_token(client)
     assert reused == "fresh-token"
     assert calls == 1
+
+
+@pytest.mark.asyncio
+async def test_token_refresh_waits_until_the_file_operation_finishes(monkeypatch) -> None:
+    reset_gigachat_token_cache()
+    monkeypatch.setattr(settings, "gigachat_auth_key", "test-key")
+    oauth_calls = 0
+    release = asyncio.Event()
+    in_chat = asyncio.Event()
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal oauth_calls
+        if request.url.path.endswith("/oauth"):
+            oauth_calls += 1
+            return httpx.Response(200, json={"access_token": f"tok-{oauth_calls}"})
+        if request.url.path.endswith("/chat/completions"):
+            if not in_chat.is_set():
+                in_chat.set()
+                await release.wait()
+            return httpx.Response(200, json={
+                "choices": [{"message": {"content": '<img src="file-1" fuse="true"/>'}}]
+            })
+        if request.url.path.endswith("/content"):
+            return httpx.Response(200, content=b"\xff\xd8jpg")
+        if request.url.path.endswith("/delete"):
+            return httpx.Response(200, json={"id": "file-1"})
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        provider = GigaChatMediaProvider(client)
+        first = asyncio.create_task(provider.generate_image("первая"))
+        await in_chat.wait()
+        gigachat._cached_fetched_at = time.monotonic() - TOKEN_TTL_SECONDS
+        second = asyncio.create_task(provider.generate_image("вторая"))
+        await asyncio.sleep(0.05)
+        assert oauth_calls == 1
+        release.set()
+        await first
+        await second
+    assert oauth_calls == 2
 
 
 @pytest.mark.asyncio

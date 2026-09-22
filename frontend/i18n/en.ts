@@ -975,7 +975,7 @@ export const en: typeof ru = {
         output: '{ source: "generated", mime: "image/jpeg", filename, path }. Connect an Image node if the next step is recognition.',
         notes: [
           'One generation costs 50 credits and is available after you buy any pack. Signup credits do not unlock the node.',
-          'The picture is downloaded immediately. The model keeps the file only while its access token is valid: 30 minutes from the moment the token was issued.'
+          'The picture is downloaded in the same request. A new access token deletes files from the previous one immediately, so the token is not refreshed while a file is open.'
         ]
       },
       image: {
@@ -1005,7 +1005,7 @@ export const en: typeof ru = {
         output: '{ text } — the model answer.',
         notes: [
           'One recognition costs 50 credits and is available after you buy any pack.',
-          'The file is deleted in the same token session: the model does not keep it past 30 minutes from the moment the access token was issued.'
+          'The file is deleted in the same token session. Refreshing the access token wipes files immediately, so a new token is not requested while a file is open.'
         ]
       },
       audio_transcription: {
@@ -1022,7 +1022,7 @@ export const en: typeof ru = {
         output: '{ text, duration_seconds, duration_minutes }. duration_seconds is null when the file length cannot be read; billing then uses 1 minute.',
         notes: [
           'Price is 0.5 RUB per billed minute, converted to credits. WAV duration is read from the file; other containers may fall back to 1 minute.',
-          'The node is available after you buy any pack. The model keeps the file only for 30 minutes from the moment the access token was issued, so transcription happens in that same session.'
+          'The node is available after you buy any pack. A new access token deletes the uploaded file immediately, so transcription stays on the same token without a refresh in the middle.'
         ]
       }
     }
