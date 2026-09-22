@@ -24,7 +24,9 @@ async def plans(service: BillingService = Depends(get_billing_service)):
 @router.get("/wallet", response_model=ApiResponse[WalletResponse])
 async def wallet(user: CurrentUser, service: BillingService = Depends(get_billing_service)):
     result = await service.ensure_initial_credit(user)
-    return ApiResponse(success=True, data=result)
+    payload = WalletResponse.model_validate(result)
+    payload.media_unlocked = await service.has_paid_pack(user)
+    return ApiResponse(success=True, data=payload)
 
 
 @router.get("/ledger", response_model=ApiResponse[list[LedgerResponse]])

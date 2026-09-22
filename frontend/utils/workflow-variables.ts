@@ -48,6 +48,17 @@ export function nodeUsedKeys(node: WorkflowNode): string[] {
     chunks.push(node.data.to, node.data.subject, node.data.body)
   } else if (node.type === 'sql_query') {
     chunks.push(node.data.dsn, node.data.query)
+  } else if (node.type === 'loop') {
+    chunks.push(node.data.source, node.data.times, node.data.while_value)
+    if (node.data.while_variable) chunks.push(`{{${node.data.while_variable}}}`)
+  } else if (node.type === 'delay') {
+    chunks.push(node.data.amount)
+  } else if (node.type === 'yandex_disk') {
+    chunks.push(node.data.remote_path, node.data.local_path, node.data.content)
+  } else if (node.type === 'image_generation' || node.type === 'image_recognition') {
+    chunks.push(node.data.prompt)
+  } else if (node.type === 'image' || node.type === 'audio_transcription') {
+    chunks.push(node.data.url, node.data.prompt)
   }
   for (const item of node.data.assignments || []) chunks.push(item.value)
   const names: string[] = []

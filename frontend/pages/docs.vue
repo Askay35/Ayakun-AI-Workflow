@@ -18,7 +18,14 @@ const NODE_ORDER: NodeKind[] = [
   'google_sheets',
   'email',
   'data_transform',
-  'sql_query'
+  'sql_query',
+  'loop',
+  'delay',
+  'yandex_disk',
+  'image_generation',
+  'image',
+  'image_recognition',
+  'audio_transcription'
 ]
 
 type NodeGuide = {

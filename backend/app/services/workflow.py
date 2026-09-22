@@ -24,9 +24,15 @@ from models.workflow import (
 )
 from models.user import AuthIdentity, IdentityProvider, User
 from schemas.workflow import (
+    AudioTranscriptionNode,
     DataTransformNode,
+    DelayNode,
     EmailNode,
     GoogleSheetsNode,
+    ImageGenerationNode,
+    ImageNode,
+    ImageRecognitionNode,
+    LoopNode,
     NodeType,
     RunStepResponse,
     ScheduleSlot,
@@ -37,9 +43,11 @@ from schemas.workflow import (
     WorkflowGraph,
     WorkflowNode,
     WorkflowUpdate,
+    YandexDiskNode,
 )
 from helper import display_telegram_output
 from services.billing import BillingService
+from services.billing.access import PAID_MEDIA_REQUIRED, graph_uses_paid_media, user_has_paid_pack
 from services.pricing import PricingService
 from services.schedule import (
     derived_cron,
@@ -91,6 +99,13 @@ def _single_incoming_label(node_type: NodeType) -> str:
         NodeType.EMAIL: "Email",
         NodeType.DATA_TRANSFORM: "Преобразование",
         NodeType.SQL_QUERY: "База данных",
+        NodeType.LOOP: "Цикл",
+        NodeType.DELAY: "Задержка",
+        NodeType.YANDEX_DISK: "Яндекс Диск",
+        NodeType.IMAGE_GENERATION: "Генерация изображения",
+        NodeType.IMAGE: "Изображение",
+        NodeType.IMAGE_RECOGNITION: "Распознавание изображения",
+        NodeType.AUDIO_TRANSCRIPTION: "Расшифровка аудио",
     }.get(node_type, node_type.value)
 
 
@@ -140,6 +155,55 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
             errors.append(f"Узел {label}: укажите строку подключения")
         if not node.query.strip():
             errors.append(f"Узел {label}: укажите SQL-запрос")
+    elif isinstance(node, LoopNode):
+        if node.mode == "for_each" and not node.source.strip():
+            errors.append(f"Узел {label}: укажите источник массива")
+        elif node.mode == "times" and not node.times.strip():
+            errors.append(f"Узел {label}: укажите число повторов")
+        elif node.mode == "while":
+            if not node.while_variable.strip():
+                errors.append(f"Узел {label}: выберите переменную цикла")
+            if not node.while_value.strip():
+                errors.append(f"Узел {label}: укажите значение сравнения")
+    elif isinstance(node, DelayNode):
+        if not node.amount.strip():
+            errors.append(f"Узел {label}: укажите длительность")
+    elif isinstance(node, YandexDiskNode):
+        if not node.token.strip():
+            errors.append(f"Узел {label}: укажите токен Яндекс Диска")
+        if not node.remote_path.strip():
+            errors.append(f"Узел {label}: укажите путь на Яндекс Диске")
+    elif isinstance(node, ImageGenerationNode):
+        if not node.prompt.strip():
+            errors.append(f"Узел {label}: укажите промпт")
+    elif isinstance(node, ImageNode):
+        if node.source == "url" and not node.url.strip():
+            errors.append(f"Узел {label}: укажите ссылку на изображение")
+        elif node.source == "file" and not node.file_base64.strip():
+            errors.append(f"Узел {label}: загрузите файл изображения")
+        elif node.source == "upstream" and not node.parents:
+            errors.append(f"Узел {label}: подключите предыдущий узел")
+    elif isinstance(node, ImageRecognitionNode):
+        if not node.prompt.strip():
+            errors.append(f"Узел {label}: укажите промпт")
+    elif isinstance(node, AudioTranscriptionNode):
+        if node.source == "url" and not node.url.strip():
+            errors.append(f"Узел {label}: укажите ссылку на аудио")
+        elif node.source == "file" and not node.file_base64.strip():
+            errors.append(f"Узел {label}: загрузите аудиофайл")
+        elif node.source == "upstream" and not node.parents:
+            errors.append(f"Узел {label}: подключите предыдущий узел")
+
+
+def _validate_image_recognition_parents(node: WorkflowNode, by_id: dict, errors: list[str], *, strict: bool) -> None:
+    if len(node.parents) > 1 or (strict and len(node.parents) != 1):
+        errors.append(f"Узел {node.label}: распознавание изображения должно иметь ровно одну входящую связь")
+        return
+    if len(node.parents) != 1:
+        return
+    parent = by_id.get(node.parents[0])
+    if parent is not None and parent.type != NodeType.IMAGE:
+        errors.append(f"Узел {node.label}: распознавание изображения должно идти сразу после узла «Изображение»")
 
 
 def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
@@ -155,7 +219,12 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
     indegree = {node_id: 0 for node_id in ids}
     if sum(1 for node in graph.nodes if node.type == NodeType.WEBHOOK) > 1:
         errors.append("В цепочке может быть только один вебхук")
-    extra_single = NodeType.single_incoming() - {NodeType.HTTP_REQUEST, NodeType.IF_ELSE, NodeType.TELEGRAM_SEND}
+    extra_single = NodeType.single_incoming() - {
+        NodeType.HTTP_REQUEST,
+        NodeType.IF_ELSE,
+        NodeType.TELEGRAM_SEND,
+        NodeType.IMAGE_RECOGNITION,
+    }
     if strict:
         for node in graph.nodes:
             _validate_node_config(node, errors)
@@ -169,6 +238,8 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
                     errors.append(f"Узел {node.label}: IF ELSE должен иметь ровно одну входящую связь")
                 elif node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
                     errors.append(f"Узел {node.label}: родитель IF ELSE должен быть узлом с выводом")
+            elif node.type == NodeType.IMAGE_RECOGNITION:
+                _validate_image_recognition_parents(node, by_id, errors, strict=True)
             elif node.type in extra_single:
                 if len(node.parents) > 1:
                     errors.append(f"Узел {node.label}: {_single_incoming_label(node.type)} может иметь только одну входящую связь")
@@ -196,6 +267,8 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
                 errors.append(f"Узел {node.label}: IF ELSE может иметь только одну входящую связь")
         if node.type in extra_single and not strict and len(node.parents) > 1:
             errors.append(f"Узел {node.label}: {_single_incoming_label(node.type)} может иметь только одну входящую связь")
+        if node.type == NodeType.IMAGE_RECOGNITION and not strict:
+            _validate_image_recognition_parents(node, by_id, errors, strict=False)
         if node.type == NodeType.TELEGRAM_SEND:
             if len(node.parents) > 1:
                 errors.append(f"Узел {node.label}: Telegram может иметь только одну входящую связь")
@@ -373,6 +446,10 @@ class WorkflowService:
         await self.db.delete(workflow)
         await self.db.commit()
 
+    async def _require_paid_media(self, user: User, graph: WorkflowGraph) -> None:
+        if graph_uses_paid_media(graph) and not await user_has_paid_pack(self.db, user.id):
+            raise HTTPException(402, PAID_MEDIA_REQUIRED)
+
     async def validate(self, workflow_id: uuid.UUID, user: User) -> list[str]:
         workflow = await self._owned(workflow_id, user)
         return validate_graph(WorkflowGraph.model_validate(workflow.draft_graph), strict=True)
@@ -398,6 +475,8 @@ class WorkflowService:
             )
             if not has_telegram:
                 errors.append("Для telegram_send необходимо привязать Telegram")
+        if graph_uses_paid_media(graph) and not await user_has_paid_pack(self.db, user.id):
+            errors.append(PAID_MEDIA_REQUIRED)
         if errors:
             raise HTTPException(422, errors)
         snapshot = graph.model_dump(mode="json")
@@ -421,6 +500,7 @@ class WorkflowService:
             raise HTTPException(409, "Workflow не опубликован")
         version = await self.db.get(WorkflowVersion, workflow.published_version_id)
         graph = WorkflowGraph.model_validate(version.graph_snapshot if version else {"nodes": []})
+        await self._require_paid_media(user, graph)
         if self.billing:
             wallet = await self.billing.ensure_initial_credit(user)
             estimate = await PricingService(self.db).estimate_graph(graph)
@@ -493,6 +573,7 @@ class WorkflowService:
                 errors.append("Для telegram_send необходимо привязать Telegram или указать chat_id")
         if errors:
             raise HTTPException(422, errors)
+        await self._require_paid_media(user, WorkflowGraph(nodes=[node]))
         solo_graph = solo_graph_for_node(node)
         solo_graph.variables = dict(workflow.variables or {})
         if self.billing:

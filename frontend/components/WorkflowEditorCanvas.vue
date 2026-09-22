@@ -13,6 +13,7 @@ import {
   variablesFromRecord,
   type VariableRow
 } from '~/utils/workflow-variables'
+import { joinCondition, splitCondition } from '~/utils/condition'
 import {
   NODE_META,
   DEFAULT_HTTP_REQUEST_JSON,
@@ -43,6 +44,13 @@ const { data: workflow, error: workflowError, status } = await useAuthAsyncData<
   `workflow-${id}`,
   () => api.workflows.get(id)
 )
+const { data: editorWallet } = await useAuthAsyncData(
+  `editor-wallet-${id}`,
+  () => api.billing.wallet().catch(() => ({ balance: 0, media_unlocked: false }))
+)
+const mediaUnlocked = computed(() => editorWallet.value == null || Boolean(editorWallet.value.media_unlocked))
+const paidMediaTypes = new Set<NodeKind>(['image_generation', 'image_recognition', 'audio_transcription'])
+const mediaLocked = (type: NodeKind) => paidMediaTypes.has(type) && !mediaUnlocked.value
 if (status.value === 'error' || !workflow.value) {
   throw createError({
     statusCode: (workflowError.value as any)?.statusCode || 404,
@@ -108,6 +116,79 @@ const sheetsOperations = computed(() => [
   { label: t('editor.sheetsAppend'), value: 'append' },
   { label: t('editor.sheetsUpdate'), value: 'update' }
 ])
+const conditionOperators = [
+  { label: '>', value: '>' },
+  { label: '<', value: '<' },
+  { label: '==', value: '==' },
+  { label: '!=', value: '!=' },
+  { label: '>=', value: '>=' },
+  { label: '<=', value: '<=' }
+]
+const loopModes = computed(() => [
+  { label: t('editor.loopForEach'), value: 'for_each' },
+  { label: t('editor.loopTimes'), value: 'times' },
+  { label: t('editor.loopWhile'), value: 'while' }
+])
+const delayUnits = computed(() => [
+  { label: t('editor.delaySeconds'), value: 'seconds' },
+  { label: t('editor.delayMinutes'), value: 'minutes' }
+])
+const yandexOperations = computed(() => [
+  { label: t('editor.yandexDownload'), value: 'download' },
+  { label: t('editor.yandexUpload'), value: 'upload' }
+])
+const mediaSources = computed(() => [
+  { label: t('editor.imageUrl'), value: 'url' },
+  { label: t('editor.imageFile'), value: 'file' },
+  { label: t('editor.imageUpstream'), value: 'upstream' }
+])
+const conditionLeft = ref('')
+const conditionOperator = ref('==')
+const conditionRight = ref('')
+let syncingCondition = false
+const loadConditionFields = (raw: string) => {
+  const parts = splitCondition(raw)
+  syncingCondition = true
+  conditionLeft.value = parts?.left ?? raw
+  conditionOperator.value = parts?.operator ?? '=='
+  conditionRight.value = parts?.right ?? ''
+  syncingCondition = false
+}
+watch(() => selected.value?.id, () => {
+  if (selected.value?.type !== 'if_else') return
+  loadConditionFields(selected.value.data.condition || '')
+}, { immediate: true })
+watch([conditionLeft, conditionOperator, conditionRight], () => {
+  if (syncingCondition || selected.value?.type !== 'if_else') return
+  const next = !conditionRight.value.trim() && conditionOperator.value === '=='
+    ? conditionLeft.value.trim()
+    : joinCondition(conditionLeft.value, conditionOperator.value, conditionRight.value)
+  if ((selected.value.data.condition || '') !== next) selected.value.data.condition = next
+}, { flush: 'sync' })
+const conditionUnparsed = computed(() => {
+  const raw = selected.value?.type === 'if_else' ? selected.value.data.condition || '' : ''
+  return Boolean(raw.trim()) && splitCondition(raw) === null
+})
+const readMediaFile = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !selected.value) return
+  const max = selected.value.type === 'audio_transcription' ? 6 * 1024 * 1024 : 4 * 1024 * 1024
+  if (file.size > max) {
+    toast.add({ title: t('editor.fileTooBig'), color: 'warning' })
+    input.value = ''
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => {
+    if (!selected.value) return
+    const result = String(reader.result || '')
+    const comma = result.indexOf(',')
+    selected.value.data.file_base64 = comma >= 0 ? result.slice(comma + 1) : result
+    selected.value.data.filename = file.name
+  }
+  reader.readAsDataURL(file)
+}
 const sqlEngines = [
   { label: 'PostgreSQL', value: 'postgresql' },
   { label: 'MySQL', value: 'mysql' },
@@ -227,13 +308,6 @@ const selectedRequestJson = computed({
     selected.value.data.request_json = value
   }
 })
-const selectedCondition = computed({
-  get: () => selected.value?.data.condition || '',
-  set: (value: string) => {
-    if (!selected.value) return
-    selected.value.data.condition = value
-  }
-})
 const selectedTelegramMessage = computed({
   get: () => selected.value?.data.message || '',
   set: (value: string) => {
@@ -249,6 +323,9 @@ const selectedAssignments = computed({
   }
 })
 const definedNames = computed(() => definedVariableNames(workflowVariables.value, nodes.value))
+const loopVariableOptions = computed(() =>
+  [...definedNames.value].sort().map(name => ({ label: name, value: name }))
+)
 const selectedVariableHints = computed(() => selected.value ? nodeVariableHints(selected.value, definedNames.value) : [])
 const hintsFor = (nodeId: string) => {
   const node = nodes.value.find(item => item.id === nodeId)
@@ -363,13 +440,23 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       message: type === 'telegram_send' ? '' : undefined,
       chat_id: type === 'telegram_send' ? '' : undefined,
       bot_token: type === 'telegram_send' ? '' : undefined,
-      operation: type === 'google_sheets' ? 'read' : type === 'data_transform' ? 'select' : undefined,
       sheet_range: type === 'google_sheets' ? 'Sheet1!A1:Z' : undefined,
       values_json: type === 'google_sheets' ? '[]' : undefined,
       mapping_json: type === 'data_transform' ? '' : undefined,
       sort_direction: type === 'data_transform' ? 'asc' : undefined,
       engine: type === 'sql_query' ? 'postgresql' : undefined,
       query: type === 'sql_query' ? 'SELECT 1 AS ok' : undefined,
+      mode: type === 'loop' ? 'for_each' : undefined,
+      source: type === 'loop' ? '' : type === 'image' || type === 'audio_transcription' ? 'url' : undefined,
+      times: type === 'loop' ? '1' : undefined,
+      while_operator: type === 'loop' ? '==' : undefined,
+      while_value: type === 'loop' ? '' : undefined,
+      amount: type === 'delay' ? '1' : undefined,
+      unit: type === 'delay' ? 'seconds' : undefined,
+      operation: type === 'google_sheets' ? 'read' : type === 'data_transform' ? 'select' : type === 'yandex_disk' ? 'download' : undefined,
+      remote_path: type === 'yandex_disk' ? '' : undefined,
+      token: type === 'yandex_disk' ? '' : undefined,
+      prompt: type === 'image_generation' || type === 'image_recognition' || type === 'audio_transcription' ? '' : undefined,
       to: type === 'email' ? '' : undefined,
       subject: type === 'email' ? '' : undefined,
       body: type === 'email' ? '' : undefined,
@@ -441,16 +528,27 @@ const onEdgesChange = (changes: EdgeChange[]) => {
       : (selectedEdgeId.value === change.id ? undefined : selectedEdgeId.value)
   }
 }
+const refuseLockedMedia = (type: NodeKind) => {
+  if (!mediaLocked(type)) return false
+  toast.add({ title: t('editor.mediaLocked'), color: 'warning' })
+  return true
+}
 const onDragStart = (event: DragEvent, type: NodeKind) => {
+  if (mediaLocked(type)) {
+    event.preventDefault()
+    return
+  }
   event.dataTransfer?.setData('application/ayakun-node', type)
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 const onDrop = (event: DragEvent) => {
   const type = event.dataTransfer?.getData('application/ayakun-node') as NodeKind
   if (!type || !(type in NODE_META)) return
+  if (refuseLockedMedia(type)) return
   addNode(type, screenToFlowCoordinate({ x: event.clientX, y: event.clientY }))
 }
 const addFromPalette = (type: NodeKind) => {
+  if (refuseLockedMedia(type)) return
   const origin = screenToFlowCoordinate({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
   addNode(type, { x: origin.x + nodes.value.length * 24, y: origin.y + nodes.value.length * 16 })
 }
@@ -570,13 +668,18 @@ const runSelectedNode = async () => {
         <div class="palette-block">
           <p class="editor-kicker">{{ t('editor.nodes') }}</p>
           <p class="mb-3 text-[11px] leading-4 text-white/40">{{ t('editor.nodesHint') }}</p>
+          <p v-if="!mediaUnlocked" class="mb-3 text-[11px] leading-4 text-amber-200/80">
+            {{ t('editor.mediaLockedHint') }}
+            <NuxtLink to="/billing" class="underline">{{ t('editor.mediaLockedLink') }}</NuxtLink>
+          </p>
           <div class="palette-list" role="list">
             <button
               v-for="item in palette"
               :key="item.type"
               type="button"
-              draggable="true"
+              :draggable="!mediaLocked(item.type)"
               class="palette-item"
+              :class="{ 'is-locked': mediaLocked(item.type) }"
               role="listitem"
               @dragstart="onDragStart($event, item.type)"
               @click="addFromPalette(item.type)"
@@ -586,7 +689,7 @@ const runSelectedNode = async () => {
               </span>
               <span class="min-w-0 text-left">
                 <strong class="block truncate text-[13px] font-extrabold text-white">{{ item.label }}</strong>
-                <span class="block truncate text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">{{ item.caption }}</span>
+                <span class="block truncate text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">{{ mediaLocked(item.type) ? t('editor.mediaLockedShort') : item.caption }}</span>
               </span>
             </button>
           </div>
@@ -656,6 +759,27 @@ const runSelectedNode = async () => {
             </template>
             <template #node-sql_query="{ id: nodeId, data, selected: active }">
               <WorkflowNodeCard :node-id="nodeId" kind="sql_query" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-loop="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="loop" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-delay="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="delay" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-yandex_disk="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="yandex_disk" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-image_generation="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="image_generation" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-image="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="image" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-image_recognition="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="image_recognition" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            </template>
+            <template #node-audio_transcription="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" kind="audio_transcription" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
           </VueFlow>
           <template #fallback>
@@ -743,9 +867,16 @@ const runSelectedNode = async () => {
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'if_else'">
-              <UFormField :label="t('editor.condition')">
-                <UTextarea v-model="selectedCondition" :rows="3" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
+              <UFormField :label="t('editor.conditionLeft')">
+                <UInput v-model="conditionLeft" class="w-full font-mono text-xs" :placeholder="IF_ELSE_CONDITION_PLACEHOLDER" />
               </UFormField>
+              <UFormField :label="t('editor.conditionOp')">
+                <USelect v-model="conditionOperator" :items="conditionOperators" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField :label="t('editor.conditionRight')">
+                <UInput v-model="conditionRight" class="w-full font-mono text-xs" placeholder="0.8" />
+              </UFormField>
+              <p v-if="conditionUnparsed" class="text-xs leading-5 text-amber-200/80">{{ t('editor.conditionRaw') }}</p>
               <p class="mb-0 text-xs leading-5 text-white/40">{{ t('editor.ifHint', { compare: VARIABLE_COMPARE_EXAMPLE, placeholder: IF_ELSE_CONDITION_PLACEHOLDER }) }}</p>
               <details class="editor-help mt-1! text-xs leading-5 text-white/40">
                 <summary class="text-[15px]">{{ t('editor.ifHelpTitle') }}</summary>
@@ -884,6 +1015,107 @@ const runSelectedNode = async () => {
               </UFormField>
               <p class="text-xs leading-5 text-white/40">{{ t('editor.sqlHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+            </template>
+            <template v-if="selected.type === 'loop'">
+              <UFormField :label="t('editor.loopMode')">
+                <USelect v-model="selected.data.mode" :items="loopModes" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField v-if="selected.data.mode !== 'times' && selected.data.mode !== 'while'" :label="t('editor.loopSource')">
+                <UInput v-model="selected.data.source" class="w-full font-mono text-xs" :placeholder="t('editor.loopSourcePlaceholder')" />
+              </UFormField>
+              <UFormField v-if="selected.data.mode === 'times'" :label="t('editor.loopTimesLabel')">
+                <UInput v-model="selected.data.times" class="w-full font-mono text-xs" :placeholder="t('editor.loopTimesPlaceholder')" />
+              </UFormField>
+              <template v-if="selected.data.mode === 'while'">
+                <UFormField :label="t('editor.loopVariable')">
+                  <USelect
+                    v-if="loopVariableOptions.length"
+                    v-model="selected.data.while_variable"
+                    :items="loopVariableOptions"
+                    value-key="value"
+                    class="w-full"
+                  />
+                  <p v-else class="text-xs text-white/45">{{ t('editor.loopNoVars') }}</p>
+                </UFormField>
+                <UFormField :label="t('editor.conditionOp')">
+                  <USelect v-model="selected.data.while_operator" :items="conditionOperators" value-key="value" class="w-full" />
+                </UFormField>
+                <UFormField :label="t('editor.loopValue')">
+                  <UInput v-model="selected.data.while_value" class="w-full font-mono text-xs" placeholder="0" />
+                </UFormField>
+              </template>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.loopHint') }}</p>
+            </template>
+            <template v-if="selected.type === 'delay'">
+              <UFormField :label="t('editor.delayAmount')">
+                <UInput v-model="selected.data.amount" class="w-full font-mono text-xs" placeholder="0.35" />
+              </UFormField>
+              <UFormField :label="t('editor.delayUnit')">
+                <USelect v-model="selected.data.unit" :items="delayUnits" value-key="value" class="w-full" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.delayHint') }}</p>
+            </template>
+            <template v-if="selected.type === 'yandex_disk'">
+              <UFormField :label="t('editor.action')">
+                <USelect v-model="selected.data.operation" :items="yandexOperations" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField :label="t('editor.yandexToken')">
+                <UInput v-model="selected.data.token" type="password" autocomplete="new-password" class="w-full" />
+              </UFormField>
+              <UFormField :label="t('editor.yandexRemote')">
+                <UInput v-model="selected.data.remote_path" class="w-full font-mono text-xs" placeholder="/folder/{{name}}.jpg" />
+              </UFormField>
+              <UFormField v-if="selected.data.operation === 'upload'" :label="t('editor.yandexLocal')">
+                <UInput v-model="selected.data.local_path" class="w-full font-mono text-xs" :placeholder="t('editor.yandexLocalPlaceholder')" />
+              </UFormField>
+              <UFormField v-if="selected.data.operation === 'upload'" :label="t('editor.yandexContent')">
+                <UTextarea v-model="selected.data.content" :rows="4" class="w-full font-mono text-xs" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.yandexHint') }}</p>
+            </template>
+            <template v-if="selected.type === 'image_generation'">
+              <p v-if="mediaLocked('image_generation')" class="text-xs leading-5 text-amber-200">{{ t('editor.mediaLockedHint') }}</p>
+              <UFormField :label="t('editor.imagePrompt')">
+                <UTextarea v-model="selected.data.prompt" :rows="6" class="w-full" :placeholder="t('editor.imagePromptPlaceholder')" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.imageCredits') }} {{ t('editor.mediaHint') }}</p>
+            </template>
+            <template v-if="selected.type === 'image'">
+              <UFormField :label="t('editor.imageSource')">
+                <USelect v-model="selected.data.source" :items="mediaSources" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField v-if="selected.data.source === 'url'" :label="t('editor.imageUrlLabel')">
+                <UInput v-model="selected.data.url" class="w-full font-mono text-xs" :placeholder="t('editor.imageUrlPlaceholder')" />
+              </UFormField>
+              <UFormField v-if="selected.data.source === 'file'" :label="t('editor.imageFileLabel')">
+                <input type="file" accept="image/*" class="block w-full text-xs text-white/70" @change="readMediaFile">
+                <p v-if="selected.data.filename" class="mt-1 text-xs text-white/50">{{ selected.data.filename }}</p>
+              </UFormField>
+              <p v-if="selected.data.source === 'upstream'" class="text-xs leading-5 text-white/40">{{ t('editor.imageUpstreamHint') }}</p>
+            </template>
+            <template v-if="selected.type === 'image_recognition'">
+              <p v-if="mediaLocked('image_recognition')" class="text-xs leading-5 text-amber-200">{{ t('editor.mediaLockedHint') }}</p>
+              <UFormField :label="t('editor.recognizePrompt')">
+                <UTextarea v-model="selected.data.prompt" :rows="5" class="w-full" :placeholder="t('editor.recognizePlaceholder')" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.recognizeCredits') }} {{ t('editor.recognizeHint') }}</p>
+            </template>
+            <template v-if="selected.type === 'audio_transcription'">
+              <p v-if="mediaLocked('audio_transcription')" class="text-xs leading-5 text-amber-200">{{ t('editor.mediaLockedHint') }}</p>
+              <UFormField :label="t('editor.imageSource')">
+                <USelect v-model="selected.data.source" :items="mediaSources" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField v-if="selected.data.source === 'url'" :label="t('editor.audioUrlLabel')">
+                <UInput v-model="selected.data.url" class="w-full font-mono text-xs" :placeholder="t('editor.audioUrlPlaceholder')" />
+              </UFormField>
+              <UFormField v-if="selected.data.source === 'file'" :label="t('editor.audioFileLabel')">
+                <input type="file" accept="audio/*" class="block w-full text-xs text-white/70" @change="readMediaFile">
+                <p v-if="selected.data.filename" class="mt-1 text-xs text-white/50">{{ selected.data.filename }}</p>
+              </UFormField>
+              <UFormField :label="t('editor.audioPrompt')">
+                <UTextarea v-model="selected.data.prompt" :rows="4" class="w-full" :placeholder="t('editor.audioPromptPlaceholder')" />
+              </UFormField>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.mediaHint') }}</p>
             </template>
             <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="mb-0 mt-3 space-y-1 text-xs text-amber-200">
               <li v-for="hint in selectedVariableHints.filter(item => item.mark === 'undefined')" :key="hint.name">

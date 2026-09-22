@@ -81,8 +81,8 @@ export const en: typeof ru = {
       { title: 'Pay for the run', text: 'The maximum cost is visible before start; only actual usage is charged.' }
     ],
     featuresEyebrow: 'Chain building blocks',
-    featuresTitle: 'Ten nodes — any scenario',
-    featuresLead: 'Search and Telegram are only the start. Add spreadsheets, email, a webhook, a database and branches the way your task actually works.',
+    featuresTitle: 'Seventeen nodes — any scenario',
+    featuresLead: 'Search and Telegram are only the start. The same canvas also has a loop, a delay, Yandex Disk, image generation, image recognition, audio transcription, spreadsheets, email and branches.',
     blocks: [
       { number: '01', title: 'Web search', text: 'Fresh news, jobs, prices, brand mentions — anything you can find with a query.' },
       { number: '02', title: 'AI processing', text: 'Compress, compare, write an email or a report in the format you need — in your own words.' },
@@ -93,7 +93,14 @@ export const en: typeof ru = {
       { number: '07', title: 'Google Sheets', text: 'Read and write rows: leads, a price list, a report — no manual copy-paste.' },
       { number: '08', title: 'Email', text: 'Send a message to a given address.' },
       { number: '09', title: 'Transform', text: 'Filter, reshape and assemble JSON so the next node understands the data.' },
-      { number: '10', title: 'Database', text: 'SQL against PostgreSQL, MySQL or ClickHouse: stock, orders, metrics — straight into the chain.' }
+      { number: '10', title: 'Database', text: 'SQL against PostgreSQL, MySQL or ClickHouse: stock, orders, metrics — straight into the chain.' },
+      { number: '11', title: 'Loop', text: 'Walk an array, repeat N times, or compare a variable — the node returns the list, the next step reads it once.' },
+      { number: '12', title: 'Delay', text: 'Pause the chain for seconds or minutes before the next node.' },
+      { number: '13', title: 'Yandex Disk', text: 'Upload a file or download one into the chain so later nodes can use it.' },
+      { number: '14', title: 'Image generation', text: 'A prompt becomes a JPEG the next node can pass on.' },
+      { number: '15', title: 'Image', text: 'A file, a URL, a generated picture or a file from Yandex Disk — one shape for the nodes after it.' },
+      { number: '16', title: 'Image recognition', text: 'One incoming Image node, a prompt, and text back out.' },
+      { number: '17', title: 'Audio transcription', text: 'An audio file or link becomes text. Billing follows the length of the recording.' }
     ],
     examplesEyebrow: 'Chain examples',
     examplesTitle: 'Build a scenario around your routine',
@@ -110,7 +117,7 @@ export const en: typeof ru = {
     howTitle: 'From an idea to a working chain',
     howLead: 'Assemble on the canvas, run, get a message. Nearby — a larger scenario with branches.',
     steps: [
-      { number: '01', title: 'Place blocks on the canvas', text: 'Drag search, AI, Email, sheets, SQL, HTTP or Telegram and connect outputs to inputs — like a visual builder.' },
+      { number: '01', title: 'Place blocks on the canvas', text: 'Drag search, AI, a loop, a delay, images, Yandex Disk, Email, sheets, SQL, HTTP or Telegram and connect outputs to inputs.' },
       { number: '02', title: 'Set the rules in plain language', text: 'What to search, which prompt, which database query, when to continue and where to send the result. No code and no extra server.' },
       { number: '03', title: 'Run it or set a schedule', text: 'Cost estimate is visible in advance. Run from a button, a webhook or on time; the result arrives in the workspace, by email or in Telegram.' }
     ],
@@ -177,7 +184,14 @@ export const en: typeof ru = {
     google_sheets: { label: 'Google Sheets', caption: 'Spreadsheet rows' },
     email: { label: 'Email', caption: 'Send an email' },
     data_transform: { label: 'Transform', caption: 'Data' },
-    sql_query: { label: 'Database', caption: 'SQL query' }
+    sql_query: { label: 'Database', caption: 'SQL query' },
+    loop: { label: 'Loop', caption: 'Repeat' },
+    delay: { label: 'Delay', caption: 'Pause' },
+    yandex_disk: { label: 'Yandex Disk', caption: 'Files' },
+    image_generation: { label: 'Image generation', caption: 'Picture from text' },
+    image: { label: 'Image', caption: 'File or link' },
+    image_recognition: { label: 'Image recognition', caption: 'Text from a picture' },
+    audio_transcription: { label: 'Audio transcription', caption: 'Text from a recording' }
   },
   nodePreview: {
     queryEmpty: 'Query not set yet',
@@ -194,6 +208,17 @@ export const en: typeof ru = {
     emailSend: 'Send an email',
     transform: 'Data transform',
     sqlEmpty: 'SQL query not set yet',
+    loopEach: 'Array not set yet',
+    loopTimes: 'Repeat count not set yet',
+    loopWhile: 'Variable not chosen yet',
+    delayEmpty: 'Delay not set yet',
+    delaySeconds: 'sec',
+    delayMinutes: 'min',
+    yandexEmpty: 'Disk path not set yet',
+    imagePromptEmpty: 'Prompt not set yet',
+    imageEmpty: 'Image not set yet',
+    recognizeEmpty: 'Prompt not set yet',
+    audioEmpty: 'Audio not set yet',
     hintUndefined: 'Variable is not defined yet',
     hintWrite: 'Created or updated by this block',
     hintRead: 'Used, not changed',
@@ -331,6 +356,61 @@ export const en: typeof ru = {
     requestJson: 'Request data',
     httpHint: 'At most one incoming link. Substitutions like {json} are read from the previous node’s output root, {variable} from chain variables. After substitution the value must stay valid JSON.',
     condition: 'Condition',
+    conditionLeft: 'Left side',
+    conditionOp: 'Operator',
+    conditionRight: 'Right side',
+    conditionRaw: 'This saved condition has no operator yet. It stays as written until you fill both sides.',
+    loopMode: 'Mode',
+    loopForEach: 'For each — walk an array',
+    loopTimes: 'Times — repeat from 1 to N',
+    loopWhile: 'While — compare a variable',
+    loopSource: 'Array',
+    loopSourcePlaceholder: '{{items}} or {{$body.items}}',
+    loopTimesLabel: 'Repeat count',
+    loopTimesPlaceholder: '3, {{count}} or {{$n}}',
+    loopVariable: 'Variable',
+    loopNoVars: 'No variables in this chain yet',
+    loopValue: 'Compare with',
+    loopHint: 'The loop runs inside this node and passes {items, count} onward. Downstream nodes are not repeated. At most 100 iterations; a longer list or count is cut off.',
+    delayAmount: 'Duration',
+    delayUnit: 'Unit',
+    delaySeconds: 'Seconds',
+    delayMinutes: 'Minutes',
+    delayHint: 'Seconds: 0–3600, fractions allowed (0.35). Minutes: 0–60. Values outside the range are clamped.',
+    yandexDownload: 'Download',
+    yandexUpload: 'Upload',
+    yandexToken: 'OAuth token',
+    yandexRemote: 'Path on Yandex Disk',
+    yandexLocal: 'Local file',
+    yandexLocalPlaceholder: 'Optional path, or leave empty to take the previous node',
+    yandexContent: 'Text content',
+    yandexHint: 'Paths accept {{field}} and {{$path}}. The token is not written to logs. A download leaves a temp file the Image node can read.',
+    imagePrompt: 'Prompt',
+    imagePromptPlaceholder: 'Draw a red bicycle on a white background',
+    imageSource: 'Source',
+    imageUrl: 'URL',
+    imageFile: 'File',
+    imageUpstream: 'Previous node',
+    imageUrlLabel: 'Image URL',
+    imageUrlPlaceholder: 'https://... or {{$url}}',
+    imageFileLabel: 'Image file',
+    imageUpstreamHint: 'Connect image generation, Yandex Disk or another node that returns a file path, URL or base64.',
+    recognizePrompt: 'Prompt',
+    recognizePlaceholder: 'What is in this image?',
+    recognizeHint: 'Exactly one incoming link, and it must come from the Image node. The model key stays on the server.',
+    recognizeCredits: '50 credits per recognition. The node unlocks after you buy a pack.',
+    imageCredits: '50 credits per generation. The node unlocks after you buy a pack.',
+    mediaLockedShort: 'After buying a pack',
+    mediaLocked: 'This node is available after you buy a pack',
+    mediaLockedHint: 'Image generation, image recognition and audio transcription stay locked until you buy a pack at least once. Signup credits do not unlock them.',
+    mediaLockedLink: 'Buy a pack',
+    audioPrompt: 'Prompt',
+    audioPromptPlaceholder: 'Transcribe the audio verbatim',
+    audioUrlLabel: 'Audio URL',
+    audioUrlPlaceholder: 'https://... or {{$url}}',
+    audioFileLabel: 'Audio file',
+    fileTooBig: 'File is too large for the chain draft',
+    mediaHint: 'The model key is taken from the server environment, not from this node.',
     ifHint: 'One incoming link, TRUE (condition met) and FALSE (condition not met) outputs — connecting one branch is enough. Data is passed through unchanged. Condition with a variable: {compare} (the number and the string “12” are equal). Conditions on input data: {placeholder}.',
     ifHelpTitle: 'How to write a condition',
     ifHelpCompare: 'Compare fields from the previous node’s output. Path in curly braces, for example {example}.',
@@ -833,6 +913,116 @@ export const en: typeof ru = {
         notes: [
           'The query has a timeout. Do not run heavy reports without LIMIT.',
           'Do not splice unchecked user input into SQL — substitutions insert values into the query text.'
+        ]
+      },
+      loop: {
+        what: 'Repeats work inside one node: walk an array, count from 1 to N, or compare a workflow variable until it stops.',
+        how: [
+          'At most one incoming link.',
+          'The loop does not re-run the nodes after it. It resolves the collection, the count or the while-condition and passes one result forward.',
+          'While reads a variable from the chain dropdown. The value can be a literal or a template such as {{limit}}.',
+          'A condition that stays true stops at 100 iterations. Variables are not updated between iterations.'
+        ],
+        settings: [
+          { name: 'Mode', text: 'For each, Times, or While.' },
+          { name: 'Array', text: 'For each: {{items}} or {{$body.items}} — a workflow variable or a JSON path from the incoming payload.' },
+          { name: 'Repeat count', text: 'Times: a number, {{count}} or {{$n}}. Less than 1 is an error. More than 100 is cut to 100.' },
+          { name: 'Variable / operator / value', text: 'While: pick a known variable, an operator (>, <, ==, !=, >=, <=) and a comparison value.' }
+        ],
+        output: 'JSON { mode, items, count, capped }. For each, items is the array (at most 100 elements). Times, items is 1..N. While, items is { index, item } until the condition is false or the cap is hit.',
+        notes: [
+          'The next node reads the list once, for example {{$items}} or {{$count}}.',
+          'Inside a while value, {{loop_index}} is the current iteration, starting at 1.'
+        ]
+      },
+      delay: {
+        what: 'Pauses the chain before the next node.',
+        how: [
+          'At most one incoming link.',
+          'The node sleeps, then passes a small JSON result forward.'
+        ],
+        settings: [
+          { name: 'Duration', text: 'A number or a template such as {{pause}}.' },
+          { name: 'Unit', text: 'Seconds (0–3600, decimals allowed) or minutes (0–60). Out-of-range values are clamped.' }
+        ],
+        output: '{ waited_seconds, amount, unit }.',
+        notes: ['A delay does not spend credits.']
+      },
+      yandex_disk: {
+        what: 'Uploads a file to Yandex Disk or downloads one so later nodes can use it.',
+        how: [
+          'At most one incoming link.',
+          'Download writes a temp file on the worker and returns its path.',
+          'Upload takes a local path, text content, or a file from the previous node (path, base64 or URL).'
+        ],
+        settings: [
+          { name: 'Operation', text: 'Download or upload.' },
+          { name: 'OAuth token', text: 'A Yandex Disk token. Stored as a secret and not written to logs.' },
+          { name: 'Path', text: 'Disk path, with {{field}} and {{$path}} substitutions.' }
+        ],
+        output: 'Download: { source: "yandex", path, filename, mime, remote_path, size }. An image uses the same shape as the Image node, plus the disk path. Upload: { uploaded: true, remote_path }.',
+        notes: ['Pass a downloaded image through the Image node before recognition.']
+      },
+      image_generation: {
+        what: 'Turns a prompt into a JPEG. The model can be swapped later; the node is not named after a vendor.',
+        how: [
+          'At most one incoming link. The prompt can use {{field}} and {{$path}}.',
+          'The picture is saved as a temp file. The graph does not store the JPEG as base64.'
+        ],
+        settings: [
+          { name: 'Prompt', text: 'What to draw. The API key stays in the server environment.' }
+        ],
+        output: '{ source: "generated", mime: "image/jpeg", filename, path }. Connect an Image node if the next step is recognition.',
+        notes: [
+          'One generation costs 50 credits and is available after you buy any pack. Signup credits do not unlock the node.',
+          'The picture is downloaded immediately. The model keeps the file only while its access token is valid: 30 minutes from the moment the token was issued.'
+        ]
+      },
+      image: {
+        what: 'Picks one picture for the nodes after it: an uploaded file, a URL, a generated image, or a file from Yandex Disk.',
+        how: [
+          'At most one incoming link.',
+          'URL and upstream can use {{variable}} and {{$json.path}}.',
+          'Recognition accepts only this node as its parent.'
+        ],
+        settings: [
+          { name: 'Source', text: 'URL, uploaded file, or the previous node.' },
+          { name: 'URL', text: 'https://... or a template. The address is kept; bytes are loaded when a later node needs them.' },
+          { name: 'File', text: 'A picture from your computer. The node output keeps a temp path, not a second copy of base64.' }
+        ],
+        output: '{ source: "url"|"file"|"generated"|"yandex", mime, filename?, url?, path?, base64? }. path is preferred. base64 is present only when there is no file path.',
+        notes: ['This node does not spend credits.']
+      },
+      image_recognition: {
+        what: 'Reads the picture from the Image node and returns text.',
+        how: [
+          'Exactly one incoming link, and it must be the Image node.',
+          'The file is uploaded, sent with the prompt, then removed from the model storage.'
+        ],
+        settings: [
+          { name: 'Prompt', text: 'What to ask about the picture. Templates work the same way as in other nodes.' }
+        ],
+        output: '{ text } — the model answer.',
+        notes: [
+          'One recognition costs 50 credits and is available after you buy any pack.',
+          'The file is deleted in the same token session: the model does not keep it past 30 minutes from the moment the access token was issued.'
+        ]
+      },
+      audio_transcription: {
+        what: 'Turns an audio file or URL into text.',
+        how: [
+          'At most one incoming link.',
+          'Source is a URL, an uploaded file, or the previous node if it has a path, URL or base64.',
+          'Before the run the estimate assumes 1 minute. After the run the charge uses the real length, at least 1 minute, rounded up to the next minute.'
+        ],
+        settings: [
+          { name: 'Source', text: 'URL, file, or previous node.' },
+          { name: 'Prompt', text: 'Optional. Empty means a verbatim transcript. Templates are allowed.' }
+        ],
+        output: '{ text, duration_seconds, duration_minutes }. duration_seconds is null when the file length cannot be read; billing then uses 1 minute.',
+        notes: [
+          'Price is 0.5 RUB per billed minute, converted to credits. WAV duration is read from the file; other containers may fall back to 1 minute.',
+          'The node is available after you buy any pack. The model keeps the file only for 30 minutes from the moment the access token was issued, so transcription happens in that same session.'
         ]
       }
     }

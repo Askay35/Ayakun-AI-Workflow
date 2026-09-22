@@ -32,9 +32,19 @@ from models.workflow import (
 )
 from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode, normalize_workflow_variables
 from services.billing import BillingService
+from services.billing.access import PAID_MEDIA_REQUIRED, graph_uses_paid_media, user_has_paid_pack
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
 from services.execution.errors import user_visible_error
-from services.pricing import PricingService, billable_credits, billed_credits, provider_cost_usd
+from services.media_files import billed_audio_minutes
+from services.pricing import (
+    PricingService,
+    audio_transcription_credits,
+    billable_credits,
+    billed_credits,
+    image_generation_credits,
+    image_recognition_credits,
+    provider_cost_usd,
+)
 from services.schedule import advance_due_slots, dump_slots, earliest_next, load_slots, slots_from_legacy
 from services.workflow import topological_nodes
 from core.logging import output_preview
@@ -57,12 +67,18 @@ _ZERO_COST_TYPES = {
     NodeType.EMAIL,
     NodeType.DATA_TRANSFORM,
     NodeType.SQL_QUERY,
+    NodeType.LOOP,
+    NodeType.DELAY,
+    NodeType.YANDEX_DISK,
+    NodeType.IMAGE,
 }
 _SECRET_NODE_FIELDS = frozenset({
     "access_token",
     "service_account_json",
     "api_key",
     "dsn",
+    "token",
+    "file_base64",
 })
 
 
@@ -90,6 +106,34 @@ async def node_cost(
     if node_type in _ZERO_COST_TYPES:
         key = node_type.value if isinstance(node_type, NodeType) else str(node_type or "node")
         return Decimal("0"), 0, {"provider": key, "model": key}
+    if node_type == NodeType.IMAGE_GENERATION:
+        credits = image_generation_credits()
+        return credits, 0, {
+            "provider": "gigachat",
+            "model": "image",
+            "provider_cost_usd": str(provider_cost_usd(credits)),
+        }
+    if node_type == NodeType.IMAGE_RECOGNITION:
+        credits = image_recognition_credits()
+        return credits, 0, {
+            "provider": "gigachat",
+            "model": "vision",
+            "provider_cost_usd": str(provider_cost_usd(credits)),
+        }
+    if node_type == NodeType.AUDIO_TRANSCRIPTION:
+        minutes = billed_audio_minutes(output.get("duration_seconds") if isinstance(output, dict) else None)
+        if isinstance(output, dict) and output.get("duration_minutes") is not None:
+            try:
+                minutes = max(1, int(output.get("duration_minutes")))
+            except (TypeError, ValueError):
+                pass
+        credits = audio_transcription_credits(minutes)
+        return credits, minutes, {
+            "provider": "gigachat",
+            "model": "audio",
+            "minutes": minutes,
+            "provider_cost_usd": str(provider_cost_usd(credits)),
+        }
     usage = output.get("usage") if isinstance(output, dict) else {}
     usage = usage or {}
     model = output.get("model") or getattr(node, "model", None) or (
@@ -187,6 +231,22 @@ class WorkflowRunExecutor:
         user = await db.get(User, run.owner_id)
         graph = WorkflowGraph.model_validate(version.graph_snapshot)
         billing = BillingService(db)
+        if user is not None and graph_uses_paid_media(graph) and not await user_has_paid_pack(db, user.id):
+            run.status = RunStatus.failed
+            run.error = PAID_MEDIA_REQUIRED
+            run.finished_at = datetime.datetime.now(datetime.UTC)
+            await db.commit()
+            logger.error(
+                "Запуск не начат: медиа-узлы закрыты до покупки пакета",
+                extra={
+                    "event": "run.failed",
+                    "run_id": str(run.id),
+                    "workflow_id": str(run.workflow_id),
+                    "owner_id": run.owner_id,
+                    "error": PAID_MEDIA_REQUIRED,
+                },
+            )
+            return None
         await billing.ensure_initial_credit(user)
         reservation_request_id = f"run:{run.id}"
         estimate = await PricingService(db).estimate_graph(graph)

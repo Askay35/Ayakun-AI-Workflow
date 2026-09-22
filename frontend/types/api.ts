@@ -14,6 +14,13 @@ export type NodeKind =
   | 'email'
   | 'data_transform'
   | 'sql_query'
+  | 'loop'
+  | 'delay'
+  | 'yandex_disk'
+  | 'image_generation'
+  | 'image'
+  | 'image_recognition'
+  | 'audio_transcription'
 export type SearchPeriod = 'h' | 'd' | 'w' | 'm' | 'y'
 
 export interface ApiEnvelope<T> {
@@ -88,6 +95,21 @@ export interface WorkflowNode {
     path?: string
     engine?: 'postgresql' | 'mysql' | 'clickhouse'
     dsn?: string
+    mode?: 'for_each' | 'times' | 'while'
+    source?: string
+    times?: string
+    while_variable?: string
+    while_operator?: '>' | '<' | '==' | '!=' | '>=' | '<='
+    while_value?: string
+    amount?: string
+    unit?: 'seconds' | 'minutes'
+    token?: string
+    remote_path?: string
+    local_path?: string
+    content?: string
+    url?: string
+    filename?: string
+    file_base64?: string
     status?: RunStatus
     output?: string
   }

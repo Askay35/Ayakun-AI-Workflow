@@ -10,7 +10,14 @@ export const NODE_META: Record<NodeKind, { label: string; caption: string; icon:
   google_sheets: { label: 'Google Таблицы', caption: 'Строки таблицы', icon: 'i-lucide-table', accent: '#22c55e' },
   email: { label: 'Email', caption: 'Отправить письмо', icon: 'i-lucide-mail', accent: '#ea4335' },
   data_transform: { label: 'Преобразование', caption: 'Данные', icon: 'i-lucide-replace', accent: '#38bdf8' },
-  sql_query: { label: 'База данных', caption: 'SQL-запрос', icon: 'i-lucide-database', accent: '#6366f1' }
+  sql_query: { label: 'База данных', caption: 'SQL-запрос', icon: 'i-lucide-database', accent: '#6366f1' },
+  loop: { label: 'Цикл', caption: 'Повтор', icon: 'i-lucide-repeat', accent: '#f97316' },
+  delay: { label: 'Задержка', caption: 'Пауза', icon: 'i-lucide-timer', accent: '#94a3b8' },
+  yandex_disk: { label: 'Яндекс Диск', caption: 'Файлы', icon: 'i-lucide-hard-drive', accent: '#ffcc00' },
+  image_generation: { label: 'Генерация изображения', caption: 'Картинка по тексту', icon: 'i-lucide-image-plus', accent: '#ec4899' },
+  image: { label: 'Изображение', caption: 'Файл или ссылка', icon: 'i-lucide-image', accent: '#fb7185' },
+  image_recognition: { label: 'Распознавание изображения', caption: 'Текст по картинке', icon: 'i-lucide-scan-eye', accent: '#a78bfa' },
+  audio_transcription: { label: 'Расшифровка аудио', caption: 'Текст по записи', icon: 'i-lucide-audio-lines', accent: '#14b8a6' }
 }
 
 export const SINGLE_INCOMING_TYPES: NodeKind[] = [
@@ -20,7 +27,14 @@ export const SINGLE_INCOMING_TYPES: NodeKind[] = [
   'google_sheets',
   'email',
   'data_transform',
-  'sql_query'
+  'sql_query',
+  'loop',
+  'delay',
+  'yandex_disk',
+  'image_generation',
+  'image',
+  'image_recognition',
+  'audio_transcription'
 ]
 
 export const DEFAULT_HTTP_REQUEST_JSON = `{

@@ -24,6 +24,7 @@ dependencies = [
     "sqlalchemy>=2.0.52",
     "tokenizers>=0.23.2",
     "uvicorn[standard]>=0.52.4",
+    "yadisk>=3.4.1",
     "yookassa>=3.12.1",
 ]
 

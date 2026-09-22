@@ -48,6 +48,13 @@ class NodeType(str, Enum):
     EMAIL = "email"
     DATA_TRANSFORM = "data_transform"
     SQL_QUERY = "sql_query"
+    LOOP = "loop"
+    DELAY = "delay"
+    YANDEX_DISK = "yandex_disk"
+    IMAGE_GENERATION = "image_generation"
+    IMAGE = "image"
+    IMAGE_RECOGNITION = "image_recognition"
+    AUDIO_TRANSCRIPTION = "audio_transcription"
 
     @staticmethod
     def with_output() -> frozenset["NodeType"]:
@@ -61,6 +68,13 @@ class NodeType(str, Enum):
             NodeType.EMAIL,
             NodeType.DATA_TRANSFORM,
             NodeType.SQL_QUERY,
+            NodeType.LOOP,
+            NodeType.DELAY,
+            NodeType.YANDEX_DISK,
+            NodeType.IMAGE_GENERATION,
+            NodeType.IMAGE,
+            NodeType.IMAGE_RECOGNITION,
+            NodeType.AUDIO_TRANSCRIPTION,
         })
 
     @staticmethod
@@ -73,6 +87,13 @@ class NodeType(str, Enum):
             NodeType.EMAIL,
             NodeType.DATA_TRANSFORM,
             NodeType.SQL_QUERY,
+            NodeType.LOOP,
+            NodeType.DELAY,
+            NodeType.YANDEX_DISK,
+            NodeType.IMAGE_GENERATION,
+            NodeType.IMAGE,
+            NodeType.IMAGE_RECOGNITION,
+            NodeType.AUDIO_TRANSCRIPTION,
         })
 
 
@@ -217,6 +238,67 @@ class SqlQueryNode(Node):
     position: dict[str, float] | None = None
 
 
+class LoopNode(Node):
+    """Цикл внутри узла: выход — список итераций, потомки графа не повторяются."""
+
+    type: Literal[NodeType.LOOP] = NodeType.LOOP
+    mode: Literal["for_each", "times", "while"] = "for_each"
+    source: str = Field(default="", max_length=2000)
+    times: str = Field(default="", max_length=200)
+    while_variable: str = Field(default="", max_length=80)
+    while_operator: Literal[">", "<", "==", "!=", ">=", "<="] = "=="
+    while_value: str = Field(default="", max_length=2000)
+    position: dict[str, float] | None = None
+
+
+class DelayNode(Node):
+    type: Literal[NodeType.DELAY] = NodeType.DELAY
+    amount: str = Field(default="1", max_length=200)
+    unit: Literal["seconds", "minutes"] = "seconds"
+    position: dict[str, float] | None = None
+
+
+class YandexDiskNode(Node):
+    type: Literal[NodeType.YANDEX_DISK] = NodeType.YANDEX_DISK
+    operation: Literal["upload", "download"] = "download"
+    token: str = Field(default="", max_length=2000)
+    remote_path: str = Field(default="", max_length=2000)
+    local_path: str = Field(default="", max_length=2000)
+    content: str = Field(default="", max_length=20000)
+    position: dict[str, float] | None = None
+
+
+class ImageGenerationNode(Node):
+    type: Literal[NodeType.IMAGE_GENERATION] = NodeType.IMAGE_GENERATION
+    prompt: str = Field(default="", max_length=8000)
+    position: dict[str, float] | None = None
+
+
+class ImageNode(Node):
+    type: Literal[NodeType.IMAGE] = NodeType.IMAGE
+    source: Literal["url", "file", "upstream"] = "url"
+    url: str = Field(default="", max_length=4000)
+    filename: str = Field(default="", max_length=300)
+    file_base64: str = Field(default="", max_length=8_000_000)
+    position: dict[str, float] | None = None
+
+
+class ImageRecognitionNode(Node):
+    type: Literal[NodeType.IMAGE_RECOGNITION] = NodeType.IMAGE_RECOGNITION
+    prompt: str = Field(default="", max_length=8000)
+    position: dict[str, float] | None = None
+
+
+class AudioTranscriptionNode(Node):
+    type: Literal[NodeType.AUDIO_TRANSCRIPTION] = NodeType.AUDIO_TRANSCRIPTION
+    source: Literal["url", "file", "upstream"] = "url"
+    url: str = Field(default="", max_length=4000)
+    filename: str = Field(default="", max_length=300)
+    file_base64: str = Field(default="", max_length=8_000_000)
+    prompt: str = Field(default="", max_length=8000)
+    position: dict[str, float] | None = None
+
+
 WorkflowNode = Annotated[
     WebSearchNode
     | PromptNode
@@ -227,7 +309,14 @@ WorkflowNode = Annotated[
     | GoogleSheetsNode
     | EmailNode
     | DataTransformNode
-    | SqlQueryNode,
+    | SqlQueryNode
+    | LoopNode
+    | DelayNode
+    | YandexDiskNode
+    | ImageGenerationNode
+    | ImageNode
+    | ImageRecognitionNode
+    | AudioTranscriptionNode,
     Field(discriminator="type"),
 ]
 

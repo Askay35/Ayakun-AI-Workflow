@@ -1775,6 +1775,13 @@ body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"]:ho
   cursor: grabbing;
   background: rgba(255,255,255,.08);
 }
+.palette-item.is-locked {
+  cursor: not-allowed;
+  opacity: .45;
+}
+.palette-item.is-locked:active {
+  cursor: not-allowed;
+}
 .palette-icon {
   display: grid;
   width: 32px;

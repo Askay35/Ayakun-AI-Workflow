@@ -42,6 +42,20 @@ const preview = computed(() => {
     return t(`transformOps.${props.data.operation || 'select'}`) || t('nodePreview.transform')
   }
   if (props.kind === 'sql_query') return props.data.query?.trim() || t('nodePreview.sqlEmpty')
+  if (props.kind === 'loop') {
+    if (props.data.mode === 'times') return props.data.times?.trim() || t('nodePreview.loopTimes')
+    if (props.data.mode === 'while') return props.data.while_variable?.trim() || t('nodePreview.loopWhile')
+    return props.data.source?.trim() || t('nodePreview.loopEach')
+  }
+  if (props.kind === 'delay') {
+    const amount = props.data.amount?.trim()
+    return amount ? `${amount} ${props.data.unit === 'minutes' ? t('nodePreview.delayMinutes') : t('nodePreview.delaySeconds')}` : t('nodePreview.delayEmpty')
+  }
+  if (props.kind === 'yandex_disk') return props.data.remote_path?.trim() || t('nodePreview.yandexEmpty')
+  if (props.kind === 'image_generation') return props.data.prompt?.trim() || t('nodePreview.imagePromptEmpty')
+  if (props.kind === 'image') return props.data.url?.trim() || props.data.filename?.trim() || t('nodePreview.imageEmpty')
+  if (props.kind === 'image_recognition') return props.data.prompt?.trim() || t('nodePreview.recognizeEmpty')
+  if (props.kind === 'audio_transcription') return props.data.url?.trim() || props.data.filename?.trim() || t('nodePreview.audioEmpty')
   return label.value
 })
 const hintTitle = (mark: VariableHint['mark']) => (

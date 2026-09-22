@@ -172,6 +172,59 @@ export const useApi = () => {
         assignments: assignmentsOf(node)
       }
     }
+    if (node.type === 'loop') {
+      return {
+        ...base,
+        mode: node.data.mode || 'for_each',
+        source: node.data.source || '',
+        times: node.data.times || '',
+        while_variable: node.data.while_variable || '',
+        while_operator: node.data.while_operator || '==',
+        while_value: node.data.while_value || ''
+      }
+    }
+    if (node.type === 'delay') {
+      return {
+        ...base,
+        amount: node.data.amount || '0',
+        unit: node.data.unit || 'seconds'
+      }
+    }
+    if (node.type === 'yandex_disk') {
+      return {
+        ...base,
+        operation: node.data.operation || 'download',
+        token: node.data.token || '',
+        remote_path: node.data.remote_path || '',
+        local_path: node.data.local_path || '',
+        content: node.data.content || ''
+      }
+    }
+    if (node.type === 'image_generation') {
+      return { ...base, prompt: node.data.prompt || '' }
+    }
+    if (node.type === 'image') {
+      return {
+        ...base,
+        source: node.data.source || 'url',
+        url: node.data.url || '',
+        filename: node.data.filename || '',
+        file_base64: node.data.file_base64 || ''
+      }
+    }
+    if (node.type === 'image_recognition') {
+      return { ...base, prompt: node.data.prompt || '' }
+    }
+    if (node.type === 'audio_transcription') {
+      return {
+        ...base,
+        source: node.data.source || 'url',
+        url: node.data.url || '',
+        filename: node.data.filename || '',
+        file_base64: node.data.file_base64 || '',
+        prompt: node.data.prompt || ''
+      }
+    }
     return {
       ...base,
       engine: node.data.engine || 'postgresql',
@@ -257,7 +310,22 @@ export const useApi = () => {
           sort_direction: node.sort_direction,
           path: node.path,
           engine: node.engine,
-          dsn: node.dsn
+          dsn: node.dsn,
+          mode: node.mode,
+          source: node.source,
+          times: node.times,
+          while_variable: node.while_variable,
+          while_operator: node.while_operator,
+          while_value: node.while_value,
+          amount: node.amount,
+          unit: node.unit,
+          token: node.token,
+          remote_path: node.remote_path,
+          local_path: node.local_path,
+          content: node.content,
+          url: node.url,
+          filename: node.filename,
+          file_base64: node.file_base64
         }
       }
     })
@@ -362,7 +430,7 @@ export const useApi = () => {
     },
     billing: {
       plans: () => request<Plan[]>('/billing/plans'),
-      wallet: () => request<{ balance: number }>('/billing/wallet'),
+      wallet: () => request<{ balance: number, media_unlocked?: boolean }>('/billing/wallet'),
       summary: async (): Promise<BillingSummary> => {
         const [wallet, ledger, usage] = await Promise.all([
           request<{ balance: number }>('/billing/wallet'),

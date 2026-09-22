@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     qwen_search_model: str = "qwen-turbo"
     qwen_simple_model: str = "qwen-turbo"
     qwen_complex_model: str = "qwen-plus"
+    gigachat_auth_key: str | None = None
     deepseek_api_key: str | None = None
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_complex_model: str = "deepseek-v4-pro"

@@ -53,6 +53,7 @@ class WalletResponse(BaseModel):
     balance: Decimal
     reserved: Decimal
     currency: str = "CRD"
+    media_unlocked: bool = False
     model_config = ConfigDict(from_attributes=True)
 
 class LedgerResponse(BaseModel):

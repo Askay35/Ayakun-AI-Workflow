@@ -4,30 +4,45 @@ from decimal import Decimal
 import httpx
 
 from schemas.workflow import (
+    AudioTranscriptionNode,
     DataTransformNode,
+    DelayNode,
     EmailNode,
     GoogleSheetsNode,
     HttpRequestNode,
     IfElseNode,
+    ImageGenerationNode,
+    ImageNode,
+    ImageRecognitionNode,
+    LoopNode,
     NodeType,
     PromptNode,
     SqlQueryNode,
     TelegramSendNode,
     WebhookNode,
     WebSearchNode,
+    YandexDiskNode,
 )
 from services.execution.actions import (
+    AudioTranscriptionAction,
     DataTransformAction,
+    DelayAction,
     EmailAction,
     GoogleSheetsAction,
     HttpRequestAction,
     IfElseAction,
+    ImageAction,
+    ImageGenerationAction,
+    ImageRecognitionAction,
+    LoopAction,
     PromptAction,
     SqlQueryAction,
     TelegramSendAction,
     WebSearchAction,
     WebhookAction,
+    YandexDiskAction,
 )
+from services.gigachat import GigaChatMediaProvider
 from services.execution.registry import NodeRegistry
 from services.pricing import PricingService
 from services.providers import ModelRouter, TelegramNotificationProvider, WebSearchRouter
@@ -46,6 +61,7 @@ class DefaultExecutors:
         self.model_router = ModelRouter()
         self.search_router = WebSearchRouter(client)
         self.notifications = TelegramNotificationProvider(client)
+        self.media = GigaChatMediaProvider()
         self.pricing = pricing
         self.available_budget = available_budget
         self.client = client
@@ -85,6 +101,27 @@ class DefaultExecutors:
     async def sql_query(self, node: SqlQueryNode, context: dict) -> dict:
         return await SqlQueryAction().execute(node, self.prepare(context))
 
+    async def loop(self, node: LoopNode, context: dict) -> dict:
+        return await LoopAction().execute(node, self.prepare(context))
+
+    async def delay(self, node: DelayNode, context: dict) -> dict:
+        return await DelayAction().execute(node, self.prepare(context))
+
+    async def yandex_disk(self, node: YandexDiskNode, context: dict) -> dict:
+        return await YandexDiskAction().execute(node, self.prepare(context))
+
+    async def image_generation(self, node: ImageGenerationNode, context: dict) -> dict:
+        return await ImageGenerationAction(self.media).execute(node, self.prepare(context))
+
+    async def image(self, node: ImageNode, context: dict) -> dict:
+        return await ImageAction(self.client).execute(node, self.prepare(context))
+
+    async def image_recognition(self, node: ImageRecognitionNode, context: dict) -> dict:
+        return await ImageRecognitionAction(self.media, self.client).execute(node, self.prepare(context))
+
+    async def audio_transcription(self, node: AudioTranscriptionNode, context: dict) -> dict:
+        return await AudioTranscriptionAction(self.media, self.client).execute(node, self.prepare(context))
+
     def registry(self) -> NodeRegistry:
         registry = NodeRegistry()
         registry.register(NodeType.WEB_SEARCH, self.web_search)
@@ -97,4 +134,11 @@ class DefaultExecutors:
         registry.register(NodeType.EMAIL, self.email)
         registry.register(NodeType.DATA_TRANSFORM, self.data_transform)
         registry.register(NodeType.SQL_QUERY, self.sql_query)
+        registry.register(NodeType.LOOP, self.loop)
+        registry.register(NodeType.DELAY, self.delay)
+        registry.register(NodeType.YANDEX_DISK, self.yandex_disk)
+        registry.register(NodeType.IMAGE_GENERATION, self.image_generation)
+        registry.register(NodeType.IMAGE, self.image)
+        registry.register(NodeType.IMAGE_RECOGNITION, self.image_recognition)
+        registry.register(NodeType.AUDIO_TRANSCRIPTION, self.audio_transcription)
         return registry

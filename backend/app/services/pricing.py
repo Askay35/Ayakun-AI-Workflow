@@ -85,6 +85,39 @@ def billable_credits(amount: Decimal) -> Decimal:
     return Decimal(amount).to_integral_value(rounding=ROUND_CEILING)
 
 
+# Пакет 2000 credits = 390 RUB → 1 credit = 0.195 RUB.
+CREDIT_PACK_RUB = Decimal("390")
+CREDIT_PACK_SIZE = Decimal("2000")
+RUB_PER_CREDIT = CREDIT_PACK_RUB / CREDIT_PACK_SIZE
+IMAGE_MEDIA_CREDITS = Decimal("50")
+AUDIO_MINUTE_RUB = Decimal("0.5")
+
+
+def credits_for_rubles(rubles: Decimal) -> Decimal:
+    return Decimal(rubles) / RUB_PER_CREDIT
+
+
+def image_generation_credits() -> Decimal:
+    return IMAGE_MEDIA_CREDITS
+
+
+def image_recognition_credits() -> Decimal:
+    return IMAGE_MEDIA_CREDITS
+
+
+def audio_transcription_credits(minutes: int) -> Decimal:
+    safe = max(1, int(minutes))
+    return quantize_credits(credits_for_rubles(AUDIO_MINUTE_RUB * safe))
+
+
+def media_estimate_credits(node_type: str) -> Decimal:
+    if node_type in {"image_generation", "image_recognition"}:
+        return IMAGE_MEDIA_CREDITS
+    if node_type == "audio_transcription":
+        return billable_credits(credits_for_rubles(AUDIO_MINUTE_RUB))
+    return Decimal("0")
+
+
 def provider_cost_usd(credits: Decimal) -> Decimal:
     """Оценка себестоимости: списание уже с 50% margin, поэтому COGS = credits × $0.001."""
     return credits * CREDIT_PROVIDER_COST_USD
@@ -150,6 +183,8 @@ class PricingService:
             elif node_type == "prompt":
                 price = await self.get("deepseek", _prompt_model(node))
                 total += _prompt_estimate_credits(price, node, graph)
+            else:
+                total += media_estimate_credits(node_type)
         return total
 
 
@@ -214,6 +249,9 @@ def node_estimate(node: object, graph: WorkflowGraph | None = None) -> Decimal:
         return billable_credits(DEFAULT_PRICES[("serper", "search")].search)
     if node_type in {"telegram_send", "http_request"}:
         return Decimal("0")
+    media = media_estimate_credits(node_type)
+    if media:
+        return media
     if node_type != "prompt":
         return Decimal("0")
     price = DEFAULT_PRICES[("deepseek", _prompt_model(node))]

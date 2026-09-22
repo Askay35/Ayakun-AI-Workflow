@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from models.billing import LedgerKind, Plan, UsageRecord, Wallet, WalletLedger
+from services.billing.access import user_has_paid_pack
 from models.user import User
 
 
@@ -36,6 +37,9 @@ class WalletService:
             self.db.add(wallet)
             await self.db.flush()
         return wallet
+
+    async def has_paid_pack(self, user: User) -> bool:
+        return await user_has_paid_pack(self.db, user.id)
 
     async def ensure_initial_credit(self, user: User) -> Wallet:
         wallet = await self.wallet(user, lock=True)
