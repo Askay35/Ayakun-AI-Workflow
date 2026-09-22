@@ -2553,7 +2553,7 @@ body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"]:ho
 }
 .node-rail {
   overflow: hidden;
-  margin: 8px 0 28px;
+  margin: 8px 0 60px;
   border-block: 1px solid rgba(255, 255, 255, .08);
   background: rgba(255, 255, 255, .03);
   mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);

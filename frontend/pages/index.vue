@@ -129,10 +129,10 @@
       <div class="shell">
         <div class="cta-band">
           <div>
-            <p class="eyebrow !mb-3 text-[#3d4a12]!">{{ t('landing.ctaEyebrow') }}</p>
-            <h2>{{ t('landing.ctaTitle') }}</h2>
+            <p class="eyebrow mb-3! text-[#3d4a12]!">{{ t('landing.ctaEyebrow') }}</p>
+            <h2 class="text-[#3d4a12]! font-bold">{{ t('landing.ctaTitle') }}</h2>
           </div>
-          <UButton to="/login" size="xl" color="neutral" :label="t('landing.ctaButton')" trailing-icon="i-lucide-arrow-up-right" />
+          <UButton to="/login" size="xl" color="neutral" :ui="{ label: 'text-[#3d4a12]!', trailingIcon: 'text-[#3d4a12]!' }" :label="t('landing.ctaButton')" trailing-icon="i-lucide-arrow-up-right" />
         </div>
       </div>
     </section>

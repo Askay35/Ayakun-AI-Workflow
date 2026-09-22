@@ -20,7 +20,7 @@ const path = computed(() => {
   return { d, labelX, labelY }
 })
 const branch = computed(() => {
-  const handle = String(props.sourceHandle || '')
+  const handle = String(props.sourceHandleId || '')
   if (handle.endsWith('true')) return 'true'
   if (handle.endsWith('false')) return 'false'
   return ''
