@@ -32,6 +32,7 @@ from services.execution.actions.image_generation import ImageGenerationAction
 from services.execution.actions.image_recognition import ImageRecognitionAction
 from services.execution.actions.loop import LOOP_MAX_ITERATIONS, LoopAction
 from services.execution.actions.yandex_disk import YandexDiskAction
+from services.media_files import write_temp_bytes
 from services.gigachat import (
     TOKEN_FILE_MARGIN_SECONDS,
     TOKEN_TTL_SECONDS,
@@ -501,6 +502,24 @@ async def test_yandex_disk_download_and_upload_are_mocked() -> None:
     assert sent["uploaded"] is True
     assert sent["remote_path"] == "/out.txt"
     assert uploaded and uploaded[0][1] == "/out.txt"
+
+    picture = write_temp_bytes(b"\xff\xd8\xffjpeg", ".jpg")
+    await action.execute(
+        YandexDiskNode(id="save", operation="upload", token="secret-token", remote_path="/pics/cat.jpg", parents=["gen"]),
+        {
+            "variables": {},
+            "input": {},
+            "nodes": {
+                "gen": {
+                    "type": "image_generation",
+                    "output": {"source": "generated", "mime": "image/jpeg", "filename": "image.jpg", "path": picture},
+                }
+            },
+        },
+    )
+    assert uploaded[-1][1] == "/pics/cat.jpg"
+    with open(uploaded[-1][0], "rb") as handle:
+        assert handle.read().startswith(b"\xff\xd8\xff")
 
 
 @pytest.mark.asyncio

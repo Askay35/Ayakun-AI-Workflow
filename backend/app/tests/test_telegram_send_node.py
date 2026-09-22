@@ -3,6 +3,7 @@ import pytest
 from helper import display_telegram_output, render_telegram_message, render_template, unescape_telegram_markdown
 from schemas.workflow import TelegramSendNode
 from services.execution import DefaultExecutors
+from services.media_files import write_temp_bytes
 
 
 def test_render_template_reads_from_payload_root() -> None:
@@ -100,9 +101,22 @@ class FakeNotifications:
     def __init__(self) -> None:
         self.sent: list[tuple[str, str]] = []
         self.bot_tokens: list[str | None] = []
+        self.files: list[tuple[str, bytes, str, str, str | None]] = []
 
     async def send(self, chat_id: str, text: str, bot_token: str | None = None) -> None:
         self.sent.append((chat_id, text))
+        self.bot_tokens.append(bot_token)
+
+    async def send_file(
+        self,
+        chat_id: str,
+        data: bytes,
+        filename: str,
+        mime: str,
+        caption: str | None = None,
+        bot_token: str | None = None,
+    ) -> None:
+        self.files.append((chat_id, data, filename, mime, caption))
         self.bot_tokens.append(bot_token)
 
 
@@ -187,6 +201,34 @@ async def test_telegram_send_uses_parent_text_when_message_empty() -> None:
     })
     assert result == {"sent": True, "text": "Готовый отчёт"}
     assert executors.notifications.sent == [("42", "Готовый отчёт")]
+
+
+@pytest.mark.asyncio
+async def test_telegram_sends_generated_image_with_caption_and_file_only() -> None:
+    path = write_temp_bytes(b"\xff\xd8\xffcat", ".jpg")
+    picture = {"source": "generated", "mime": "image/jpeg", "filename": "image.jpg", "path": path}
+
+    with_text = object.__new__(DefaultExecutors)
+    with_text.notifications = FakeNotifications()
+    result = await with_text.telegram_send(
+        TelegramSendNode(id="tg", chat_id=42, message="Кот", parents=["gen"]),
+        {"nodes": {"gen": {"type": "image_generation", "output": picture}}},
+    )
+    assert result["sent"] is True
+    assert result["file"] == "image.jpg"
+    assert with_text.notifications.files == [("42", b"\xff\xd8\xffcat", "image.jpg", "image/jpeg", "Кот")]
+    assert with_text.notifications.sent == []
+
+    file_only = object.__new__(DefaultExecutors)
+    file_only.notifications = FakeNotifications()
+    result = await file_only.telegram_send(
+        TelegramSendNode(id="tg", chat_id=42, parents=["disk"]),
+        {"nodes": {"disk": {"type": "yandex_disk", "output": {**picture, "source": "yandex", "filename": "from-disk.png", "mime": "image/png"}}}},
+    )
+    assert result["text"] == ""
+    assert result["file"] == "from-disk.png"
+    assert file_only.notifications.sent == []
+    assert file_only.notifications.files[0][2:] == ("from-disk.png", "image/png", None)
 
 
 @pytest.mark.asyncio

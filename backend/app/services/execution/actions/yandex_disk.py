@@ -7,7 +7,7 @@ from helper import render_template
 from schemas.workflow import YandexDiskNode
 from services.execution.actions.base import NodeAction
 from services.execution.context import incoming_payload, parent_records
-from services.media_files import guess_mime, image_payload, load_binary, write_temp_bytes
+from services.media_files import file_output, guess_mime, image_payload, load_binary, write_temp_bytes
 
 
 def _redact(message: str, token: str) -> str:
@@ -69,23 +69,20 @@ class YandexDiskAction(NodeAction):
         return body
 
     async def _upload(self, node: YandexDiskNode, client, remote: str, payload, variables, context) -> dict:
-        local = render_template(node.local_path or "", payload, variables).strip()
+        records = parent_records(node, context)
+        parent = records[0].get("output") if records else None
+        incoming = file_output(parent)
         content = render_template(node.content or "", payload, variables)
         upload_path = ""
-        if local and os.path.isfile(local):
-            upload_path = local
+        if incoming is not None:
+            import httpx
+
+            async with httpx.AsyncClient(timeout=60) as http:
+                data, _mime, filename = await load_binary(incoming, http)
+            upload_path = write_temp_bytes(data, os.path.splitext(filename)[1] or os.path.splitext(remote)[1] or "")
         elif content.strip():
             upload_path = write_temp_bytes(content.encode("utf-8"), os.path.splitext(remote)[1] or ".txt")
-        else:
-            records = parent_records(node, context)
-            parent = records[0].get("output") if records else None
-            if isinstance(parent, dict) and (parent.get("path") or parent.get("base64") or parent.get("url")):
-                import httpx
-
-                async with httpx.AsyncClient(timeout=60) as http:
-                    data, _mime, filename = await load_binary(parent, http)
-                upload_path = write_temp_bytes(data, os.path.splitext(filename)[1] or os.path.splitext(remote)[1] or "")
         if not upload_path:
-            raise ValueError("Яндекс Диск: нечего загружать — укажите файл, текст или предыдущий узел")
+            raise ValueError("Яндекс Диск: нечего загружать — подключите файл или напишите текст")
         await client.upload(upload_path, remote)
         return {"uploaded": True, "remote_path": remote, "source": "yandex"}

@@ -1065,9 +1065,6 @@ const runSelectedNode = async () => {
               <UFormField :label="t('editor.yandexRemote')">
                 <UInput v-model="selected.data.remote_path" class="w-full font-mono text-xs" placeholder="/folder/{{name}}.jpg" />
               </UFormField>
-              <UFormField v-if="selected.data.operation === 'upload'" :label="t('editor.yandexLocal')">
-                <UInput v-model="selected.data.local_path" class="w-full font-mono text-xs" :placeholder="t('editor.yandexLocalPlaceholder')" />
-              </UFormField>
               <UFormField v-if="selected.data.operation === 'upload'" :label="t('editor.yandexContent')">
                 <UTextarea v-model="selected.data.content" :rows="4" class="w-full font-mono text-xs" />
               </UFormField>

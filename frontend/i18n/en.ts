@@ -381,10 +381,8 @@ export const en: typeof ru = {
     yandexUpload: 'Upload',
     yandexToken: 'OAuth token',
     yandexRemote: 'Path on Yandex Disk',
-    yandexLocal: 'Local file',
-    yandexLocalPlaceholder: 'Optional path, or leave empty to take the previous node',
-    yandexContent: 'Text content',
-    yandexHint: 'Paths accept {{field}} and {{$path}}. The token is not written to logs. A download leaves a temp file the Image node can read.',
+    yandexContent: 'Text file',
+    yandexHint: 'Upload takes the previous block’s file: a picture, a generated image, or a downloaded file. If there is no file, the text below is uploaded instead. The token is not written to logs.',
     imagePrompt: 'Prompt',
     imagePromptPlaceholder: 'Draw a red bicycle on a white background',
     imageSource: 'Source',
@@ -428,7 +426,7 @@ export const en: typeof ru = {
     botToken: 'Bot token',
     botTokenPlaceholder: 'Empty — Ayakun bot',
     messageText: 'Message text',
-    telegramHint: 'At most one incoming link. If a bot token is set, the message is sent through that bot to the given chat_id. If the text is empty, the full JSON or text of the previous node is sent. In recipient and text: {root} — all input data, {json} — a field, {variable} — a chain variable. Loop: {loop}.',
+    telegramHint: 'At most one incoming link. A picture or file can connect directly: generation, Image, or Yandex Disk. Filled text goes with the file; empty text sends only the file. With no file, empty text sends the previous node’s text or JSON.',
     webhookIntro: 'Start node: an external service calls the URL with POST, PUT or PATCH, and the chain runs. The request body is available downstream as {body}.',
     webhookUrl: 'Webhook URL',
     webhookUrlPlaceholder: 'Save the draft to get a URL',
@@ -810,7 +808,8 @@ export const en: typeof ru = {
         what: 'Sends a Telegram message — to you or to a given chat.',
         how: [
           'One incoming link.',
-          'If the text is empty, the full JSON or text of the previous node is sent, not only titles.',
+          'A picture or file can connect directly from generation, the Image node, or Yandex Disk.',
+          'Filled text goes with the file. Empty text sends only the file. With no file, empty text sends the previous node’s text or JSON.',
           'The text and chat_id support substitutions, JSON paths and variables.'
         ],
         settings: [
@@ -953,7 +952,7 @@ export const en: typeof ru = {
         how: [
           'At most one incoming link.',
           'Download writes a temp file on the worker and returns its path.',
-          'Upload takes a local path, text content, or a file from the previous node (path, base64 or URL).'
+          'Upload takes the previous node’s file: a generated image, an Image node, or another download. If there is no file, the text field is uploaded instead.',
         ],
         settings: [
           { name: 'Operation', text: 'Download or upload.' },
@@ -972,7 +971,7 @@ export const en: typeof ru = {
         settings: [
           { name: 'Prompt', text: 'What to draw. The API key stays in the server environment.' }
         ],
-        output: '{ source: "generated", mime: "image/jpeg", filename, path }. Connect an Image node if the next step is recognition.',
+        output: '{ source: "generated", mime: "image/jpeg", filename, path }. The picture can go straight to Telegram or Yandex Disk. Connect an Image node if the next step is recognition.',
         notes: [
           'One generation costs 50 tokens and is available after you buy any pack. Signup tokens do not unlock the node.',
           'The picture is downloaded in the same request. A new access token deletes files from the previous one immediately, so the token is not refreshed while a file is open.'

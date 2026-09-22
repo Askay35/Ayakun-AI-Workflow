@@ -386,6 +386,42 @@ class TelegramNotificationProvider:
             )
             raise ValueError(ERROR_TELEGRAM)
 
+    async def send_file(
+        self,
+        destination: str,
+        data: bytes,
+        filename: str,
+        mime: str,
+        caption: str | None = None,
+        bot_token: str | None = None,
+    ) -> None:
+        token = (bot_token or "").strip() or (self.config.telegram_bot_token or "").strip()
+        if not token:
+            raise ValueError(ERROR_TELEGRAM)
+        image = (mime or "").startswith("image/") and mime != "image/svg+xml"
+        method = "sendPhoto" if image else "sendDocument"
+        field = "photo" if image else "document"
+        form = {"chat_id": destination}
+        if caption:
+            form["caption"] = caption
+            form["parse_mode"] = "MarkdownV2"
+        try:
+            response = await self.client.post(
+                f"https://api.telegram.org/bot{token}/{method}",
+                data=form,
+                files={field: (filename or "file", data, mime or "application/octet-stream")},
+                timeout=self.config.provider_timeout_seconds,
+            )
+        except httpx.RequestError:
+            logger.warning("Telegram file send failed", extra={"event": "telegram.send_failed"})
+            raise ValueError(ERROR_TELEGRAM) from None
+        if response.is_error:
+            logger.warning(
+                "Telegram file send rejected",
+                extra={"event": "telegram.send_failed", "status_code": response.status_code},
+            )
+            raise ValueError(ERROR_TELEGRAM)
+
 
 class YooKassaProvider:
     name = "yookassa"

@@ -196,7 +196,7 @@ export const useApi = () => {
         operation: node.data.operation || 'download',
         token: node.data.token || '',
         remote_path: node.data.remote_path || '',
-        local_path: node.data.local_path || '',
+        local_path: '',
         content: node.data.content || ''
       }
     }

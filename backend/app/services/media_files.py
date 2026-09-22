@@ -26,6 +26,18 @@ import httpx
 IMAGE_SOURCES = frozenset({"url", "file", "generated", "yandex"})
 
 
+def file_output(output: object) -> dict | None:
+    """Файл предыдущего узла: картинка, скачанный с Диска файл или ссылка на файл."""
+    if not isinstance(output, dict) or output.get("uploaded") is True:
+        return None
+    source = output.get("source")
+    if source not in IMAGE_SOURCES:
+        return None
+    if output.get("path") or output.get("base64") or output.get("url"):
+        return output
+    return None
+
+
 def write_temp_bytes(data: bytes, suffix: str) -> str:
     handle, path = tempfile.mkstemp(prefix="ayakun-", suffix=suffix or "")
     try:
