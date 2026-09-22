@@ -53,7 +53,7 @@ const facts = computed(() => tm<Array<{ title: string; text: string }>>('pricing
               <UIcon :name="Number(plan.price) ? 'i-lucide-coins' : 'i-lucide-gift'" class="size-5" />
             </span>
             <p class="credit-pack-credits">{{ formatCredits(packCredits(plan)) }}</p>
-            <p class="credit-pack-unit">{{ t('common.credits') }}</p>
+            <p class="credit-pack-unit">{{ t('common.tokens') }}</p>
             <span class="credit-pack-rule" aria-hidden="true" />
             <p class="credit-pack-price">
               <template v-if="Number(plan.price)">

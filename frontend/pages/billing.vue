@@ -76,7 +76,7 @@ const onEmailModalOpen = (open: boolean) => {
     </div>
     <div class="grid-cards">
       <div class="panel metric-card" style="--card-accent:#c9f169"><p class="mb-0 text-sm font-bold muted">{{ t('billing.onBalance') }}</p><p class="metric-value">{{ formatCredits(summary?.balance) }}</p><p class="mb-0 mt-1 text-xs muted">{{ t('billing.forRuns') }}</p></div>
-      <div class="panel metric-card" style="--card-accent:#ffb681"><p class="mb-0 text-sm font-bold muted">{{ t('billing.spentMonth') }}</p><p class="metric-value">{{ formatCredits(summary?.usage_this_month) }}</p><p class="mb-0 mt-1 text-xs muted">{{ t('common.credits') }}</p></div>
+      <div class="panel metric-card" style="--card-accent:#ffb681"><p class="mb-0 text-sm font-bold muted">{{ t('billing.spentMonth') }}</p><p class="metric-value">{{ formatCredits(summary?.usage_this_month) }}</p><p class="mb-0 mt-1 text-xs muted">{{ t('common.tokens') }}</p></div>
     </div>
     <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold">{{ t('billing.topupTitle') }}</h2><p class="mb-0 muted">{{ t('billing.topupLead') }}</p></div>
     <div class="grid-cards">
@@ -94,7 +94,7 @@ const onEmailModalOpen = (open: boolean) => {
           <UIcon :name="Number(plan.price) ? 'i-lucide-coins' : 'i-lucide-gift'" class="size-5" />
         </span>
         <p class="credit-pack-credits">{{ formatCredits(packCredits(plan)) }}</p>
-        <p class="credit-pack-unit">{{ t('common.credits') }}</p>
+        <p class="credit-pack-unit">{{ t('common.tokens') }}</p>
         <span class="credit-pack-rule" aria-hidden="true" />
         <p class="credit-pack-price">
           <template v-if="Number(plan.price)">

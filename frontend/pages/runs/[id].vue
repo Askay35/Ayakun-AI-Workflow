@@ -211,7 +211,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
         <div class="my-5 border-t border-(--line)" />
         <p class="mb-1 text-sm muted">{{ t('runs.charged') }}</p>
         <p class="mb-0 text-3xl font-extrabold">{{ formatCredits(run?.cost) }}</p>
-        <p class="text-sm muted">{{ t('common.credits') }}</p>
+        <p class="text-sm muted">{{ t('common.tokens') }}</p>
         <p class="mt-5 mb-0 text-xs leading-5 muted">{{ t('runs.chargedHint') }}</p>
       </aside>
     </div>

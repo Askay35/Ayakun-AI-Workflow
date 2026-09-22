@@ -55,8 +55,6 @@ const remove = async (id: string, workflowName: string) => {
   }
 }
 
-const formatCost = (value?: number) => `${formatCredits(value)} ${t('common.credits')}`
-
 const startRename = (workflowId: string, workflowName: string) => {
   renamingId.value = workflowId
   nameDraft.value = workflowName
@@ -111,7 +109,7 @@ const commitRename = async (workflowId: string) => {
             <UIcon name="i-lucide-workflow" class="size-5" />
           </button>
           <div class="flex items-center gap-1">
-            <span class="cost-pill"><UIcon name="i-lucide-coins" />{{ t('workflows.costUpTo', { cost: formatCost(workflow.estimated_run_cost) }) }}</span>
+            <span class="cost-pill"><UIcon name="i-lucide-coins" />{{ t('workflows.costUpTo', { cost: formatCredits(workflow.estimated_run_cost) }) }}</span>
             <UButton
               icon="i-lucide-pencil"
               color="neutral"

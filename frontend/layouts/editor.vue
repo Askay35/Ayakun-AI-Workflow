@@ -37,11 +37,11 @@ const { data: wallet } = await useAuthAsyncData(
           v-if="wallet"
           to="/billing"
           class="app-header-balance"
-          :title="`${formatCredits(wallet.balance)} ${t('common.credits')}`"
+          :title="`${formatCredits(wallet.balance)} ${t('common.tokens')}`"
         >
           <UIcon name="i-lucide-coins" class="size-3.5" />
           {{ formatCredits(wallet.balance) }}
-          <span class="app-header-balance-unit">{{ t('common.credits') }}</span>
+          <span class="app-header-balance-unit">{{ t('common.tokens') }}</span>
         </NuxtLink>
         <span class="status-dot online" />
         <span class="max-w-40 truncate text-sm font-semibold text-white/80">{{ auth.user.value?.name || auth.user.value?.email || t('common.account') }}</span>
