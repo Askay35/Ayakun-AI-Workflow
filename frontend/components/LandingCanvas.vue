@@ -47,55 +47,56 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
       </span>
     </div>
 
-    <article
-      v-for="ghost in ghosts"
-      :key="ghost.id"
-      class="landing-ghost"
-      :class="`is-${ghost.id}`"
-      :style="{ '--node-accent': ghost.accent }"
-    >
-      <span class="landing-node-icon">
-        <UIcon :name="ghost.icon" class="size-3.5" />
-      </span>
-      {{ ghost.label }}
-    </article>
-
-    <svg class="landing-wires" viewBox="0 0 100 100" preserveAspectRatio="none">
-      <path class="landing-wire" d="M28 38 C 40 38, 44 28, 54 28" />
-      <path class="landing-wire" d="M72 32 C 82 36, 78 58, 70 64" />
-    </svg>
-    <span class="landing-packet is-a" />
-    <span class="landing-packet is-b" />
-
-    <article
-      v-for="(node, index) in chain"
-      :key="node.id"
-      class="landing-node"
-      :class="[`is-${node.id}`, { 'is-active': active === index, 'is-done': active > index }]"
-      :style="{ '--node-accent': node.accent }"
-    >
-      <span class="landing-handle in" />
-      <span class="landing-node-icon">
-        <UIcon :name="node.icon" class="size-4" />
-      </span>
-      <div class="min-w-0">
-        <p class="mb-0 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white/35">{{ node.label }}</p>
-        <p class="mb-0 truncate text-[13px] font-extrabold text-white">{{ node.caption }}</p>
+    <div class="landing-stage">
+      <div class="landing-side">
+        <article
+          v-for="ghost in ghosts"
+          :key="ghost.id"
+          class="landing-ghost"
+          :style="{ '--node-accent': ghost.accent }"
+        >
+          <span class="landing-node-icon">
+            <UIcon :name="ghost.icon" class="size-3.5" />
+          </span>
+          {{ ghost.label }}
+        </article>
       </div>
-      <span class="landing-handle out" />
-    </article>
 
-    <div class="landing-float landing-float-cron">
-      <UIcon name="i-lucide-calendar-clock" class="size-3.5" />
-      09:00
+      <div class="landing-chain">
+        <template v-for="(node, index) in chain" :key="node.id">
+          <div v-if="index > 0" class="landing-link" />
+          <article
+            class="landing-node"
+            :class="{ 'is-active': active === index, 'is-done': active > index }"
+            :style="{ '--node-accent': node.accent }"
+          >
+            <span class="landing-handle in" />
+            <span class="landing-node-icon">
+              <UIcon :name="node.icon" class="size-4" />
+            </span>
+            <div class="min-w-0">
+              <p class="mb-0 text-[10px] font-extrabold uppercase tracking-[0.14em] text-white/35">{{ node.label }}</p>
+              <p class="mb-0 truncate text-[13px] font-extrabold text-white">{{ node.caption }}</p>
+            </div>
+            <span class="landing-handle out" />
+          </article>
+        </template>
+      </div>
     </div>
-    <div class="landing-float landing-float-cost">
-      <UIcon name="i-lucide-coins" class="size-3.5" />
-      2 cr
-    </div>
-    <div class="landing-log">
-      <span class="landing-log-dot" />
-      {{ logs[active] }}
+
+    <div class="landing-foot">
+      <div class="landing-log">
+        <span class="landing-log-dot" />
+        <span class="truncate">{{ logs[active] }}</span>
+      </div>
+      <div class="landing-float landing-float-cron">
+        <UIcon name="i-lucide-calendar-clock" class="size-3.5" />
+        09:00
+      </div>
+      <div class="landing-float landing-float-cost">
+        <UIcon name="i-lucide-coins" class="size-3.5" />
+        2 cr
+      </div>
     </div>
   </div>
 </template>
