@@ -21,11 +21,11 @@ function shortRunId(reference?: string | null) {
 function chargeLabel(item: LedgerItem, t?: Translate) {
   const meta = item.metadata_ || (item as { metadata?: Record<string, unknown> }).metadata || {}
   const provider = String(meta.provider || '')
-  const model = String(meta.model || '')
+  // const model = String(meta.model || '')
   const run = shortRunId(item.reference)
   const what =
     provider === 'serper' ? (t ? t('ledger.search') : 'поиск')
-      : provider === 'deepseek' || provider === 'qwen' ? `AI (${model || provider})`
+      : provider === 'deepseek' || provider === 'qwen' ? `AI обработка`
         : provider === 'telegram' ? 'Telegram'
           : (t ? t('ledger.run') : 'запуск')
   if (t) {
