@@ -1,5 +1,5 @@
 <template>
-  <main>
+  <main class="landing">
     <section class="hero">
       <div class="shell hero-grid">
         <div class="reveal">
@@ -20,6 +20,12 @@
       </div>
     </section>
 
+    <div class="node-rail" aria-hidden="true">
+      <div class="node-rail-track">
+        <span v-for="(label, index) in railLoop" :key="`${label}-${index}`">{{ label }}</span>
+      </div>
+    </div>
+
     <section class="unique-strip">
       <div class="shell unique-grid">
         <article v-for="(item, index) in unique" :key="item.title" class="unique-card" :style="{ animationDelay: `${index * 80}ms` }">
@@ -37,7 +43,7 @@
           <h2>{{ t('landing.featuresTitle') }}</h2>
           <p>{{ t('landing.featuresLead') }}</p>
         </div>
-        <div class="blocks-grid">
+        <div class="blocks-grid landing-bento">
           <article v-for="card in blocks" :key="card.title" class="feature-card">
             <span class="feature-number">{{ card.number }}</span>
             <span class="feature-icon" :style="{ color: card.accent, background: `${card.accent}22` }">
@@ -185,6 +191,23 @@ const steps = computed(() => tm<Array<{ number: string; title: string; text: str
   ...item,
   ...stepMeta[index]
 })))
+
+const railKinds = [
+  'web_search',
+  'prompt',
+  'http_request',
+  'if_else',
+  'telegram_send',
+  'webhook',
+  'google_sheets',
+  'email',
+  'loop',
+  'delay',
+  'image_generation',
+  'audio_transcription'
+] as const
+const rail = computed(() => railKinds.map(kind => t(`nodes.${kind}.label`)))
+const railLoop = computed(() => [...rail.value, ...rail.value])
 
 const audienceIcons = ['i-lucide-briefcase', 'i-lucide-user-round-search', 'i-lucide-pen-line', 'i-lucide-trending-up', 'i-lucide-building-2', 'i-lucide-code-2']
 const audience = computed(() => tm<Array<{ title: string; text: string; example: string }>>('landing.audience').map((item, index) => ({

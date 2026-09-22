@@ -40,7 +40,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="public-wrap">
+  <div class="public-wrap" :class="{ 'is-landing': route.path === '/' }">
     <header class="public-header">
       <div v-if="menuOpen" class="public-menu-backdrop" @click="closeMenu" />
       <div class="shell public-header-inner">
@@ -65,7 +65,7 @@ onUnmounted(() => {
           <NuxtLink to="/pricing" class="nav-link" @click="closeMenu">{{ t('nav.pricing') }}</NuxtLink>
           <NuxtLink to="/docs" class="nav-link" @click="closeMenu">{{ t('nav.docs') }}</NuxtLink>
           <div class="public-nav-meta">
-            <LanguageSwitcher />
+            <LanguageSwitcher :tone="route.path === '/' ? 'dark' : 'light'" />
             <a
               :href="LEGAL.telegramChannel"
               class="social-icon-link"
