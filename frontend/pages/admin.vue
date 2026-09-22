@@ -810,7 +810,7 @@ watch(credentials, (value) => {
                       </div>
                       <USwitch v-model="rate.active" />
                     </div>
-                    <UFormField label="Стоимость одного поиска, credits">
+                    <UFormField label="Стоимость одного поиска в токенах">
                       <UInput v-model="rate.search_credits" type="number" step="0.001" class="w-full" />
                     </UFormField>
                     <UButton class="mt-5" label="Сохранить" variant="soft" @click="saveSearchRate(rate)" />
@@ -823,7 +823,7 @@ watch(credentials, (value) => {
                     <div class="grid gap-3 sm:grid-cols-2">
                       <UFormField label="Название"><UInput v-model="plan.name" class="w-full" /></UFormField>
                       <UFormField label="Цена"><UInput v-model="plan.price" type="number" step="1" class="w-full" /></UFormField>
-                      <UFormField label="Credits в тарифе"><UInput v-model="plan.limits.included_credits" type="number" class="w-full" /></UFormField>
+                      <UFormField label="Токенов в пакете"><UInput v-model="plan.limits.included_credits" type="number" class="w-full" /></UFormField>
                       <UFormField label="Лимит одного запуска"><UInput v-model="plan.limits.run_cap_credits" type="number" class="w-full" /></UFormField>
                       <UFormField label="Валюта"><UInput v-model="plan.currency" maxlength="3" class="w-full" /></UFormField>
                     </div>

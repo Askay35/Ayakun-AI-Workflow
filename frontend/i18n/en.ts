@@ -3,7 +3,7 @@ import type { ru } from './ru'
 export const en: typeof ru = {
   meta: {
     siteTitle: 'Ayakun — visual AI automation without code',
-    siteDescription: 'Build a chain on a canvas: find data → analyze with AI → take the action you need. The result goes wherever you choose. Simple, visual, fast. Try it free — 200 credits on signup.'
+    siteDescription: 'Build a chain on a canvas: find data → analyze with AI → take the action you need. The result goes wherever you choose. Simple, visual, fast. Try it free — 200 tokens on signup.'
   },
   common: {
     account: 'Account',
@@ -13,7 +13,7 @@ export const en: typeof ru = {
     back: 'Back',
     genericError: 'Something went wrong',
     errorStatus: 'Error {status}',
-    credits: 'credits',
+    tokens: 'tokens',
     inn: 'TIN',
     ogrnip: 'OGRNIP'
   },
@@ -73,7 +73,7 @@ export const en: typeof ru = {
     seeExamples: 'See examples',
     trustNoCode: 'No code, no servers',
     trustPrice: 'Price visible before a run',
-    trustCredits: '200 credits on signup',
+    trustTokens: '200 tokens on signup',
     unique: [
       { title: 'A canvas instead of code', text: 'Every node, link and branch on one screen — the whole chain is a diagram you can read.' },
       { title: 'Sheets, email, events', text: 'Google Sheets, Email, webhooks and databases sit next to search and AI — no server of your own.' },
@@ -134,7 +134,7 @@ export const en: typeof ru = {
       chainAlt: 'Chain: Laravel job search, processing and send to Telegram',
       runStep: '02 · Run',
       runTitle: 'Result in the workspace',
-      runText: 'Every node is visible, credits charged on actual usage.',
+      runText: 'Every node is visible, tokens charged on actual usage.',
       runAlt: 'Run page: 100% progress and found vacancies',
       tgStep: '03 · Telegram',
       tgTitle: 'A ready list in chat',
@@ -147,7 +147,7 @@ export const en: typeof ru = {
     },
     canvas: {
       name: 'Morning market brief',
-      schedule: 'Weekdays · 09:00 · ≈ 2 credits',
+      schedule: 'Weekdays · 09:00 · ≈ 2 tokens',
       running: 'Running',
       done: 'Done',
       searchLabel: 'Web search',
@@ -218,7 +218,7 @@ export const en: typeof ru = {
     totalRuns: 'Total runs',
     allTime: 'all time',
     available: 'Available',
-    creditsOnBalance: 'credits on balance',
+    tokensOnBalance: 'tokens on balance',
     recent: 'Recent runs',
     recentLead: 'What ran lately',
     allHistory: 'Full history',
@@ -271,7 +271,7 @@ export const en: typeof ru = {
     publish: 'Publish',
     run: 'Run',
     runNode: 'Run',
-    costUpTo: 'up to {cost} credits',
+    costUpTo: 'up to {cost} tokens',
     nodes: 'Nodes',
     nodesHint: 'Drag onto the canvas or click',
     loading: 'Loading the editor…',
@@ -426,7 +426,7 @@ export const en: typeof ru = {
     eyebrow: 'One account — every automation',
     title: 'Log in and continue where you left off',
     lead: 'Your chains, schedules and results stay safely in the workspace.',
-    points: ['Skip the routine', 'Results arrive in the messenger', 'Buy credits — no subscription'],
+    points: ['Skip the routine', 'Results arrive in the messenger', 'Buy tokens — no subscription'],
     tabLogin: 'Log in',
     tabRegister: 'Sign up',
     welcome: 'Welcome',
@@ -472,18 +472,18 @@ export const en: typeof ru = {
   },
   pricing: {
     title: 'Pricing',
-    description: 'You buy credits — only the actual run cost is charged. No subscription and no expiry.',
-    eyebrow: 'Credits',
+    description: 'You buy tokens — only the actual run cost is charged. No subscription and no expiry.',
+    eyebrow: 'Tokens',
     heading: 'Pay only for the volume you need',
-    lead: 'No subscriptions or hidden tiers — you buy a credits pack and spend them as you go.',
+    lead: 'No subscriptions or hidden tiers — you buy a tokens pack and spend them as you go.',
     better: 'Best value',
     free: 'Free',
     buy: 'Buy',
     howEyebrow: 'How it works',
     howTitle: 'One balance for every chain',
-    howLead: 'You do not compare pack features. Only the number of credits you put on the account differs.',
+    howLead: 'You do not compare pack features. Only the number of tokens you put on the account differs.',
     facts: [
-      { title: 'Pack = credits', text: 'Pay once — the stated amount lands on the balance immediately.' },
+      { title: 'Pack = tokens', text: 'Pay once — the stated amount lands on the balance immediately.' },
       { title: 'Charged on usage', text: 'Only the run cost is spent, not the whole pack at once.' },
       { title: 'Price before start', text: 'The editor shows the run maximum before the chain goes.' },
       { title: 'They do not expire', text: 'The remainder stays on the balance until you spend it.' }
@@ -491,13 +491,13 @@ export const en: typeof ru = {
   },
   billing: {
     eyebrow: 'Balance',
-    title: 'Top up credits',
-    lead: 'A credits pack is a one-time purchase. Actual run usage is charged, the remainder does not expire.',
+    title: 'Top up tokens',
+    lead: 'A tokens pack is a one-time purchase. Actual run usage is charged, the remainder does not expire.',
     onBalance: 'On balance',
-    forRuns: 'credits for runs',
+    forRuns: 'tokens for runs',
     spentMonth: 'Spent this month',
     topupTitle: 'Top up the balance',
-    topupLead: 'Pack price = number of credits. The editor shows the charge cap before a run.',
+    topupLead: 'Pack price = number of tokens. The editor shows the charge cap before a run.',
     alreadyStart: 'Already on the free start',
     payError: 'Payment is unavailable',
     emailTitle: 'Email for the receipt',
@@ -514,10 +514,10 @@ export const en: typeof ru = {
     run: 'run',
     charge: 'Charge · {what}',
     chargeRun: 'Charge · {what} · {run}',
-    adminCredit: 'Admin credit',
+    adminToken: 'Admin token',
     adminAdjust: 'Admin adjustment',
-    starter: 'Starter credits',
-    purchase: 'Credits purchase',
+    starter: 'Starter tokens',
+    purchase: 'Tokens purchase',
     refund: 'Refund',
     refundRun: 'Refund · {run}'
   },
@@ -668,7 +668,7 @@ export const en: typeof ru = {
         ],
         output: 'A list of search results (titles, links, snippets). The next node reads it as JSON.',
         notes: [
-          'Search charges credits for the actual query.',
+          'Search charges tokens for the actual query.',
           'A tighter query and period means less noise in the results.'
         ]
       },
@@ -685,7 +685,7 @@ export const en: typeof ru = {
           { name: 'Prompt', text: 'The task in your own words. Variables as {{name}}, input fields as {{$field}}.' },
           { name: 'Instructions', text: 'Tone and rules: “answer briefly”, “no preamble”.' },
           { name: 'Output format', text: 'A JSON schema or sample object. If filled, the answer must match it.' },
-          { name: 'Maximum cost', text: 'Upper bound of credits for this run. A lower cap may truncate a long answer.' }
+          { name: 'Maximum cost', text: 'Upper bound of tokens for this run. A lower cap may truncate a long answer.' }
         ],
         output: 'The model’s answer: text, or JSON if a format is set. Telegram, Email, conditions and other nodes can read it next.',
         notes: [
@@ -855,21 +855,21 @@ export const en: typeof ru = {
     email: 'Email',
     address: 'Postal address',
     contactsTopics: 'What to write about',
-    contactsTopicsText: 'Cabinet access, credit charges, payments and the offer — email or call during business hours.',
+    contactsTopicsText: 'Cabinet access, token charges, payments and the offer — email or call during business hours.',
     deliveryTitle: 'How you receive the service',
     deliveryDesc: 'How to get access to Ayakun after payment: a digital service with no physical delivery',
     deliveryEyebrow: 'Digital service',
     deliveryHeading: 'How you receive the order',
     deliveryLead: 'Ayakun does not ship physical goods. After payment you get access in the workspace immediately.',
     buyTitle: 'What you buy',
-    buyText: 'You pay for access to the {brand} online service and a stock of credits. Credits are charged for actual chain runs: search, processing and delivering the result.',
+    buyText: 'You pay for access to the {brand} online service and a stock of tokens. Tokens are charged for actual chain runs: search, processing and delivering the result.',
     afterTitle: 'How you receive the service after payment',
     after1: 'Pay for a pack by card or another available method on the payment page.',
-    after2: 'After the payment is confirmed, credits are added to the account balance immediately.',
+    after2: 'After the payment is confirmed, tokens are added to the account balance immediately.',
     after3: 'Sign in to the workspace — access to the chain editor, schedule and run history opens automatically.',
     after4: 'The result of each run appears in the workspace and, if you set up delivery, in Telegram or by Email.',
     termTitle: 'Provision term',
-    termText: 'The service is considered provided when credits are added and access is opened. There is no separate shipment, tracking number or pickup point.',
+    termText: 'The service is considered provided when tokens are added and access is opened. There is no separate shipment, tracking number or pickup point.',
     missingTitle: 'If access did not appear',
     missingText: 'Write to {email} — we will sort it out.'
   }
