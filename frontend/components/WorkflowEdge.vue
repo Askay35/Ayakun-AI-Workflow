@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BaseEdge, getBezierPath, Position, type EdgeProps } from '@vue-flow/core'
+import { BaseEdge, getSmoothStepPath, Position, type EdgeProps } from '@vue-flow/core'
 
 const props = defineProps<EdgeProps>()
 const emit = defineEmits<{
@@ -8,15 +8,27 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const path = computed(() => {
-  const [d, labelX, labelY] = getBezierPath({
+  const [d, labelX, labelY] = getSmoothStepPath({
     sourceX: props.sourceX,
     sourceY: props.sourceY,
     targetX: props.targetX,
     targetY: props.targetY,
     sourcePosition: props.sourcePosition ?? Position.Right,
-    targetPosition: props.targetPosition ?? Position.Left
+    targetPosition: props.targetPosition ?? Position.Left,
+    borderRadius: 18
   })
   return { d, labelX, labelY }
+})
+const branch = computed(() => {
+  const handle = String(props.sourceHandle || '')
+  if (handle.endsWith('true')) return 'true'
+  if (handle.endsWith('false')) return 'false'
+  return ''
+})
+const stroke = computed(() => {
+  if (branch.value === 'true') return '#7dffa6'
+  if (branch.value === 'false') return '#ff9b8a'
+  return '#b7b0ff'
 })
 
 const removeEdge = (event: Event) => {
@@ -33,9 +45,17 @@ const removeEdge = (event: Event) => {
       :path="path.d"
       :marker-end="markerEnd"
       :marker-start="markerStart"
-      :style="style"
-      :interaction-width="interactionWidth ?? 28"
+      :style="{ ...style, stroke, strokeWidth: 2.5 }"
+      :interaction-width="interactionWidth ?? 32"
     />
+    <text
+      v-if="branch"
+      class="edge-branch"
+      :class="`is-${branch}`"
+      :x="path.labelX"
+      :y="path.labelY - 18"
+      text-anchor="middle"
+    >{{ branch === 'true' ? 'TRUE' : 'FALSE' }}</text>
     <g
       class="edge-delete nodrag nopan"
       :transform="`translate(${path.labelX}, ${path.labelY})`"
