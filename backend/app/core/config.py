@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_complex_model: str = "deepseek-v4-pro"
     deepseek_simple_model: str = "deepseek-flash"
+    deepseek_vision_model: str = "deepseek-v4-flash-vision-exp"
     # Admin routing: which provider/model for each workflow stage
     web_search_provider: WebSearchProviderId = WebSearchProviderId.serper
     simple_llm_provider: LLMProviderId = LLMProviderId.deepseek

@@ -173,7 +173,7 @@ const readMediaFile = (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file || !selected.value) return
-  const max = selected.value.type === 'audio_transcription' ? 6 * 1024 * 1024 : 4 * 1024 * 1024
+  const max = selected.value.type === 'audio_transcription' ? 6 * 1024 * 1024 : 30 * 1024 * 1024
   if (file.size > max) {
     toast.add({ title: t('editor.fileTooBig'), color: 'warning' })
     input.value = ''

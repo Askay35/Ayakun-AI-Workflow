@@ -13,6 +13,7 @@ from schemas.billing import (
     RuntimeSettingUpdate,
 )
 from schemas.common import ApiResponse
+from services.media_settings import normalize_runtime_value
 
 router = APIRouter()
 
@@ -123,14 +124,17 @@ async def update_setting(
     if not setting:
         raise HTTPException(404, "Настройка не найдена")
     before = {"value": setting.value}
-    setting.value = data.value
+    try:
+        setting.value = normalize_runtime_value(key, data.value)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     db.add(BillingAudit(
         actor=actor,
         action="update",
         entity_type="runtime_setting",
         entity_id=key,
         before=before,
-        after={"value": data.value},
+        after={"value": setting.value},
         request_id=data.request_id,
     ))
     await db.commit()

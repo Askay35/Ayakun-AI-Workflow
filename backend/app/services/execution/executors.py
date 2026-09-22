@@ -117,7 +117,7 @@ class DefaultExecutors:
         return await ImageAction(self.client).execute(node, self.prepare(context))
 
     async def image_recognition(self, node: ImageRecognitionNode, context: dict) -> dict:
-        return await ImageRecognitionAction(self.media, self.client).execute(node, self.prepare(context))
+        return await ImageRecognitionAction(client=self.client, pricing=self.pricing).execute(node, self.prepare(context))
 
     async def audio_transcription(self, node: AudioTranscriptionNode, context: dict) -> dict:
         return await AudioTranscriptionAction(self.media, self.client).execute(node, self.prepare(context))

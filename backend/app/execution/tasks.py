@@ -36,14 +36,14 @@ from services.billing.access import PAID_MEDIA_REQUIRED, graph_uses_paid_media, 
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
 from services.execution.errors import user_visible_error
 from services.media_files import billed_audio_minutes
+from services.media_settings import audio_minute_charge, default_audio_minute_credits, image_generation_charge, recognition_charge
 from services.pricing import (
     PricingService,
     audio_transcription_credits,
     billable_credits,
     billed_credits,
-    image_generation_credits,
-    image_recognition_credits,
     provider_cost_usd,
+    quantize_credits,
 )
 from services.schedule import advance_due_slots, dump_slots, earliest_next, load_slots, slots_from_legacy
 from services.workflow import topological_nodes
@@ -107,16 +107,16 @@ async def node_cost(
         key = node_type.value if isinstance(node_type, NodeType) else str(node_type or "node")
         return Decimal("0"), 0, {"provider": key, "model": key}
     if node_type == NodeType.IMAGE_GENERATION:
-        credits = image_generation_credits()
+        credits = await image_generation_charge(pricing)
         return credits, 0, {
             "provider": "gigachat",
             "model": "image",
             "provider_cost_usd": str(provider_cost_usd(credits)),
         }
     if node_type == NodeType.IMAGE_RECOGNITION:
-        credits = image_recognition_credits()
+        credits, provider = await recognition_charge(pricing)
         return credits, 0, {
-            "provider": "gigachat",
+            "provider": provider,
             "model": "vision",
             "provider_cost_usd": str(provider_cost_usd(credits)),
         }
@@ -127,7 +127,11 @@ async def node_cost(
                 minutes = max(1, int(output.get("duration_minutes")))
             except (TypeError, ValueError):
                 pass
-        credits = audio_transcription_credits(minutes)
+        per_minute = await audio_minute_charge(pricing)
+        if per_minute == default_audio_minute_credits():
+            credits = audio_transcription_credits(minutes)
+        else:
+            credits = quantize_credits(per_minute * Decimal(minutes))
         return credits, minutes, {
             "provider": "gigachat",
             "model": "audio",

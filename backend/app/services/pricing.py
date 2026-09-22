@@ -102,7 +102,7 @@ def image_generation_credits() -> Decimal:
 
 
 def image_recognition_credits() -> Decimal:
-    return IMAGE_MEDIA_CREDITS
+    return Decimal("25")
 
 
 def audio_transcription_credits(minutes: int) -> Decimal:
@@ -111,8 +111,10 @@ def audio_transcription_credits(minutes: int) -> Decimal:
 
 
 def media_estimate_credits(node_type: str) -> Decimal:
-    if node_type in {"image_generation", "image_recognition"}:
+    if node_type == "image_generation":
         return IMAGE_MEDIA_CREDITS
+    if node_type == "image_recognition":
+        return Decimal("25")
     if node_type == "audio_transcription":
         return billable_credits(credits_for_rubles(AUDIO_MINUTE_RUB))
     return Decimal("0")
@@ -183,8 +185,18 @@ class PricingService:
             elif node_type == "prompt":
                 price = await self.get("deepseek", _prompt_model(node))
                 total += _prompt_estimate_credits(price, node, graph)
+            elif node_type == "image_generation":
+                from services.media_settings import image_generation_charge
+                total += await image_generation_charge(self)
+            elif node_type == "image_recognition":
+                from services.media_settings import recognition_charge
+                amount, _provider = await recognition_charge(self)
+                total += amount
+            elif node_type == "audio_transcription":
+                from services.media_settings import audio_minute_charge
+                total += billable_credits(await audio_minute_charge(self))
             else:
-                total += media_estimate_credits(node_type)
+                total += Decimal("0")
         return total
 
 

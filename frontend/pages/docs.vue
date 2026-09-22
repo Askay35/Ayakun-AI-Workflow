@@ -121,7 +121,19 @@ const syncActive = () => {
 const revealActiveChip = () => {
   const nav = tocEl.value
   const current = nav?.querySelector<HTMLElement>('.is-active')
-  current?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+  if (!nav || !current) return
+  const horizontal = getComputedStyle(nav).flexDirection === 'row'
+  if (horizontal) {
+    nav.scrollTo({
+      left: current.offsetLeft - nav.clientWidth / 2 + current.clientWidth / 2,
+      behavior: 'smooth'
+    })
+    return
+  }
+  const navBox = nav.getBoundingClientRect()
+  const itemBox = current.getBoundingClientRect()
+  if (itemBox.top < navBox.top) nav.scrollTop -= navBox.top - itemBox.top + 8
+  else if (itemBox.bottom > navBox.bottom) nav.scrollTop += itemBox.bottom - navBox.bottom + 8
 }
 
 watch(activeId, () => nextTick(revealActiveChip))

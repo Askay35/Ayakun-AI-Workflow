@@ -1,3 +1,4 @@
+import base64
 import asyncio
 import io
 import json
@@ -140,9 +141,9 @@ async def test_delay_clamps(monkeypatch) -> None:
 def test_media_pricing_matches_ruble_pack() -> None:
     assert RUB_PER_CREDIT == Decimal("390") / Decimal("2000")
     assert image_generation_credits() == Decimal("50")
-    assert image_recognition_credits() == Decimal("50")
+    assert image_recognition_credits() == Decimal("25")
     assert media_estimate_credits("image_generation") == Decimal("50")
-    assert media_estimate_credits("image_recognition") == Decimal("50")
+    assert media_estimate_credits("image_recognition") == Decimal("25")
 
     minute_raw = credits_for_rubles(Decimal("0.5"))
     assert audio_transcription_credits(1) == minute_raw.quantize(Decimal("0.000001"))
@@ -163,7 +164,8 @@ async def test_node_cost_charges_fixed_media_credits() -> None:
     assert "deepseek" not in details["provider"]
 
     vision_credits, _, vision = await node_cost(None, ImageRecognitionNode(id="r", prompt="what"), {"text": "cat"})  # type: ignore[arg-type]
-    assert vision_credits == image_recognition_credits()
+    assert vision_credits == Decimal("25")
+    assert vision["provider"] == "deepseek"
     assert vision["model"] == "vision"
 
     audio_credits, minutes, audio = await node_cost(
@@ -361,6 +363,65 @@ async def test_image_recognition_uses_upload_and_attachments(monkeypatch) -> Non
             },
         )
     assert result["text"] == "рыжий кот"
+
+
+@pytest.mark.asyncio
+async def test_deepseek_vision_sends_base64_image_url(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "deepseek_api_key", "ds-key")
+    monkeypatch.setattr(settings, "deepseek_vision_model", "deepseek-v4-flash-vision-exp")
+    monkeypatch.setattr(settings, "deepseek_base_url", "https://api.deepseek.com")
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["auth"] = request.headers["authorization"]
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "кот"}}]})
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        result = await ImageRecognitionAction(client=client).execute(
+            ImageRecognitionNode(id="vision", prompt="", parents=["img"]),
+            {
+                "nodes": {
+                    "img": {
+                        "type": "image",
+                        "output": {"source": "file", "mime": "image/png", "filename": "cat.png", "base64": "aGVsbG8="},
+                    }
+                },
+                "variables": {},
+            },
+        )
+    assert result["text"] == "кот"
+    assert seen["url"] == "https://api.deepseek.com/chat/completions"
+    assert seen["auth"] == "Bearer ds-key"
+    content = seen["body"]["messages"][0]["content"]
+    assert seen["body"]["model"] == "deepseek-v4-flash-vision-exp"
+    assert content[0] == {"type": "text", "text": "Что изображено на картинке?"}
+    assert content[1]["type"] == "image_url"
+    assert content[1]["image_url"]["url"] == "data:image/png;base64,aGVsbG8="
+
+
+@pytest.mark.asyncio
+async def test_image_recognition_rejects_files_over_30mb() -> None:
+    class Media:
+        async def recognize_image(self, prompt: str, data: bytes, mime: str, filename: str) -> str:
+            raise AssertionError("файл больше лимита не должен уходить в модель")
+
+    huge = base64.b64encode(b"x" * (30 * 1024 * 1024 + 1)).decode()
+    with pytest.raises(ValueError, match="30 МБ"):
+        await ImageRecognitionAction(Media()).execute(
+            ImageRecognitionNode(id="vision", prompt="что это", parents=["img"]),
+            {
+                "nodes": {
+                    "img": {
+                        "type": "image",
+                        "output": {"source": "file", "mime": "image/jpeg", "filename": "big.jpg", "base64": huge},
+                    }
+                },
+                "variables": {},
+            },
+        )
 
 
 def _wav(seconds: float) -> bytes:

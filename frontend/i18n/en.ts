@@ -68,58 +68,58 @@ export const en: typeof ru = {
     eyebrow: 'Visual AI chains',
     heroTitleBefore: 'Automation',
     heroTitleAccent: 'you can see',
-    heroCopy: 'Assemble search, AI, spreadsheets, email, HTTP and conditions on a canvas — like a builder. One chain replaces routine: from an incoming event to an email, a spreadsheet row, or a Telegram message.',
+    heroCopy: 'Build a process on one canvas: find data, shape it, and send the result by email, into a spreadsheet, or to Telegram. No code and no server of your own.',
     startFree: 'Start for free',
     seeExamples: 'See examples',
     trustNoCode: 'No code, no servers',
     trustPrice: 'Price visible before a run',
     trustTokens: '200 tokens on signup',
     unique: [
-      { title: 'A canvas instead of code', text: 'Every node, link and branch on one screen — the whole chain is a diagram you can read.' },
-      { title: 'Sheets, email, events', text: 'Google Sheets, Email, webhooks and databases sit next to search and AI — no server of your own.' },
-      { title: 'Button, schedule or event', text: 'Run on a schedule, react to a webhook, or fire once — in the same editor.' },
-      { title: 'Pay for the run', text: 'The maximum cost is visible before start; only actual usage is charged.' }
+      { title: 'A diagram, not code', text: 'On one screen you see where the data comes from and where the result goes.' },
+      { title: 'Mail, sheets, files', text: 'Email, spreadsheets and cloud files sit next to search and AI. No server of your own.' },
+      { title: 'On your schedule', text: 'Run it with a button, on a schedule, or when something happens.' },
+      { title: 'A clear price', text: 'You see the possible cost before the run. Only actual usage is charged.' }
     ],
-    featuresEyebrow: 'Chain building blocks',
-    featuresTitle: 'Seventeen nodes — any scenario',
-    featuresLead: 'Search and Telegram are only the start. The same canvas also has a loop, a delay, Yandex Disk, image generation, image recognition, audio transcription, spreadsheets, email and branches.',
+    featuresEyebrow: 'What you can automate',
+    featuresTitle: 'One chain instead of a dozen manual steps',
+    featuresLead: 'Find data, shape it, save the result and send it where you actually read it. All on one canvas.',
     blocks: [
-      { number: '01', title: 'Web search', text: 'Fresh news, jobs, prices, brand mentions — anything you can find with a query.' },
-      { number: '02', title: 'AI processing', text: 'Compress, compare, write an email or a report in the format you need — in your own words.' },
-      { number: '03', title: 'HTTP request', text: 'Pull data from a CRM, an exchange rate, your admin panel, or any API.' },
-      { number: '04', title: 'IF ELSE', text: 'Branching: if the price dropped — one action, if not — another. No extra noise.' },
-      { number: '05', title: 'Telegram', text: 'The finished result goes to chat right after the run — to you or the team.' },
-      { number: '06', title: 'Webhook', text: 'The chain starts on an event: a new lead, a payment, a form on your site.' },
-      { number: '07', title: 'Google Sheets', text: 'Read and write rows: leads, a price list, a report — no manual copy-paste.' },
-      { number: '08', title: 'Email', text: 'Send a message to a given address.' },
-      { number: '09', title: 'Transform', text: 'Filter, reshape and assemble JSON so the next node understands the data.' },
-      { number: '10', title: 'Database', text: 'SQL against PostgreSQL, MySQL or ClickHouse: stock, orders, metrics — straight into the chain.' },
-      { number: '11', title: 'Loop', text: 'Walk an array, repeat N times, or compare a variable — the node returns the list, the next step reads it once.' },
-      { number: '12', title: 'Delay', text: 'Pause the chain for seconds or minutes before the next node.' },
-      { number: '13', title: 'Yandex Disk', text: 'Upload a file or download one into the chain so later nodes can use it.' },
-      { number: '14', title: 'Image generation', text: 'A prompt becomes a JPEG the next node can pass on.' },
-      { number: '15', title: 'Image', text: 'A file, a URL, a generated picture or a file from Yandex Disk — one shape for the nodes after it.' },
-      { number: '16', title: 'Image recognition', text: 'One incoming Image node, a prompt, and text back out.' },
-      { number: '17', title: 'Audio transcription', text: 'An audio file or link becomes text. Billing follows the length of the recording.' }
+      { number: '01', title: 'Web search', text: 'News, jobs, prices and mentions — from a query, without browsing by hand.' },
+      { number: '02', title: 'AI writing', text: 'Summarize, compare, or draft a message in the tone you need.' },
+      { number: '03', title: 'HTTP request', text: 'Connect a CRM, an exchange rate, or any service that has an API.' },
+      { number: '04', title: 'Condition', text: 'If the threshold is met, do one thing. Otherwise do another, or stop.' },
+      { number: '05', title: 'Telegram', text: 'The finished result arrives in chat for you or the team.' },
+      { number: '06', title: 'Site event', text: 'The chain starts on its own: a new lead, a payment, a form.' },
+      { number: '07', title: 'Spreadsheets', text: 'Leads, price lists and reports are read and written without copy-paste.' },
+      { number: '08', title: 'Email', text: 'Send a client or a colleague a message built by the chain.' },
+      { number: '09', title: 'Prepare the data', text: 'Keep the fields you need so the next step receives a clean result.' },
+      { number: '10', title: 'Database', text: 'Stock, orders and metrics come straight from your database.' },
+      { number: '11', title: 'Repeat', text: 'Walk a list, or run a step a set number of times.' },
+      { number: '12', title: 'Pause', text: 'Wait seconds or minutes before the next step.' },
+      { number: '13', title: 'Yandex Disk', text: 'Save a file to the disk, or take one from there for the next step.' },
+      { number: '14', title: 'Picture from a description', text: 'Describe what to draw. The image can continue down the chain.' },
+      { number: '15', title: 'Image', text: 'Upload a file or paste a link so later steps share one picture.' },
+      { number: '16', title: 'What is in the picture', text: 'Ask a question about an image and get the answer as text.' },
+      { number: '17', title: 'Text from a recording', text: 'An audio file or link becomes text.' }
     ],
     examplesEyebrow: 'Chain examples',
     examplesTitle: 'Build a scenario around your routine',
     examplesLead: 'Ready-made ideas below. In the editor you change queries, conditions and message text to fit you.',
     examples: [
       { tag: 'Careers', schedule: 'Every day · 10:00', title: 'New jobs without manual browsing', text: 'In the morning the service finds fresh roles, AI picks the matches and writes a short message — you just open Telegram.', chain: ['Job search', 'AI: filter and copy', 'Telegram'] },
-      { tag: 'Monitoring', schedule: 'On demand or on a cron', title: 'Competitor price with a smart threshold', text: 'HTTP pulls the price from an API, a condition checks the threshold, and only on a drop AI writes an alert to Telegram.', chain: ['HTTP API', 'IF: price lower', 'AI → Telegram'] },
-      { tag: 'Content', schedule: 'Mon–Fri · 08:30', title: 'Morning niche digest', text: 'Search gathers news, a prompt writes a brief in your tone, Telegram delivers the summary before coffee.', chain: ['News search', 'AI: digest', 'Telegram'] },
-      { tag: 'Operations', schedule: 'After an event', title: 'Site lead → row and chat', text: 'A webhook catches the form, a transform maps fields to the sheet, a row is written to Google Sheets, the team gets an update in Telegram.', chain: ['Webhook', 'Sheet', 'Telegram'] },
-      { tag: 'Sales', schedule: 'After an event', title: 'Site lead → email to the client', text: 'A webhook catches the form, AI drafts subject and body, Email sends it to the given address — no manual follow-up.', chain: ['Webhook', 'AI: email', 'Email'] },
-      { tag: 'Warehouse', schedule: 'Every hour', title: 'Stock from the database when it runs low', text: 'SQL reads stock, a condition drops the normal range, and only on a shortage an email goes to purchasing — no false alarms.', chain: ['SQL', 'IF: low', 'Email'] }
+      { tag: 'Monitoring', schedule: 'On demand or on a schedule', title: 'A competitor price with a threshold', text: 'The service watches the price and messages Telegram only when it drops below the number you set.', chain: ['Competitor price', 'Threshold', 'Telegram'] },
+      { tag: 'Content', schedule: 'Mon–Fri · 08:30', title: 'Morning niche digest', text: 'Search gathers the news, writing turns it into a short brief in your tone, and Telegram delivers it before coffee.', chain: ['News search', 'Short brief', 'Telegram'] },
+      { tag: 'Operations', schedule: 'Right after the lead', title: 'Site lead → sheet and chat', text: 'A new lead lands in the spreadsheet, and the team gets a Telegram message.', chain: ['Site lead', 'Sheet', 'Telegram'] },
+      { tag: 'Sales', schedule: 'Right after the lead', title: 'Site lead → email to the client', text: 'The lead becomes a ready email: subject, text and send, without manual follow-up.', chain: ['Site lead', 'Email text', 'Mail'] },
+      { tag: 'Warehouse', schedule: 'Every hour', title: 'An email when stock runs low', text: 'While stock is fine, nothing happens. When it runs low, purchasing gets an email.', chain: ['Stock', 'Threshold', 'Mail'] }
     ],
     howEyebrow: 'How it looks',
     howTitle: 'From an idea to a working chain',
     howLead: 'Assemble on the canvas, run, get a message. Nearby — a larger scenario with branches.',
     steps: [
-      { number: '01', title: 'Place blocks on the canvas', text: 'Drag search, AI, a loop, a delay, images, Yandex Disk, Email, sheets, SQL, HTTP or Telegram and connect outputs to inputs.' },
-      { number: '02', title: 'Set the rules in plain language', text: 'What to search, which prompt, which database query, when to continue and where to send the result. No code and no extra server.' },
-      { number: '03', title: 'Run it or set a schedule', text: 'Cost estimate is visible in advance. Run from a button, a webhook or on time; the result arrives in the workspace, by email or in Telegram.' }
+      { number: '01', title: 'Place the steps on the canvas', text: 'Add search, writing, email, a spreadsheet, files or Telegram and connect them in the order you need.' },
+      { number: '02', title: 'Describe the task in your own words', text: 'What to find, what to write, when to continue and where to send the result. No code and no server of your own.' },
+      { number: '03', title: 'Run it or set a schedule', text: 'The cost is visible in advance. Run from a button, from a site event, or on time. The result arrives in the workspace, by email or in Telegram.' }
     ],
     audienceEyebrow: 'Who it is for',
     audienceTitle: 'If the task repeats — give it to a chain',
@@ -127,9 +127,9 @@ export const en: typeof ru = {
       { title: 'Specialists and managers', text: 'Daily monitoring of the market, competitors and news without a manual brief.', example: 'Example: mention search → AI summary → Telegram' },
       { title: 'Job seekers', text: 'Stop scrolling dozens of sites — get filtered vacancies in one message.', example: 'Example: job search → AI filter → Telegram' },
       { title: 'Writers and analysts', text: 'Sources and short extracts arrive on their own — you keep the thought and the publish.', example: 'Example: article search → AI notes → Telegram' },
-      { title: 'Marketers and growth', text: 'Watch prices, offers and competitor activity on a schedule.', example: 'Example: HTTP prices → IF threshold → Telegram alert' },
-      { title: 'Small business', text: 'Regular reports and alerts without a developer or extra infrastructure.', example: 'Example: SQL orders → AI brief → Email' },
-      { title: 'Developers and no-code', text: 'Fast integrations and branches without standing up your own n8n or workers.', example: 'Example: webhook → condition → sheet or Telegram' }
+      { title: 'Marketers', text: 'Watch prices, offers and competitor activity on a schedule.', example: 'Example: competitor price → threshold → Telegram message' },
+      { title: 'Small business', text: 'Regular reports and alerts without a developer or extra infrastructure.', example: 'Example: orders → short brief → email' },
+      { title: 'Operations teams', text: 'Repeated checks and notifications come together in a few minutes.', example: 'Example: site lead → check → sheet or Telegram' }
     ],
     ctaEyebrow: 'Free start',
     ctaTitle: 'Build your first chain today',
@@ -149,8 +149,8 @@ export const en: typeof ru = {
       tgAlt: 'Telegram message with a list of Laravel jobs',
       moreStep: 'Another scenario',
       moreTitle: 'Branches on one canvas',
-      moreText: 'Webhook and HTTP fan out to Telegram, email, sheets and SQL.',
-      moreAlt: 'Large chain: webhook, HTTP, branches to Telegram, email, sheets and a database'
+      moreText: 'One event can go to chat, email and a spreadsheet — under different rules.',
+      moreAlt: 'A large chain with branches into Telegram, email and spreadsheets'
     },
     canvas: {
       name: 'Morning market brief',
@@ -398,8 +398,8 @@ export const en: typeof ru = {
     recognizePrompt: 'Prompt',
     recognizePlaceholder: 'What is in this image?',
     recognizeHint: 'Exactly one incoming link, and it must come from the Image node. The model key stays on the server.',
-    recognizeCredits: '50 credits per recognition. The node unlocks after you buy a pack.',
-    imageCredits: '50 credits per generation. The node unlocks after you buy a pack.',
+    recognizeCredits: '25 tokens per recognition by default. The node unlocks after you buy a pack.',
+    imageCredits: '50 tokens per generation. The node unlocks after you buy a pack.',
     mediaLockedShort: 'After buying a pack',
     mediaLocked: 'This node is available after you buy a pack',
     mediaLockedHint: 'Image generation, image recognition and audio transcription stay locked until you buy a pack at least once. Signup credits do not unlock them.',
@@ -974,7 +974,7 @@ export const en: typeof ru = {
         ],
         output: '{ source: "generated", mime: "image/jpeg", filename, path }. Connect an Image node if the next step is recognition.',
         notes: [
-          'One generation costs 50 credits and is available after you buy any pack. Signup credits do not unlock the node.',
+          'One generation costs 50 tokens and is available after you buy any pack. Signup tokens do not unlock the node.',
           'The picture is downloaded in the same request. A new access token deletes files from the previous one immediately, so the token is not refreshed while a file is open.'
         ]
       },
@@ -1004,7 +1004,7 @@ export const en: typeof ru = {
         ],
         output: '{ text } — the model answer.',
         notes: [
-          'One recognition costs 50 credits and is available after you buy any pack.',
+          'One recognition costs 25 tokens by default. The price and model can be changed in settings. The node is available after you buy any pack.',
           'The file is deleted in the same token session. Refreshing the access token wipes files immediately, so a new token is not requested while a file is open.'
         ]
       },

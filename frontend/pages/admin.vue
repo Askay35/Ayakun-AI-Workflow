@@ -19,6 +19,16 @@ definePageMeta({ layout: false, ssr: false })
 useHead({ title: 'Администрирование' })
 
 const PAGE_SIZE = 20
+const VISION_PROVIDERS = [
+  { label: 'DeepSeek', value: 'deepseek' },
+  { label: 'GigaChat', value: 'gigachat' }
+]
+const CREDIT_SETTING_KEYS = new Set([
+  'image_generation_credits',
+  'image_recognition_credits_deepseek',
+  'image_recognition_credits_gigachat',
+  'audio_minute_credits'
+])
 const api = useApi()
 const auth = useAuth()
 const toast = useToast()
@@ -81,8 +91,10 @@ const savePlan = async (plan: Plan) => {
     toast.add({ title: 'Не удалось сохранить тариф', color: 'error' })
   }
 }
+const isCreditSetting = (key: string) => CREDIT_SETTING_KEYS.has(key)
 const saveSetting = async (setting: AdminConfig['settings'][number]) => {
   try {
+    if (isCreditSetting(setting.key)) setting.value = Number(setting.value)
     Object.assign(setting, await api.admin.updateSetting(credentials.value, setting))
     toast.add({ title: 'Настройка сохранена', color: 'success' })
   } catch {
@@ -790,7 +802,25 @@ watch(credentials, (value) => {
                     <p class="admin-card-title">{{ setting.description }}</p>
                     <p class="admin-card-meta">{{ setting.key }}</p>
                     <div class="flex gap-2">
+                      <USelect
+                        v-if="setting.key === 'vision_provider'"
+                        :model-value="String(setting.value)"
+                        :items="VISION_PROVIDERS"
+                        value-key="value"
+                        class="flex-1"
+                        @update:model-value="setting.value = String($event ?? '')"
+                      />
                       <UInput
+                        v-else-if="isCreditSetting(setting.key)"
+                        :model-value="String(setting.value)"
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        class="flex-1"
+                        @update:model-value="setting.value = $event === '' ? 0 : Number($event)"
+                      />
+                      <UInput
+                        v-else
                         :model-value="String(setting.value)"
                         class="flex-1"
                         @update:model-value="setting.value = String($event)"
