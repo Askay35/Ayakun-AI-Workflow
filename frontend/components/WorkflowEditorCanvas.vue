@@ -355,9 +355,9 @@ const save = async () => {
     estimatedCost.value = Number(saved.estimated_run_cost || 0)
     saveState.value = 'saved'
     return true
-  } catch {
+  } catch (error) {
     saveState.value = 'dirty'
-    toast.add({ title: t('editor.saveError'), color: 'error' })
+    toast.add({ title: t('editor.saveError'), description: apiErrorMessage(error), color: 'error' })
     return false
   }
 }

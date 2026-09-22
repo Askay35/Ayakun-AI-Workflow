@@ -67,6 +67,7 @@ class AdminUserUpdate(BaseModel):
     is_active: bool | None = None
     balance: Decimal | None = Field(None, ge=0)
     note: str | None = Field(None, max_length=300)
+    grant_plan_id: int | None = None
     request_id: str = Field(min_length=8, max_length=160)
 
     @field_validator("email")
@@ -80,6 +81,17 @@ class AdminUserUpdate(BaseModel):
         if "@" not in cleaned or "." not in cleaned.split("@")[-1]:
             raise ValueError("Укажите корректный email")
         return cleaned
+
+    @field_validator("grant_plan_id", mode="before")
+    @classmethod
+    def empty_grant(cls, value: object) -> int | None:
+        if value is None or value is False or value == "":
+            return None
+        try:
+            plan_id = int(value)  # type: ignore[arg-type]
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Выберите пакет") from exc
+        return plan_id or None
 
     @field_validator("note")
     @classmethod

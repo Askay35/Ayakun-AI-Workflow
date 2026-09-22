@@ -18,6 +18,7 @@ from models.user import AuthIdentity, IdentityProvider, RefreshToken, User
 from models.workflow import Workflow
 from schemas.auth import TokenPair
 from schemas.user import UserResponse
+from services.email_domains import EMAIL_DOMAIN_DENIED, email_domain_allowed
 from services.google_oauth import gmail_scope_string, save_gmail_grant, user_response
 from services.providers import EmailProvider
 
@@ -66,6 +67,8 @@ class AuthService:
 
     async def request_email_register(self, email: str, password: str, name: str) -> None:
         email = email.lower()
+        if not email_domain_allowed(email):
+            raise HTTPException(403, EMAIL_DOMAIN_DENIED)
         if not self.email_provider:
             raise HTTPException(503, "Email provider не настроен")
         if await self.db.scalar(select(User).where(User.email == email)):
@@ -96,6 +99,8 @@ class AuthService:
 
     async def confirm_email_register(self, email: str, code: str) -> TokenPair:
         email = email.lower()
+        if not email_domain_allowed(email):
+            raise HTTPException(403, EMAIL_DOMAIN_DENIED)
         pending_key = f"email_register_pending:{email}"
         pending_raw = await self.redis.get(pending_key)
         if not pending_raw:
@@ -120,6 +125,8 @@ class AuthService:
 
     async def request_email_link(self, user: User, email: str) -> None:
         email = email.lower()
+        if not email_domain_allowed(email):
+            raise HTTPException(403, EMAIL_DOMAIN_DENIED)
         if not self.email_provider:
             raise HTTPException(503, "Email provider не настроен")
         current = (user.email or "").lower()
@@ -463,6 +470,8 @@ class AuthService:
             email = profile.get("email", "").lower() or None
             user = await self.db.scalar(select(User).where(User.email == email)) if email else None
             if not user:
+                if not email or not email_domain_allowed(email):
+                    raise HTTPException(403, EMAIL_DOMAIN_DENIED)
                 user = User(name=profile.get("name") or "Google user", email=email, email_verified=True)
                 self.db.add(user)
                 await self.db.flush()

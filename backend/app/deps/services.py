@@ -33,8 +33,11 @@ def get_auth_service(
 def get_telegram_service(db: AsyncSession = Depends(get_db), redis: redis.Redis = Depends(get_redis), userService: UserService = Depends(get_user_service), authService: AuthService = Depends(get_auth_service), http_client: httpx.AsyncClient = Depends(get_http_client)) -> TelegramService:
     return TelegramService(db=db, redis=redis, userService=userService, authService=authService, http_client=http_client)
 
-def get_workflow_service(db: AsyncSession = Depends(get_db)) -> WorkflowService:
-    return WorkflowService(db, BillingService(db))
+def get_workflow_service(
+    db: AsyncSession = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis),
+) -> WorkflowService:
+    return WorkflowService(db, BillingService(db), redis_client)
 
 def get_billing_service(
     db: AsyncSession = Depends(get_db),

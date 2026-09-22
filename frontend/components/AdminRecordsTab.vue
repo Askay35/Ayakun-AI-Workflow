@@ -84,7 +84,11 @@ const openEdit = (row: T) => {
   current.value = row
   for (const field of props.fields) {
     const value = row[field.key]
-    form[field.key] = value == null ? (field.type === 'switch' ? false : '') : value
+    if (value == null) {
+      form[field.key] = field.type === 'switch' ? false : field.type === 'select' ? (field.options?.[0]?.value ?? '') : ''
+    } else {
+      form[field.key] = value
+    }
   }
   emit('open', row)
   editOpen.value = true

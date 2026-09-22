@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 from core.config import settings
 from models.workflow import (
@@ -48,6 +49,15 @@ from schemas.workflow import (
 from helper import display_telegram_output
 from services.billing import BillingService
 from services.billing.access import PAID_MEDIA_REQUIRED, graph_uses_paid_media, user_has_paid_pack
+from services.stored_images import (
+    IMAGE_QUOTA_MESSAGE,
+    MAX_USER_IMAGE_BYTES,
+    MAX_USER_IMAGE_FILES,
+    consume_image_node_budget,
+    image_node_ids,
+    strip_stored_images,
+    uploaded_images,
+)
 from services.pricing import PricingService
 from services.schedule import (
     derived_cron,
@@ -367,9 +377,10 @@ def validate_solo_node(node: WorkflowNode) -> list[str]:
 
 
 class WorkflowService:
-    def __init__(self, db: AsyncSession, billing: BillingService | None = None):
+    def __init__(self, db: AsyncSession, billing: BillingService | None = None, redis_client=None):
         self.db = db
         self.billing = billing
+        self.redis = redis_client
 
     async def _owned(self, workflow_id: uuid.UUID, user: User) -> Workflow:
         workflow = await self.db.scalar(select(Workflow).where(Workflow.id == workflow_id, Workflow.owner_id == user.id))
@@ -384,6 +395,7 @@ class WorkflowService:
         errors = validate_graph(data.graph)
         if errors:
             raise HTTPException(422, errors)
+        await self._guard_image_uploads(user, data.graph, previous=None, replace_id=None)
         workflow = Workflow(
             owner_id=user.id,
             name=data.name,
@@ -421,10 +433,12 @@ class WorkflowService:
         )
         graph = WorkflowGraph.model_validate(workflow.draft_graph or {"nodes": []})
         if "graph" in data.model_fields_set and data.graph is not None:
+            previous = graph
             graph = data.graph
             errors = validate_graph(graph)
             if errors:
                 raise HTTPException(422, errors)
+            await self._guard_image_uploads(user, graph, previous=previous, replace_id=workflow.id)
             workflow.draft_graph = graph.model_dump(mode="json")
             workflow.estimated_run_cost = await PricingService(self.db).estimate_graph(graph)
         for key, value in values.items():
@@ -442,9 +456,54 @@ class WorkflowService:
         return workflow
 
     async def delete(self, workflow_id: uuid.UUID, user: User) -> None:
+        """Удаление цепочки убирает черновик и снимки, а с ними и загруженные картинки."""
         workflow = await self._owned(workflow_id, user)
         await self.db.delete(workflow)
         await self.db.commit()
+
+    async def _guard_image_uploads(self, user: User, graph: WorkflowGraph, *, previous: WorkflowGraph | None, replace_id: uuid.UUID | None) -> None:
+        old_ids = image_node_ids(previous) if previous is not None else set()
+        added = len(image_node_ids(graph) - old_ids)
+        await consume_image_node_budget(self.redis, user.id, added)
+        files, nbytes = await self._image_usage(user.id, graph, replace_id)
+        if files > MAX_USER_IMAGE_FILES or nbytes > MAX_USER_IMAGE_BYTES:
+            raise HTTPException(422, IMAGE_QUOTA_MESSAGE)
+
+    async def _image_usage(self, user_id: int, incoming: WorkflowGraph, replace_id: uuid.UUID | None) -> tuple[int, int]:
+        files = 0
+        nbytes = 0
+        workflows = list(await self.db.scalars(select(Workflow).where(Workflow.owner_id == user_id)))
+        for workflow in workflows:
+            draft = incoming if replace_id is not None and workflow.id == replace_id else WorkflowGraph.model_validate(workflow.draft_graph or {"nodes": []})
+            seen = {node_id for node_id, _size in uploaded_images(draft)}
+            for _node_id, size in uploaded_images(draft):
+                files += 1
+                nbytes += size
+            if not workflow.published_version_id:
+                continue
+            version = await self.db.get(WorkflowVersion, workflow.published_version_id)
+            snapshot = version.graph_snapshot if version else None
+            for node_id, size in uploaded_images(snapshot if isinstance(snapshot, dict) else {}):
+                if node_id in seen:
+                    continue
+                files += 1
+                nbytes += size
+        if replace_id is None:
+            for _node_id, size in uploaded_images(incoming):
+                files += 1
+                nbytes += size
+        return files, nbytes
+
+    async def _drop_replaced_image_bytes(self, workflow_id: uuid.UUID, keep_version_id: uuid.UUID) -> None:
+        """После публикации байты картинок остаются только в новом снимке и черновике."""
+        versions = list(await self.db.scalars(select(WorkflowVersion).where(WorkflowVersion.workflow_id == workflow_id)))
+        for version in versions:
+            if version.id == keep_version_id:
+                continue
+            snapshot = version.graph_snapshot
+            if isinstance(snapshot, dict) and strip_stored_images(snapshot):
+                version.graph_snapshot = snapshot
+                flag_modified(version, "graph_snapshot")
 
     async def _require_paid_media(self, user: User, graph: WorkflowGraph) -> None:
         if graph_uses_paid_media(graph) and not await user_has_paid_pack(self.db, user.id):
@@ -488,6 +547,7 @@ class WorkflowService:
         version = WorkflowVersion(workflow_id=workflow.id, version=number, graph_snapshot=snapshot)
         self.db.add(version)
         await self.db.flush()
+        await self._drop_replaced_image_bytes(workflow.id, version.id)
         workflow.published_version_id = version.id
         workflow.status = WorkflowStatus.published
         await self.db.commit()

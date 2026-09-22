@@ -283,15 +283,27 @@ const userColumns: AdminColumn[] = [
   { key: 'is_active', label: 'Статус' },
   { key: 'created_at', label: 'Создан' }
 ]
-const userFields: AdminField[] = [
+const userFields = computed<AdminField[]>(() => [
   { key: 'name', label: 'Имя', type: 'text' },
   { key: 'email', label: 'Email', type: 'text', placeholder: 'name@example.com' },
   { key: 'chat_id', label: 'Telegram chat_id', type: 'number', step: '1' },
-  { key: 'balance', label: 'Баланс, credits', type: 'number', step: '0.000001', hint: 'Изменение проходит через ledger, не прямой UPDATE.' },
+  { key: 'balance', label: 'Баланс, токены', type: 'number', step: '0.000001', hint: 'Изменение проходит через ledger, не прямой UPDATE.' },
   { key: 'note', label: 'Комментарий к балансу', type: 'text', placeholder: 'Например: компенсация' },
+  {
+    key: 'grant_plan_id',
+    label: 'Выдать пакет',
+    type: 'select',
+    hint: 'Записывает покупку без оплаты и без начисления токенов. Открывает генерацию, распознавание и расшифровку.',
+    options: [
+      { label: 'Не выдавать', value: 0 },
+      ...(config.value?.plans || [])
+        .filter(plan => Number(plan.price) > 0)
+        .map(plan => ({ label: `${plan.name} · ${plan.price} ₽`, value: plan.id }))
+    ]
+  },
   { key: 'email_verified', label: 'Email подтверждён', type: 'switch' },
   { key: 'is_active', label: 'Аккаунт включён', type: 'switch' }
-]
+])
 const userStatusOptions: AdminSelectOption[] = [
   { label: 'Все статусы', value: 'all' },
   { label: 'Активные', value: 'true' },
@@ -308,7 +320,7 @@ const paymentColumns: AdminColumn[] = [
   { key: 'created_at', label: 'Дата' }
 ]
 const paymentFields: AdminField[] = [
-  { key: 'amount', label: 'Сумма, ₽', type: 'number', step: '1', hint: 'Правка записи платежа не начисляет credits. Баланс меняйте у пользователя.' },
+  { key: 'amount', label: 'Сумма, ₽', type: 'number', step: '1', hint: 'Правка записи платежа не начисляет токены. Баланс меняйте у пользователя.' },
   { key: 'plan_id', label: 'ID тарифа', type: 'number', step: '1' },
   { key: 'status', label: 'Статус', type: 'select', options: [
     { label: 'Ожидает', value: 'pending' },

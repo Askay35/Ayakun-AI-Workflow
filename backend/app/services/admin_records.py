@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from models.billing import BillingAudit, Payment, Plan, Wallet, WalletLedger
 from models.user import User
 from models.workflow import NodeRun, Workflow, WorkflowRun, WorkflowVersion
+from schemas.billing import PaymentStatus
 from schemas.admin import (
     AdminLedgerEntryResponse,
     AdminPage,
@@ -270,6 +271,8 @@ class AdminRecordsService:
                 actor=actor,
                 note=data.note,
             )
+        if data.grant_plan_id:
+            await self._grant_paid_plan(user, data.grant_plan_id, data.request_id)
         after = (await self._user_with_wallet(user_id)).model_dump(mode="json")
         self._queue_audit(
             actor=actor,
@@ -282,6 +285,23 @@ class AdminRecordsService:
         )
         await self._commit(deleting=False, entity="пользователя")
         return await self._user_with_wallet(user_id, with_ledger=True)
+
+    async def _grant_paid_plan(self, user: User, plan_id: int, request_id: str) -> None:
+        """Покупка без оплаты: статус succeeded открывает медиа-узлы, токены не начисляет."""
+        plan = await self.db.get(Plan, plan_id)
+        if plan is None:
+            raise HTTPException(404, "Пакет не найден")
+        if plan.price <= 0:
+            raise HTTPException(422, "Бесплатный пакет не открывает генерацию и распознавание")
+        self.db.add(Payment(
+            user_id=user.id,
+            plan_id=plan.id,
+            provider="admin",
+            amount=plan.price,
+            status=PaymentStatus.succeeded,
+            idempotency_key=f"admin-grant:{request_id}",
+        ))
+        await self.db.flush()
 
     async def delete_user(self, user_id: int, actor: str, request_id: str) -> None:
         if await self._seen(request_id):
