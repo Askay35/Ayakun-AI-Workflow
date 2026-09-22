@@ -13,7 +13,7 @@
           <div class="trust-row">
             <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustNoCode') }}</span>
             <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustPrice') }}</span>
-            <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustCredits') }}</span>
+            <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustTokens') }}</span>
           </div>
         </div>
         <LandingCanvas class="reveal" style="animation-delay: 140ms" />
@@ -162,11 +162,18 @@ const blockMeta = [
   { icon: 'i-lucide-table', accent: '#22c55e' },
   { icon: 'i-lucide-mail', accent: '#ea4335' },
   { icon: 'i-lucide-replace', accent: '#38bdf8' },
-  { icon: 'i-lucide-database', accent: '#6366f1' }
+  { icon: 'i-lucide-database', accent: '#6366f1' },
+  { icon: 'i-lucide-repeat', accent: '#f97316' },
+  { icon: 'i-lucide-timer', accent: '#94a3b8' },
+  { icon: 'i-lucide-hard-drive', accent: '#ffcc00' },
+  { icon: 'i-lucide-image-plus', accent: '#ec4899' },
+  { icon: 'i-lucide-image', accent: '#fb7185' },
+  { icon: 'i-lucide-scan-eye', accent: '#a78bfa' },
+  { icon: 'i-lucide-audio-lines', accent: '#14b8a6' }
 ]
 const blocks = computed(() => tm<Array<{ number: string; title: string; text: string }>>('landing.blocks').map((item, index) => ({
   ...item,
-  ...blockMeta[index]
+  ...(blockMeta[index] || { icon: 'i-lucide-box', accent: '#8b7cff' })
 })))
 
 const exampleMeta = [
