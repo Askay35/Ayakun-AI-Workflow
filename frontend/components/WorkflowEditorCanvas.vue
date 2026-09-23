@@ -1075,7 +1075,6 @@ const runSelectedNode = async () => {
               <UFormField :label="t('editor.imagePrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="6" class="w-full" :placeholder="t('editor.imagePromptPlaceholder')" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.imageCredits') }} {{ t('editor.mediaHint') }}</p>
             </template>
             <template v-if="selected.type === 'image'">
               <UFormField :label="t('editor.imageSource')">
@@ -1095,7 +1094,7 @@ const runSelectedNode = async () => {
               <UFormField :label="t('editor.recognizePrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="5" class="w-full" :placeholder="t('editor.recognizePlaceholder')" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.recognizeCredits') }} {{ t('editor.recognizeHint') }}</p>
+              <p class="text-xs leading-5 text-white/40">{{ t('editor.recognizeHint') }}</p>
             </template>
             <template v-if="selected.type === 'audio_transcription'">
               <p v-if="mediaLocked('audio_transcription')" class="text-xs leading-5 text-amber-200">{{ t('editor.mediaLockedHint') }}</p>
@@ -1112,7 +1111,6 @@ const runSelectedNode = async () => {
               <UFormField :label="t('editor.audioPrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="4" class="w-full" :placeholder="t('editor.audioPromptPlaceholder')" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.mediaHint') }}</p>
             </template>
             <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="mb-0 mt-3 space-y-1 text-xs text-amber-200">
               <li v-for="hint in selectedVariableHints.filter(item => item.mark === 'undefined')" :key="hint.name">

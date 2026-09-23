@@ -311,9 +311,9 @@ export const en: typeof ru = {
     propsKicker: 'Properties',
     noneSelected: 'Nothing selected',
     noneHint: 'Click a node to configure it. Connect the output (right) to the input (left).',
-    maxCost: 'Run maximum',
+    maxCost: 'Estimated maximum',
     maxCostValue: 'up to {cost}',
-    maxCostHint: 'upper bound; actual usage is charged',
+    maxCostHint: '; actual usage is charged',
     errors: 'Errors',
     webhookNoIn: 'A webhook starts the chain and does not accept incoming links',
     singleIn: '{label} accepts only one incoming link',
@@ -351,7 +351,7 @@ export const en: typeof ru = {
     instructionsPlaceholder: 'Answer briefly, no preamble',
     outputFormat: 'Output format',
     promptHint: 'Instructions are optional and go to the model as a system message. If an output format is set, the model must return exactly that. Variables: {example}.',
-    maxRunCost: 'Maximum run cost',
+    maxRunCost: 'Estimated maximum run cost',
     maxRunCostHint: 'A lower cap may truncate a long answer. Only actual usage is charged.',
     requestJson: 'Request data',
     httpHint: 'At most one incoming link. Substitutions like {json} are read from the previous node’s output root, {variable} from chain variables. After substitution the value must stay valid JSON.',
@@ -396,7 +396,6 @@ export const en: typeof ru = {
     recognizePrompt: 'Prompt',
     recognizePlaceholder: 'What is in this image?',
     recognizeHint: 'Exactly one incoming link, and it must come from the Image node. The model key stays on the server.',
-    recognizeCredits: '25 tokens per recognition by default. The node unlocks after you buy a pack.',
     imageCredits: '50 tokens per generation. The node unlocks after you buy a pack.',
     mediaLockedShort: 'After buying a pack',
     mediaLocked: 'This node is available after you buy a pack',
@@ -408,7 +407,6 @@ export const en: typeof ru = {
     audioUrlPlaceholder: 'https://... or {{$url}}',
     audioFileLabel: 'Audio file',
     fileTooBig: 'File is too large for the chain draft',
-    mediaHint: 'The model key is taken from the server environment, not from this node.',
     ifHint: 'One incoming link, TRUE (condition met) and FALSE (condition not met) outputs — connecting one branch is enough. Data is passed through unchanged. Condition with a variable: {compare} (the number and the string “12” are equal). Conditions on input data: {placeholder}.',
     ifHelpTitle: 'How to write a condition',
     ifHelpCompare: 'Compare fields from the previous node’s output. Path in curly braces, for example {example}.',
@@ -1003,8 +1001,8 @@ export const en: typeof ru = {
         ],
         output: '{ text } — the model answer.',
         notes: [
-          'One recognition costs 25 tokens by default. The price and model can be changed in settings. The node is available after you buy any pack.',
-          'The file is deleted in the same token session. Refreshing the access token wipes files immediately, so a new token is not requested while a file is open.'
+          'The node is available after you buy any pack.',
+          'Refreshing the access token wipes files immediately, so a new token is not requested while a file is using.'
         ]
       },
       audio_transcription: {
@@ -1012,7 +1010,7 @@ export const en: typeof ru = {
         how: [
           'At most one incoming link.',
           'Source is a URL, an uploaded file, or the previous node if it has a path, URL or base64.',
-          'Before the run the estimate assumes 1 minute. After the run the charge uses the real length, at least 1 minute, rounded up to the next minute.'
+          'Before the run the estimate assumes 5 minutes. After the run the charge uses the real length, at least 1 minute, rounded up to the next minute.'
         ],
         settings: [
           { name: 'Source', text: 'URL, file, or previous node.' },

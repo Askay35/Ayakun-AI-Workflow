@@ -149,8 +149,8 @@ def test_media_pricing_matches_ruble_pack() -> None:
     minute_raw = credits_for_rubles(Decimal("0.5"))
     assert audio_transcription_credits(1) == minute_raw.quantize(Decimal("0.000001"))
     assert audio_transcription_credits(2) == (minute_raw * 2).quantize(Decimal("0.000001"))
-    assert media_estimate_credits("audio_transcription") == billable_credits(minute_raw)
-    assert media_estimate_credits("audio_transcription") == Decimal("3")
+    assert media_estimate_credits("audio_transcription") == billable_credits(minute_raw * 5)
+    assert media_estimate_credits("audio_transcription") == Decimal("13")
     assert media_estimate_credits("loop") == Decimal("0")
     assert media_estimate_credits("delay") == Decimal("0")
 
@@ -194,7 +194,7 @@ async def test_estimate_graph_reserves_rounded_media_credits() -> None:
             raise AssertionError("media estimate must not ask DeepSeek rates")
 
     estimate = await Service().estimate_graph(graph)
-    assert estimate == Decimal("50") + Decimal("3")
+    assert estimate == Decimal("50") + Decimal("13")
     assert estimate == estimate_run_cost(graph)
 
 

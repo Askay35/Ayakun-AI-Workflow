@@ -293,12 +293,15 @@ const userFields = computed<AdminField[]>(() => [
     key: 'grant_plan_id',
     label: 'Выдать пакет',
     type: 'select',
-    hint: 'Записывает покупку без оплаты и без начисления токенов. Открывает генерацию, распознавание и расшифровку.',
+    hint: 'Записывает покупку без оплаты, начисляет токены пакета и открывает генерацию, распознавание и расшифровку.',
     options: [
       { label: 'Не выдавать', value: 0 },
       ...(config.value?.plans || [])
         .filter(plan => Number(plan.price) > 0)
-        .map(plan => ({ label: `${plan.name} · ${plan.price} ₽`, value: plan.id }))
+        .map(plan => ({
+          label: `${plan.name} · ${formatCredits(plan.limits?.included_credits)} токенов · ${plan.price} ₽`,
+          value: plan.id
+        }))
     ]
   },
   { key: 'email_verified', label: 'Email подтверждён', type: 'switch' },

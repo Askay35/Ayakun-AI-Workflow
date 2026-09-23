@@ -5,6 +5,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import select
 
+from core.config import settings
 from models.billing import Payment, PaymentStatus, Plan, Wallet, WalletLedger
 from models.user import User  # noqa: F401  — needed so Payment.user relationship can configure
 from schemas.billing import LedgerKind, WalletResponse
@@ -357,3 +358,33 @@ def test_wallet_response_does_not_require_currency_on_model() -> None:
 def test_scalar_query_shapes_are_recognized() -> None:
     assert "idempotency_key =" in str(select(Payment).where(Payment.idempotency_key == "x"))
     assert "provider_payment_id =" in str(select(Payment).where(Payment.provider_payment_id == "pay_1"))
+
+
+class _CapDB:
+    def __init__(self, limits: list[dict]) -> None:
+        self.limits = limits
+
+    async def scalars(self, _stmt):
+        return self.limits
+
+
+@pytest.mark.asyncio
+async def test_run_cap_uses_gifted_pack_limit() -> None:
+    from services.billing.wallet import WalletService
+
+    service = WalletService(_CapDB([
+        {"included_credits": 2000, "run_cap_credits": 2000},
+        {"included_credits": 6500, "run_cap_credits": 6500},
+    ]))  # type: ignore[arg-type]
+    cap = await service.run_cap(SimpleNamespace(id=10))  # type: ignore[arg-type]
+    assert cap == Decimal("6500")
+
+
+@pytest.mark.asyncio
+async def test_run_cap_without_pack_stays_on_default(monkeypatch) -> None:
+    from services.billing.wallet import WalletService
+
+    monkeypatch.setattr(settings, "default_run_cap_credits", Decimal("100"))
+    service = WalletService(_CapDB([]))  # type: ignore[arg-type]
+    cap = await service.run_cap(SimpleNamespace(id=10))  # type: ignore[arg-type]
+    assert cap == Decimal("100")

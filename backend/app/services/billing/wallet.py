@@ -4,9 +4,25 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
-from models.billing import LedgerKind, Plan, UsageRecord, Wallet, WalletLedger
+from models.billing import LedgerKind, Payment, Plan, UsageRecord, Wallet, WalletLedger
+from schemas.billing import PaymentStatus
 from services.billing.access import user_has_paid_pack
 from models.user import User
+
+
+def _run_cap_from_limits(limits: object) -> Decimal | None:
+    if not isinstance(limits, dict):
+        return None
+    raw = limits.get("run_cap_credits")
+    if raw is None:
+        return None
+    try:
+        value = Decimal(str(raw))
+    except Exception:
+        return None
+    if value <= 0:
+        return None
+    return value
 
 
 class WalletService:
@@ -17,6 +33,23 @@ class WalletService:
         return list(await self.db.scalars(select(Plan).order_by(Plan.price)))
 
     async def run_cap(self, user: User) -> Decimal:
+        """Лимит одного запуска: максимум среди купленных пакетов, иначе общий дефолт.
+
+        Подарок пакета админом — такая же успешная оплата, как и обычная покупка.
+        Вебхук и расписание резервируют токены через этот же лимит.
+        """
+        paid_limits = list(await self.db.scalars(
+            select(Plan.limits)
+            .join(Payment, Payment.plan_id == Plan.id)
+            .where(
+                Payment.user_id == user.id,
+                Payment.status == PaymentStatus.succeeded,
+                Plan.price > 0,
+            )
+        ))
+        caps = [cap for limits in paid_limits if (cap := _run_cap_from_limits(limits)) is not None]
+        if caps:
+            return max(caps)
         return Decimal(str(settings.default_run_cap_credits))
 
     async def ledger(self, user: User) -> list[WalletLedger]:

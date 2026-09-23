@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from models.billing import BillingAudit, Payment, Plan, Wallet, WalletLedger
+from models.billing import BillingAudit, LedgerKind, Payment, Plan, Wallet, WalletLedger
 from models.user import User
 from models.workflow import NodeRun, Workflow, WorkflowRun, WorkflowVersion
 from schemas.billing import PaymentStatus
@@ -287,21 +287,38 @@ class AdminRecordsService:
         return await self._user_with_wallet(user_id, with_ledger=True)
 
     async def _grant_paid_plan(self, user: User, plan_id: int, request_id: str) -> None:
-        """Покупка без оплаты: статус succeeded открывает медиа-узлы, токены не начисляет."""
+        """Покупка без оплаты: открывает медиа-узлы и начисляет токены пакета."""
         plan = await self.db.get(Plan, plan_id)
         if plan is None:
             raise HTTPException(404, "Пакет не найден")
         if plan.price <= 0:
             raise HTTPException(422, "Бесплатный пакет не открывает генерацию и распознавание")
+        grant_key = f"admin-grant:{request_id}"
         self.db.add(Payment(
             user_id=user.id,
             plan_id=plan.id,
             provider="admin",
             amount=plan.price,
             status=PaymentStatus.succeeded,
-            idempotency_key=f"admin-grant:{request_id}",
+            idempotency_key=grant_key,
         ))
         await self.db.flush()
+        credits = _plan_credits(plan) or Decimal("0")
+        if credits <= 0:
+            return
+        ledger_key = f"purchase:{grant_key}"
+        if await self.billing.wallets.already_applied(ledger_key):
+            return
+        wallet = await self.billing.wallet(user, lock=True)
+        wallet.balance += credits
+        self.db.add(WalletLedger(
+            user_id=user.id,
+            kind=LedgerKind.purchase,
+            amount=credits,
+            idempotency_key=ledger_key,
+            reference=grant_key,
+            metadata_={"source": "admin", "plan_id": plan.id, "plan_code": plan.code},
+        ))
 
     async def delete_user(self, user_id: int, actor: str, request_id: str) -> None:
         if await self._seen(request_id):

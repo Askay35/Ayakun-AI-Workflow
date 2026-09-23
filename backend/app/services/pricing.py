@@ -91,6 +91,7 @@ CREDIT_PACK_SIZE = Decimal("2000")
 RUB_PER_CREDIT = CREDIT_PACK_RUB / CREDIT_PACK_SIZE
 IMAGE_MEDIA_CREDITS = Decimal("50")
 AUDIO_MINUTE_RUB = Decimal("0.5")
+AUDIO_ESTIMATE_MINUTES = 5
 
 
 def credits_for_rubles(rubles: Decimal) -> Decimal:
@@ -116,7 +117,7 @@ def media_estimate_credits(node_type: str) -> Decimal:
     if node_type == "image_recognition":
         return Decimal("25")
     if node_type == "audio_transcription":
-        return billable_credits(credits_for_rubles(AUDIO_MINUTE_RUB))
+        return billable_credits(credits_for_rubles(AUDIO_MINUTE_RUB) * AUDIO_ESTIMATE_MINUTES)
     return Decimal("0")
 
 
@@ -194,7 +195,7 @@ class PricingService:
                 total += amount
             elif node_type == "audio_transcription":
                 from services.media_settings import audio_minute_charge
-                total += billable_credits(await audio_minute_charge(self))
+                total += billable_credits(await audio_minute_charge(self) * AUDIO_ESTIMATE_MINUTES)
             else:
                 total += Decimal("0")
         return total

@@ -7,12 +7,12 @@ from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 
 from api.v1 import admin_records as admin_api
-from models.billing import Wallet, WalletLedger
+from models.billing import LedgerKind, Payment, Plan, Wallet, WalletLedger
 from models.user import User
 from schemas.admin import AdminPage, AdminUserResponse, AdminUserUpdate
 from schemas.auth import TokenPair
 from schemas.user import UserResponse
-from services.admin_records import _integrity_message
+from services.admin_records import AdminRecordsService, _integrity_message
 from services.auth import AuthService
 from services.billing.credits import CreditService
 
@@ -282,3 +282,44 @@ async def test_impersonate_inactive_user() -> None:
         await service.impersonate(3)
     assert error.value.status_code == 403
     assert error.value.detail == "Пользователь отключён"
+
+
+@pytest.mark.asyncio
+async def test_admin_grant_plan_credits_tokens() -> None:
+    plan = Plan(id=4, code="pack", name="Пакет", price=Decimal("390"), limits={"included_credits": 2000})
+    wallet = make_wallet(balance="100")
+    user = make_user()
+
+    class GrantDB:
+        def __init__(self) -> None:
+            self.added: list[object] = []
+
+        async def get(self, model, ident):
+            if model is Plan and ident == 4:
+                return plan
+            return None
+
+        def add(self, obj: object) -> None:
+            self.added.append(obj)
+
+        async def flush(self) -> None:
+            return None
+
+    class GrantBilling:
+        def __init__(self) -> None:
+            self.wallets = FakeWallets(wallet)
+
+        async def wallet(self, _user: User, *, lock: bool = False) -> Wallet:
+            return wallet
+
+    db = GrantDB()
+    service = AdminRecordsService(db, GrantBilling())  # type: ignore[arg-type]
+    await service._grant_paid_plan(user, 4, "req-grant")
+    assert wallet.balance == Decimal("2100")
+    payment = next(item for item in db.added if isinstance(item, Payment))
+    assert payment.status.value == "succeeded"
+    assert payment.provider == "admin"
+    ledger = next(item for item in db.added if isinstance(item, WalletLedger))
+    assert ledger.kind == LedgerKind.purchase
+    assert ledger.amount == Decimal("2000")
+    assert ledger.idempotency_key == "purchase:admin-grant:req-grant"
