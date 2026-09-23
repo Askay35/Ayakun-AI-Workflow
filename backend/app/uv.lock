@@ -98,6 +98,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "email-validator" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "gigachat" },
     { name = "google-auth", extra = ["requests"] },
     { name = "httpx" },
     { name = "openai" },
@@ -129,6 +130,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.1" },
     { name = "email-validator", specifier = ">=2.2.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.141.1" },
+    { name = "gigachat", specifier = ">=0.2.3" },
     { name = "google-auth", extras = ["requests"], specifier = ">=2.40.0" },
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "openai", specifier = ">=3.11.0" },
@@ -877,6 +879,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/00/78/f34251dadb8f3921264a1d9b8946f5e542014ee2614b285261b4e40e6775/fsspec-2026.7.0.tar.gz", hash = "sha256:c803c40f4cf860b49dea58ee3e1c33cb9c790520e233537e1340049f89b82a88", size = 317040, upload-time = "2026-07-28T16:34:51.052Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/3c/6a2bf344106328fd04963664a60b9bb6496fc25df8e962fcdc1367285fb9/fsspec-2026.7.0-py3-none-any.whl", hash = "sha256:b57ddbafedfaef7018c1ecab32aa200a9d7ca26b77965f64e48b70061249d279", size = 206583, upload-time = "2026-07-28T16:34:49.538Z" },
+]
+
+[[package]]
+name = "gigachat"
+version = "0.2.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a9/3e/42105fe7be2aa33907349fd177a2d8a97e14f434cfc1b8cbf3ba7b4a03f8/gigachat-0.2.3.tar.gz", hash = "sha256:b298dc70d28153e83780cdb7f40ec7273462ce497daafb1bee7e08509126aab3", size = 42631, upload-time = "2026-07-31T14:30:32.776Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/c6/cea9fd75f06c4c5a3f00a96c157c183146cb42b20e58b7580cd723c359bb/gigachat-0.2.3-py3-none-any.whl", hash = "sha256:61a51bcb9c3888c7643a9ffabe191695279f7cfca6b9d9d639e60c073a2385da", size = 55335, upload-time = "2026-07-31T14:30:34.101Z" },
 ]
 
 [[package]]

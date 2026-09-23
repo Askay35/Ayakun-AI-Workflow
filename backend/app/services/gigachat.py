@@ -22,6 +22,8 @@ from contextlib import asynccontextmanager
 from typing import Protocol
 
 import httpx
+from gigachat import GigaChat
+from gigachat.exceptions import GigaChatException, ResponseError
 
 from core.config import settings
 
@@ -41,7 +43,7 @@ TOKEN_FILE_MARGIN_SECONDS = 5 * 60
 IMAGE_MODEL = "GigaChat-2-Pro"
 # example_vision.ipynb: vision-модель и attachments без function_call.
 VISION_MODEL = "GigaChat-2-Max"
-# Расшифровка: model GigaChat, файл в корне запроса как attachments[{file_id}].
+# Имя GigaChat больше не выдаётся. Расшифровка идёт через SDK, модель линейки 2.
 AUDIO_MODEL = "GigaChat-2-Pro"
 # Хранилище GigaChat принимает только эти аудиоформаты (POST /files).
 # Канонический MIME — тот, который уходит в multipart Content-Type.
@@ -90,9 +92,8 @@ def _sniff_audio_format(data: bytes) -> str | None:
     if data.startswith(b"RIFF") and len(data) >= 12 and data[8:12] == b"WAVE":
         return "wav"
     if data.startswith(b"OggS"):
-        # Голосовые Telegram — Ogg с OpusHead, а не Vorbis.
-        if b"OpusHead" in data[:512]:
-            return "opus"
+        # .oga у Telegram — тот же контейнер ogg, даже если внутри OpusHead.
+        # В таблице GigaChat это формат ogg и Content-Type audio/x-ogg.
         return "ogg"
     if data.startswith(b"ID3") or (len(data) >= 2 and data[0] == 0xFF and data[1] & 0xE0 == 0xE0):
         return "mp3"
@@ -104,6 +105,25 @@ def _sniff_audio_format(data: bytes) -> str | None:
             return "m4a"
         return "mp4"
     return None
+
+
+def _completion_text(response: object) -> str:
+    messages = getattr(response, "messages", None) or []
+    for message in messages:
+        content = getattr(message, "content", None)
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+        for part in content or []:
+            text = part.get("text") if isinstance(part, dict) else getattr(part, "text", None)
+            if isinstance(text, str) and text.strip():
+                return text.strip()
+    choices = getattr(response, "choices", None) or []
+    if choices:
+        message = getattr(choices[0], "message", None)
+        content = getattr(message, "content", None)
+        if isinstance(content, str) and content.strip():
+            return content.strip()
+    return ""
 
 
 def gigachat_audio_file(data: bytes, filename: str, mime: str) -> tuple[str, str]:
@@ -361,12 +381,44 @@ class GigaChatMediaProvider:
     async def transcribe_audio(self, prompt: str, data: bytes, mime: str, filename: str) -> str:
         text = (prompt or "").strip() or AUDIO_TRANSCRIPT_PROMPT
         upload_name, upload_mime = gigachat_audio_file(data, filename, mime)
-        async with self._file_turn() as (client, token):
-            file_id = await self._upload(client, token, data, upload_mime, upload_name)
-            payload = {
-                "model": AUDIO_MODEL,
-                "messages": [{"role": "user", "content": text}],
-                "attachments": [{"file_id": file_id}],
-            }
-            # Файл живёт до смены access token, отдельный delete не нужен.
-            return await self._chat(client, token, payload)
+        key = (settings.gigachat_auth_key or "").strip()
+        if not key:
+            raise ValueError("Медиа-модель не настроена")
+        try:
+            async with GigaChat(
+                credentials=key,
+                scope=SCOPE,
+                verify_ssl_certs=False,
+                model=AUDIO_MODEL,
+                timeout=180.0,
+            ) as client:
+                uploaded = await client.aupload_file((upload_name, data, upload_mime), purpose="general")
+                file_id = uploaded.id_
+                if not file_id:
+                    raise ValueError("Хранилище файлов не вернуло идентификатор")
+                # В gigachat 0.2.3 нет chat.completions и files.upload.
+                # Тот же шаг: id файла в content сообщения, текст — в parts[].text.
+                response = await client.achat.create(
+                    {
+                        "model": AUDIO_MODEL,
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"text": text},
+                                    {"files": [{"id": file_id}]},
+                                ],
+                            }
+                        ],
+                    }
+                )
+        except ResponseError as exc:
+            detail = (exc.content or b"").decode("utf-8", "replace")[:200]
+            suffix = f": {detail}" if detail else ""
+            raise ValueError(f"Медиа-модель вернула ошибку {exc.status_code}{suffix}") from exc
+        except GigaChatException as exc:
+            raise ValueError("Медиа-модель не ответила") from exc
+        transcript = _completion_text(response)
+        if not transcript:
+            raise ValueError("Медиа-модель вернула пустой ответ")
+        return transcript

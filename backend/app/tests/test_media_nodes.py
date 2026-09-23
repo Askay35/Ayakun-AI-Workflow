@@ -429,42 +429,69 @@ async def test_image_recognition_rejects_files_over_30mb() -> None:
 
 
 @pytest.mark.asyncio
-async def test_audio_transcription_attaches_file_at_request_root(monkeypatch) -> None:
-    reset_gigachat_token_cache()
+async def test_audio_transcription_uses_sdk(monkeypatch) -> None:
     monkeypatch.setattr(settings, "gigachat_auth_key", "test-key")
+    seen: dict = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path.endswith("/oauth"):
-            return httpx.Response(200, json={"access_token": "tok-1"})
-        if request.url.path == "/v1/files":
-            raw = request.content
-            assert b'filename="file_2.opus"' in raw
-            assert b"audio/opus" in raw
-            assert b"application/octet-stream" not in raw
-            return httpx.Response(200, json={"id": "audio-1"})
-        if request.url.path.endswith("/chat/completions"):
-            body = json.loads(request.content)
-            assert body["model"] == "GigaChat"
-            assert "function_call" not in body
-            assert "attachments" not in body["messages"][0]
-            assert body["messages"][0]["content"] == AUDIO_TRANSCRIPT_PROMPT
-            assert body["attachments"] == [{"file_id": "audio-1"}]
-            return httpx.Response(200, json={"choices": [{"message": {"content": "стенограмма"}}]})
-        if request.url.path.endswith("/delete"):
-            return httpx.Response(200, json={})
-        return httpx.Response(404)
+    class Uploaded:
+        id_ = "audio-1"
 
-    transport = httpx.MockTransport(handler)
-    async with httpx.AsyncClient(transport=transport) as client:
-        text = await GigaChatMediaProvider(client).transcribe_audio(
-            "", b"OggS" + b"\x00" * 28 + b"OpusHead", "application/octet-stream", "voice/file_2.oga"
-        )
+    class Part:
+        text = "стенограмма"
+
+    class Message:
+        content = [Part()]
+
+    class Response:
+        messages = [Message()]
+
+    class Chat:
+        async def create(self, payload):
+            seen["payload"] = payload
+            return Response()
+
+    class Client:
+        def __init__(self, **kwargs):
+            seen["init"] = kwargs
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def aupload_file(self, file, purpose="general"):
+            seen["file"] = file
+            seen["purpose"] = purpose
+            return Uploaded()
+
+        @property
+        def achat(self):
+            return Chat()
+
+    monkeypatch.setattr(gigachat, "GigaChat", Client)
+    text = await GigaChatMediaProvider().transcribe_audio(
+        "", b"OggS" + b"\x00" * 28 + b"OpusHead", "application/octet-stream", "voice/file_2.oga"
+    )
     assert text == "стенограмма"
+    assert seen["init"]["credentials"] == "test-key"
+    assert seen["init"]["scope"] == "GIGACHAT_API_PERS"
+    assert seen["init"]["verify_ssl_certs"] is False
+    assert seen["init"]["model"] == "GigaChat-2-Pro"
+    assert seen["purpose"] == "general"
+    name, data, mime = seen["file"]
+    assert name == "file_2.ogg"
+    assert mime == "audio/x-ogg"
+    assert data.startswith(b"OggS")
+    content = seen["payload"]["messages"][0]["content"]
+    assert seen["payload"]["model"] == "GigaChat-2-Pro"
+    assert content[0]["text"] == AUDIO_TRANSCRIPT_PROMPT
+    assert content[1] == {"files": [{"id": "audio-1"}]}
 
 
 def test_gigachat_audio_content_type_follows_file_bytes() -> None:
     name, mime = gigachat_audio_file(b"OggS" + b"\x00" * 28 + b"OpusHead", "voice/file_2.oga", "application/octet-stream")
-    assert (name, mime) == ("file_2.opus", "audio/opus")
+    assert (name, mime) == ("file_2.ogg", "audio/x-ogg")
     name, mime = gigachat_audio_file(b"OggS" + b"\x00" * 64, "note.oga", "application/octet-stream")
     assert (name, mime) == ("note.ogg", "audio/x-ogg")
     name, mime = gigachat_audio_file(b"ID3" + b"\x00" * 16, "clip.bin", "application/octet-stream")
