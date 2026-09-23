@@ -42,7 +42,7 @@ IMAGE_MODEL = "GigaChat-2-Pro"
 # example_vision.ipynb: vision-модель и attachments без function_call.
 VISION_MODEL = "GigaChat-2-Max"
 # Расшифровка: model GigaChat, файл в корне запроса как attachments[{file_id}].
-AUDIO_MODEL = "GigaChat"
+AUDIO_MODEL = "GigaChat-2-Pro"
 # Хранилище GigaChat принимает только эти аудиоформаты (POST /files).
 # Канонический MIME — тот, который уходит в multipart Content-Type.
 # https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/post-file
