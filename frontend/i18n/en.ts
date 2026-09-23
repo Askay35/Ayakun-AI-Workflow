@@ -402,7 +402,7 @@ export const en: typeof ru = {
     mediaLockedHint: 'Image generation, image recognition and audio transcription stay locked until you buy a pack at least once. Signup credits do not unlock them.',
     mediaLockedLink: 'Buy a pack',
     audioPrompt: 'Prompt',
-    audioPromptPlaceholder: 'Transcribe the audio verbatim',
+    audioPromptPlaceholder: 'Transcribe the attached audio. Keep the transcript as close to the recording as possible. Do not shorten it and keep filler words. Mark anything you cannot make out as [unintelligible].',
     audioUrlLabel: 'Audio URL',
     audioUrlPlaceholder: 'https://... or {{$url}}',
     audioFileLabel: 'Audio file',

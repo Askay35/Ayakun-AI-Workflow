@@ -40,8 +40,14 @@ TOKEN_FILE_MARGIN_SECONDS = 5 * 60
 IMAGE_MODEL = "GigaChat-2-Pro"
 # example_vision.ipynb: vision-модель и attachments без function_call.
 VISION_MODEL = "GigaChat-2-Max"
-# Гайд «Работа с файлами»: аудио через attachments и function_call=auto.
+# Расшифровка: model GigaChat, файл в корне запроса как attachments[{file_id}].
 AUDIO_MODEL = "GigaChat"
+AUDIO_TRANSCRIPT_PROMPT = (
+    "Расшифруй приложенное аудио. "
+    "Сделай максимально близкую к записи стенограмму. "
+    "Не сокращай текст, сохрани все слова-паразиты. "
+    "Места, которые невозможно разобрать, пометь меткой [неразборчиво]."
+)
 
 _IMG_SRC_RE = re.compile(r"""<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']""", re.IGNORECASE)
 
@@ -229,8 +235,7 @@ class GigaChatMediaProvider:
         model: str,
         function_call: str | None,
     ) -> str:
-        # Загрузка файла и chat.attachments — как в гайде по файлам и example_vision.ipynb.
-        # Для vision function_call не передаём (ноутбук). Для аудио — "auto" (гайд).
+        # Распознавание: id файла в messages[].attachments, без function_call.
         async with self._file_turn() as (client, token):
             file_id = await self._upload(client, token, data, mime, filename)
             message: dict = {
@@ -257,11 +262,15 @@ class GigaChatMediaProvider:
         )
 
     async def transcribe_audio(self, prompt: str, data: bytes, mime: str, filename: str) -> str:
-        return await self._chat_with_file(
-            prompt,
-            data,
-            mime,
-            filename,
-            model=AUDIO_MODEL,
-            function_call="auto",
-        )
+        text = (prompt or "").strip() or AUDIO_TRANSCRIPT_PROMPT
+        async with self._file_turn() as (client, token):
+            file_id = await self._upload(client, token, data, mime, filename)
+            payload = {
+                "model": AUDIO_MODEL,
+                "messages": [{"role": "user", "content": text}],
+                "attachments": [{"file_id": file_id}],
+            }
+            try:
+                return await self._chat(client, token, payload)
+            finally:
+                await self._delete(client, token, file_id)

@@ -34,6 +34,7 @@ from services.execution.actions.loop import LOOP_MAX_ITERATIONS, LoopAction
 from services.execution.actions.yandex_disk import YandexDiskAction
 from services.media_files import write_temp_bytes
 from services.gigachat import (
+    AUDIO_TRANSCRIPT_PROMPT,
     TOKEN_FILE_MARGIN_SECONDS,
     TOKEN_TTL_SECONDS,
     GigaChatMediaProvider,
@@ -424,6 +425,34 @@ async def test_image_recognition_rejects_files_over_30mb() -> None:
                 "variables": {},
             },
         )
+
+
+@pytest.mark.asyncio
+async def test_audio_transcription_attaches_file_at_request_root(monkeypatch) -> None:
+    reset_gigachat_token_cache()
+    monkeypatch.setattr(settings, "gigachat_auth_key", "test-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/oauth"):
+            return httpx.Response(200, json={"access_token": "tok-1"})
+        if request.url.path == "/v1/files":
+            return httpx.Response(200, json={"id": "audio-1"})
+        if request.url.path.endswith("/chat/completions"):
+            body = json.loads(request.content)
+            assert body["model"] == "GigaChat"
+            assert "function_call" not in body
+            assert "attachments" not in body["messages"][0]
+            assert body["messages"][0]["content"] == AUDIO_TRANSCRIPT_PROMPT
+            assert body["attachments"] == [{"file_id": "audio-1"}]
+            return httpx.Response(200, json={"choices": [{"message": {"content": "стенограмма"}}]})
+        if request.url.path.endswith("/delete"):
+            return httpx.Response(200, json={})
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        text = await GigaChatMediaProvider(client).transcribe_audio("", b"mp3", "audio/mpeg", "note.mp3")
+    assert text == "стенограмма"
 
 
 def _wav(seconds: float) -> bytes:

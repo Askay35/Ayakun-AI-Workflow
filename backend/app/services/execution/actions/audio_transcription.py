@@ -7,7 +7,7 @@ from helper import render_template
 from schemas.workflow import AudioTranscriptionNode
 from services.execution.actions.base import NodeAction
 from services.execution.context import incoming_payload, parent_records
-from services.gigachat import GigaChatMediaProvider, MediaModelProvider
+from services.gigachat import AUDIO_TRANSCRIPT_PROMPT, GigaChatMediaProvider, MediaModelProvider
 from services.media_files import audio_duration_seconds, billed_audio_minutes, guess_mime, load_binary
 
 
@@ -20,7 +20,7 @@ class AudioTranscriptionAction(NodeAction):
         payload = incoming_payload(node, context)
         variables = context.setdefault("variables", {})
         data, mime, filename = await self._bytes(node, payload, variables, context)
-        prompt = render_template(node.prompt or "", payload, variables).strip() or "Расшифруй аудио дословно."
+        prompt = render_template(node.prompt or "", payload, variables).strip() or AUDIO_TRANSCRIPT_PROMPT
         text = await self.media.transcribe_audio(prompt, data, mime, filename)
         duration = audio_duration_seconds(data, filename)
         minutes = billed_audio_minutes(duration)
