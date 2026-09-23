@@ -1,2 +1,12 @@
 User-agent: *
 Allow: /
+
+Disallow: /dashboard
+Disallow: /workflows
+Disallow: /runs
+Disallow: /billing
+Disallow: /profile
+Disallow: /admin
+Disallow: /auth/
+
+Sitemap: https://ayakun.ru/sitemap.xml

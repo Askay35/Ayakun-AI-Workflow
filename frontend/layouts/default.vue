@@ -45,7 +45,7 @@ onUnmounted(() => {
       <div v-if="menuOpen" class="public-menu-backdrop" @click="closeMenu" />
       <div class="shell public-header-inner">
         <NuxtLink to="/" class="brand app-logo" @click="closeMenu">
-          <img src="~/assets/images/logo.png" alt="" class="app-logo-mark" width="32" height="32" />
+          <img src="~/assets/images/logo.png" alt="Ayakun" class="app-logo-mark" width="32" height="32" />
           Ayakun
         </NuxtLink>
         <button

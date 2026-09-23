@@ -25,6 +25,7 @@ export default defineNuxtConfig({
   },
   app: {
     head: {
+      // Статичный fallback в HTML до гидрации: Googlebot читает этот кусок, а не только JS.
       title: 'Ayakun — визуальная автоматизация с ИИ без кода',
       meta: [
         {
@@ -39,13 +40,23 @@ export default defineNuxtConfig({
           property: 'og:description',
           content: 'Соберите на холсте цепочку: поиск данных → анализ нейросетью → нужное действие. Результат приходит туда, куда вы укажете. Просто, наглядно и быстро. Попробуйте бесплатно — даем 200 токенов при регистрации.'
         },
-        { property: 'og:type', content: 'website' }
+        { property: 'og:type', content: 'website' },
+        { property: 'og:url', content: 'https://ayakun.ru/' },
+        { property: 'og:image', content: 'https://ayakun.ru/og-image.png' },
+        { property: 'og:locale', content: 'ru_RU' },
+        { property: 'og:site_name', content: 'Ayakun' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:image', content: 'https://ayakun.ru/og-image.png' }
       ],
       link: [
-        { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/favicon-96x96.png' },
-        { rel: 'icon', type: 'image/png', sizes: '48x48', href: '/favicon-48x48.png' },
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+        { rel: 'canonical', href: 'https://ayakun.ru/' },
+        // Google требует иконку кратную 48×48; .ico раньше содержал только 16/32.
+        { rel: 'icon', type: 'image/png', sizes: '48x48', href: 'https://ayakun.ru/favicon-48x48.png' },
+        { rel: 'icon', type: 'image/png', sizes: '96x96', href: 'https://ayakun.ru/favicon-96x96.png' },
+        { rel: 'icon', type: 'image/png', sizes: '192x192', href: 'https://ayakun.ru/favicon-192x192.png' },
+        { rel: 'icon', type: 'image/x-icon', href: 'https://ayakun.ru/favicon.ico' },
+        { rel: 'shortcut icon', href: 'https://ayakun.ru/favicon.ico' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: 'https://ayakun.ru/apple-touch-icon.png' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
