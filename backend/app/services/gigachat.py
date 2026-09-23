@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import time
 import uuid
@@ -42,6 +43,94 @@ IMAGE_MODEL = "GigaChat-2-Pro"
 VISION_MODEL = "GigaChat-2-Max"
 # Расшифровка: model GigaChat, файл в корне запроса как attachments[{file_id}].
 AUDIO_MODEL = "GigaChat"
+# Хранилище GigaChat принимает только эти аудиоформаты (POST /files).
+# Канонический MIME — тот, который уходит в multipart Content-Type.
+# https://developers.sber.ru/docs/ru/gigachat/api/reference/rest/post-file
+_AUDIO_UPLOAD = {
+    "mp3": ("mp3", "audio/mp3"),
+    "wav": ("wav", "audio/wav"),
+    "ogg": ("ogg", "audio/x-ogg"),
+    "opus": ("opus", "audio/opus"),
+    "m4a": ("m4a", "audio/x-m4a"),
+    "mp4": ("mp4", "audio/mp4"),
+    "weba": ("weba", "audio/webm"),
+}
+_EXT_FORMAT = {
+    ".mp3": "mp3",
+    ".wav": "wav",
+    ".wave": "wav",
+    ".ogg": "ogg",
+    ".oga": "ogg",
+    ".opus": "opus",
+    ".m4a": "m4a",
+    ".mp4": "mp4",
+    ".weba": "weba",
+    ".webm": "weba",
+}
+# Объявленный тип учитываем, только если байты и расширение ничего не сказали.
+# audio/mpeg и audio/ogg в таблице Сбера нет — их переписываем на канонические.
+_MIME_FORMAT = {
+    "audio/mp3": "mp3",
+    "audio/mpeg": "mp3",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/wave": "wav",
+    "audio/x-pn-wav": "wav",
+    "audio/x-ogg": "ogg",
+    "audio/ogg": "ogg",
+    "audio/opus": "opus",
+    "audio/mp4": "mp4",
+    "audio/x-m4a": "m4a",
+    "audio/m4a": "m4a",
+    "audio/webm": "weba",
+}
+
+
+def _sniff_audio_format(data: bytes) -> str | None:
+    if data.startswith(b"RIFF") and len(data) >= 12 and data[8:12] == b"WAVE":
+        return "wav"
+    if data.startswith(b"OggS"):
+        # Голосовые Telegram — Ogg с OpusHead, а не Vorbis.
+        if b"OpusHead" in data[:512]:
+            return "opus"
+        return "ogg"
+    if data.startswith(b"ID3") or (len(data) >= 2 and data[0] == 0xFF and data[1] & 0xE0 == 0xE0):
+        return "mp3"
+    if data.startswith(b"\x1a\x45\xdf\xa3"):
+        return "weba"
+    if len(data) >= 12 and data[4:8] == b"ftyp":
+        brand = data[8:12]
+        if brand in {b"M4A ", b"M4B ", b"M4P "} or brand.startswith(b"M4A"):
+            return "m4a"
+        return "mp4"
+    return None
+
+
+def gigachat_audio_file(data: bytes, filename: str, mime: str) -> tuple[str, str]:
+    """Имя и Content-Type для загрузки: формат файла → MIME из списка GigaChat."""
+    name = os.path.basename(filename or "") or "audio"
+    ext = os.path.splitext(name)[1].lower()
+    sniffed = _sniff_audio_format(data)
+    from_ext = _EXT_FORMAT.get(ext)
+    declared = (mime or "").split(";", 1)[0].strip().lower()
+    from_mime = _MIME_FORMAT.get(declared)
+    if sniffed == "mp4" and from_ext == "m4a":
+        kind = "m4a"
+    elif sniffed:
+        kind = sniffed
+    elif from_ext:
+        kind = from_ext
+    elif from_mime:
+        kind = from_mime
+    else:
+        raise ValueError(
+            "Аудиоформат не поддерживается. GigaChat принимает mp3, wav, ogg, opus, m4a, mp4 и weba"
+        )
+    suffix, content_type = _AUDIO_UPLOAD[kind]
+    stem = os.path.splitext(name)[0] or "audio"
+    return f"{stem}.{suffix}", content_type
+
+
 AUDIO_TRANSCRIPT_PROMPT = (
     "Расшифруй приложенное аудио. "
     "Сделай максимально близкую к записи стенограмму. "
@@ -184,7 +273,15 @@ class GigaChatMediaProvider:
             files={"file": (filename or "file", data, mime or "application/octet-stream")},
         )
         if response.status_code >= 400:
-            raise ValueError(f"Не удалось загрузить файл ({response.status_code})")
+            detail = ""
+            try:
+                payload = response.json()
+                if isinstance(payload, dict):
+                    detail = str(payload.get("message") or "")[:200]
+            except Exception:
+                detail = ""
+            suffix = f": {detail}" if detail else ""
+            raise ValueError(f"Не удалось загрузить файл ({response.status_code}){suffix}")
         body = response.json()
         file_id = body.get("id") if isinstance(body, dict) else None
         if not isinstance(file_id, str) or not file_id:
@@ -263,8 +360,9 @@ class GigaChatMediaProvider:
 
     async def transcribe_audio(self, prompt: str, data: bytes, mime: str, filename: str) -> str:
         text = (prompt or "").strip() or AUDIO_TRANSCRIPT_PROMPT
+        upload_name, upload_mime = gigachat_audio_file(data, filename, mime)
         async with self._file_turn() as (client, token):
-            file_id = await self._upload(client, token, data, mime, filename)
+            file_id = await self._upload(client, token, data, upload_mime, upload_name)
             payload = {
                 "model": AUDIO_MODEL,
                 "messages": [{"role": "user", "content": text}],

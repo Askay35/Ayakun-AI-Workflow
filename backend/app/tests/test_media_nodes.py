@@ -38,6 +38,7 @@ from services.gigachat import (
     TOKEN_FILE_MARGIN_SECONDS,
     TOKEN_TTL_SECONDS,
     GigaChatMediaProvider,
+    gigachat_audio_file,
     parse_generated_image_id,
     reset_gigachat_token_cache,
 )
@@ -436,6 +437,10 @@ async def test_audio_transcription_attaches_file_at_request_root(monkeypatch) ->
         if request.url.path.endswith("/oauth"):
             return httpx.Response(200, json={"access_token": "tok-1"})
         if request.url.path == "/v1/files":
+            raw = request.content
+            assert b'filename="file_2.opus"' in raw
+            assert b"audio/opus" in raw
+            assert b"application/octet-stream" not in raw
             return httpx.Response(200, json={"id": "audio-1"})
         if request.url.path.endswith("/chat/completions"):
             body = json.loads(request.content)
@@ -451,8 +456,23 @@ async def test_audio_transcription_attaches_file_at_request_root(monkeypatch) ->
 
     transport = httpx.MockTransport(handler)
     async with httpx.AsyncClient(transport=transport) as client:
-        text = await GigaChatMediaProvider(client).transcribe_audio("", b"mp3", "audio/mpeg", "note.mp3")
+        text = await GigaChatMediaProvider(client).transcribe_audio(
+            "", b"OggS" + b"\x00" * 28 + b"OpusHead", "application/octet-stream", "voice/file_2.oga"
+        )
     assert text == "стенограмма"
+
+
+def test_gigachat_audio_content_type_follows_file_bytes() -> None:
+    name, mime = gigachat_audio_file(b"OggS" + b"\x00" * 28 + b"OpusHead", "voice/file_2.oga", "application/octet-stream")
+    assert (name, mime) == ("file_2.opus", "audio/opus")
+    name, mime = gigachat_audio_file(b"OggS" + b"\x00" * 64, "note.oga", "application/octet-stream")
+    assert (name, mime) == ("note.ogg", "audio/x-ogg")
+    name, mime = gigachat_audio_file(b"ID3" + b"\x00" * 16, "clip.bin", "application/octet-stream")
+    assert (name, mime) == ("clip.mp3", "audio/mp3")
+    name, mime = gigachat_audio_file(b"RIFF" + b"\x00\x00\x00\x00WAVE", "x.bin", "application/octet-stream")
+    assert (name, mime) == ("x.wav", "audio/wav")
+    with pytest.raises(ValueError, match="mp3, wav, ogg, opus, m4a, mp4"):
+        gigachat_audio_file(b"not-audio", "voice.bin", "application/octet-stream")
 
 
 def _wav(seconds: float) -> bytes:
