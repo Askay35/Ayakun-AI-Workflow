@@ -121,7 +121,10 @@ async def load_binary(payload: dict, client: httpx.AsyncClient) -> tuple[bytes, 
             raise ValueError("Некорректные данные файла") from exc
     url = payload.get("url")
     if isinstance(url, str) and url.strip():
-        response = await client.get(url)
+        try:
+            response = await client.get(url)
+        except httpx.InvalidURL as exc:
+            raise ValueError("Некорректная ссылка на файл") from exc
         if response.status_code >= 400 or not response.content:
             raise ValueError(f"Не удалось скачать файл ({response.status_code})")
         header = response.headers.get("content-type", "")

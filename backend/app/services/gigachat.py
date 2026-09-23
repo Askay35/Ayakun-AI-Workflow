@@ -270,7 +270,5 @@ class GigaChatMediaProvider:
                 "messages": [{"role": "user", "content": text}],
                 "attachments": [{"file_id": file_id}],
             }
-            try:
-                return await self._chat(client, token, payload)
-            finally:
-                await self._delete(client, token, file_id)
+            # Файл живёт до смены access token, отдельный delete не нужен.
+            return await self._chat(client, token, payload)
