@@ -9,6 +9,7 @@ from core.logging import (
     JsonFormatter,
     install_outbound_http_logging,
     output_preview,
+    preview_body,
     sanitize_url,
 )
 import core.logging as logging_mod
@@ -82,6 +83,43 @@ async def test_httpx_outbound_is_logged(caplog: pytest.LogCaptureFixture) -> Non
     assert record.url == "https://example.test/ping"
     assert record.status_code == 204
     assert "secret" not in record.url
+
+
+def test_preview_body_redacts_tokens_and_skips_files() -> None:
+    text = preview_body(b'{"access_token":"secret-token","message":"No such model"}', "application/json")
+    assert "No such model" in text
+    assert "secret-token" not in text
+    assert preview_body(b"\xff\xd8jpg", "image/jpeg") == "[image/jpeg, 5 bytes]"
+
+
+@pytest.mark.asyncio
+async def test_httpx_outbound_logs_request_and_response_bodies(caplog: pytest.LogCaptureFixture) -> None:
+    install_outbound_http_logging()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={"status": 404, "message": "No such model", "access_token": "secret-token"},
+        )
+
+    transport = httpx.MockTransport(handler)
+    with caplog.at_level(logging.INFO, logger="ayakun.http"):
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post(
+                "https://api.giga.chat/v1/chat/completions",
+                json={"model": "GigaChat", "messages": [{"role": "user", "content": "draw"}]},
+            )
+    assert response.status_code == 404
+    records = [r for r in caplog.records if getattr(r, "event", None) == "http.outbound"]
+    record = records[-1]
+    assert record.status_code == 404
+    assert "GigaChat" in record.request_body
+    assert "No such model" in record.response_body
+    assert "secret-token" not in record.response_body
+    line = JsonFormatter("worker").format(record)
+    payload = json.loads(line)
+    assert payload["response_body"]
+    assert "secret-token" not in line
 
 
 def test_requests_outbound_is_logged(caplog: pytest.LogCaptureFixture) -> None:

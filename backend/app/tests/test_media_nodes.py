@@ -311,7 +311,8 @@ async def test_gigachat_image_flow_deletes_file(monkeypatch) -> None:
         if request.url.path.endswith("/chat/completions"):
             body = json.loads(request.content)
             assert body["function_call"] == "auto"
-            assert body["model"] == "GigaChat"
+            assert body["model"] == "GigaChat-2-Pro"
+            assert body["functions"] == [{"name": "text2image"}]
             return httpx.Response(200, json={
                 "choices": [{"message": {"content": '<img src="file-9" fuse="true"/>'}}]
             })

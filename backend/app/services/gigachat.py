@@ -35,8 +35,9 @@ TOKEN_TTL_SECONDS = 30 * 60
 # одной файловой операции нет. Запас нужен, чтобы не обновлять токен уже
 # после загрузки, если до истечения осталось меньше времени, чем длится запрос.
 TOKEN_FILE_MARGIN_SECONDS = 5 * 60
-# Генерация картинок в гайде Sber идёт моделью GigaChat + function_call=auto.
-IMAGE_MODEL = "GigaChat"
+# Гайд images-generation всё ещё пишет model=GigaChat, но такого id больше нет:
+# 404 — ошибка в названии модели. Актуальный пример «Нарисуй горы» — GigaChat-2-Pro.
+IMAGE_MODEL = "GigaChat-2-Pro"
 # example_vision.ipynb: vision-модель и attachments без function_call.
 VISION_MODEL = "GigaChat-2-Max"
 # Гайд «Работа с файлами»: аудио через attachments и function_call=auto.
@@ -199,6 +200,7 @@ class GigaChatMediaProvider:
                     "model": IMAGE_MODEL,
                     "messages": [{"role": "user", "content": prompt}],
                     "function_call": "auto",
+                    "functions": [{"name": "text2image"}],
                 },
             )
             file_id = parse_generated_image_id(content)

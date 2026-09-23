@@ -96,7 +96,7 @@
       "targets": [
         {
           "datasource": { "type": "loki", "uid": "${datasource}" },
-          "expr": "{service=~\"$service\", event=~\"http.inbound|http.outbound\"} | json | line_format \"{{.direction}} {{.method}} {{.path}}{{.url}}  status={{.status_code}}  {{.duration_ms}}ms\"",
+          "expr": "{service=~\"$service\", event=~\"http.inbound|http.outbound\"} | json | line_format \"{{.direction}} {{.method}} {{.path}}{{.url}}  status={{.status_code}}  {{.duration_ms}}ms{{if .request_body}}\\nreq: {{.request_body}}{{end}}{{if .response_body}}\\nres: {{.response_body}}{{end}}\"",
           "queryType": "range",
           "refId": "A"
         }

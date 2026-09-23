@@ -138,6 +138,77 @@ def sanitize_url(url: object) -> str:
     return urlunsplit((parts.scheme, parts.netloc, path, "", ""))
 
 
+_BODY_LIMIT = 4000
+_SECRET_JSON_RE = re.compile(
+    r'(?i)("(?:access_token|refresh_token|id_token|authorization|api_key|secret|password|token)"\s*:\s*")([^"]*)(")'
+)
+_SECRET_AUTH_RE = re.compile(r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]+")
+
+
+def redact_body(text: str) -> str:
+    text = redact_secrets(text)
+    text = _SECRET_AUTH_RE.sub(lambda match: f"{match.group(1)} [redacted]", text)
+    return _SECRET_JSON_RE.sub(lambda match: f"{match.group(1)}[redacted]{match.group(3)}", text)
+
+
+def _header(headers: object, name: str) -> str:
+    if headers is None:
+        return ""
+    try:
+        value = headers.get(name)
+    except Exception:
+        return ""
+    return str(value or "")
+
+
+def _binary_type(content_type: str) -> bool:
+    ctype = content_type.lower()
+    return any(
+        marker in ctype
+        for marker in ("multipart/", "octet-stream", "image/", "audio/", "video/", "application/pdf", "application/zip")
+    )
+
+
+def preview_body(data: bytes | str | None, content_type: str = "") -> str:
+    """Текст тела для лога. Файлы не разворачиваем, секреты вырезаем."""
+    if data is None:
+        return ""
+    if isinstance(data, str):
+        raw = data.encode("utf-8", "replace")
+    else:
+        raw = bytes(data)
+    if not raw:
+        return ""
+    if _binary_type(content_type):
+        label = content_type.split(";", 1)[0].strip() or "binary"
+        return f"[{label}, {len(raw)} bytes]"
+    text = raw.decode("utf-8", "replace")
+    if "\x00" in text:
+        label = content_type.split(";", 1)[0].strip() or "binary"
+        return f"[{label}, {len(raw)} bytes]"
+    text = redact_body(text)
+    if len(text) > _BODY_LIMIT:
+        return text[:_BODY_LIMIT] + "…"
+    return text
+
+
+def _request_preview(request: object) -> str:
+    try:
+        content_type = _header(getattr(request, "headers", None), "content-type")
+        body = getattr(request, "content", None)
+        if body is None:
+            body = getattr(request, "body", None)
+        if not isinstance(body, (bytes, bytearray, str)):
+            return ""
+        return preview_body(body, content_type)
+    except Exception:
+        return ""
+
+
+def _response_preview_from_bytes(response: object, data: bytes | str | None) -> str:
+    return preview_body(data, _header(getattr(response, "headers", None), "content-type"))
+
+
 def _log_outbound(
     *,
     method: str,
@@ -146,24 +217,29 @@ def _log_outbound(
     duration_ms: float | None = None,
     error: str | None = None,
     client: str,
+    request_body: str = "",
+    response_body: str = "",
 ) -> None:
     target = sanitize_url(url)
     parts = urlsplit(target)
-    logger.info(
-        "Исходящий HTTP",
-        extra={
-            "event": "http.outbound",
-            "direction": "outbound",
-            "client": client,
-            "method": method.upper(),
-            "url": target,
-            "host": parts.hostname,
-            "path": parts.path or "/",
-            "status_code": status_code,
-            "duration_ms": duration_ms,
-            **({"error": error[:500]} if error else {}),
-        },
-    )
+    fields: dict[str, Any] = {
+        "event": "http.outbound",
+        "direction": "outbound",
+        "client": client,
+        "method": method.upper(),
+        "url": target,
+        "host": parts.hostname,
+        "path": parts.path or "/",
+        "status_code": status_code,
+        "duration_ms": duration_ms,
+    }
+    if error:
+        fields["error"] = error[:500]
+    if request_body:
+        fields["request_body"] = request_body
+    if response_body:
+        fields["response_body"] = response_body
+    logger.info("Исходящий HTTP", extra=fields)
 
 
 def _wrap_sync_send(original: Callable, client: str) -> Callable:
@@ -175,12 +251,23 @@ def _wrap_sync_send(original: Callable, client: str) -> Callable:
         try:
             response = original(self, request, *args, **kwargs)
             status = getattr(response, "status_code", None)
+            response_body = ""
+            try:
+                payload = getattr(response, "content", None)
+                if not isinstance(payload, (bytes, bytearray, str)):
+                    read = getattr(response, "read", None)
+                    payload = read() if callable(read) else None
+                response_body = _response_preview_from_bytes(response, payload)
+            except Exception:
+                response_body = ""
             _log_outbound(
                 method=str(method),
                 url=url,
                 status_code=status,
                 duration_ms=round((time.perf_counter() - started) * 1000, 2),
                 client=client,
+                request_body=_request_preview(request),
+                response_body=response_body,
             )
             return response
         except Exception as exc:
@@ -190,6 +277,7 @@ def _wrap_sync_send(original: Callable, client: str) -> Callable:
                 duration_ms=round((time.perf_counter() - started) * 1000, 2),
                 error=str(exc),
                 client=client,
+                request_body=_request_preview(request),
             )
             raise
 
@@ -205,12 +293,21 @@ def _wrap_async_send(original: Callable, client: str) -> Callable:
         try:
             response = await original(self, request, *args, **kwargs)
             status = getattr(response, "status_code", None)
+            response_body = ""
+            try:
+                aread = getattr(response, "aread", None)
+                payload = await aread() if callable(aread) else getattr(response, "content", None)
+                response_body = _response_preview_from_bytes(response, payload)
+            except Exception:
+                response_body = ""
             _log_outbound(
                 method=str(method),
                 url=url,
                 status_code=status,
                 duration_ms=round((time.perf_counter() - started) * 1000, 2),
                 client=client,
+                request_body=_request_preview(request),
+                response_body=response_body,
             )
             return response
         except Exception as exc:
@@ -220,6 +317,7 @@ def _wrap_async_send(original: Callable, client: str) -> Callable:
                 duration_ms=round((time.perf_counter() - started) * 1000, 2),
                 error=str(exc),
                 client=client,
+                request_body=_request_preview(request),
             )
             raise
 
