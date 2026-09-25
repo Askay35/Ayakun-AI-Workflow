@@ -139,7 +139,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
                 <span v-if="currentStep" class="muted">{{ t('runs.now', { name: stepTitle(currentStep) }) }}</span>
               </p>
             </div>
-            <span class="text-2xl font-extrabold">{{ progress }}%</span>
+            <span class="text-3xl font-extrabold tracking-tight">{{ progress }}%</span>
           </div>
           <div class="run-progress"><span class="run-progress-fill" :style="{ width: `${progress}%` }" /></div>
         </div>
@@ -185,9 +185,9 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
             </div>
           </button>
           <div v-if="isStepExpanded(step)" class="mt-4 space-y-4">
-            <pre v-if="formatOutput(step)" class="overflow-auto whitespace-pre-wrap rounded-2xl bg-[#f7f6f2] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step) }}</pre>
-            <p v-if="step.error" class="rounded-xl bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
-            <div v-if="step.citations?.length" class="border-t border-default pt-3">
+            <pre v-if="formatOutput(step)" class="overflow-auto whitespace-pre-wrap rounded-xl border border-[var(--line)] bg-[var(--soft)] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step) }}</pre>
+            <p v-if="step.error" class="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
+            <div v-if="step.citations?.length" class="border-t border-[var(--line)] pt-3">
               <p class="text-xs font-semibold uppercase muted">{{ t('runs.sources') }}</p>
               <a
                 v-for="citation in step.citations"
@@ -195,7 +195,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
                 :href="citation.url"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="mt-1 block text-sm text-primary hover:underline"
+                class="mt-1 block text-sm font-semibold text-[var(--violet)] hover:underline"
               >{{ citation.title }} - {{ citation.date }}</a>
             </div>
           </div>

@@ -902,13 +902,13 @@ a { color: inherit; text-decoration: none; }
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #ece9ff;
+  background: var(--violet-soft);
 }
 .run-progress-fill {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--violet), #a79eff);
+  background: var(--grad);
   transition: width .4s ease;
 }
 .run-step-icon {
@@ -920,8 +920,8 @@ a { color: inherit; text-decoration: none; }
   border-radius: 13px;
 }
 .run-step-active {
-  border-color: rgba(103, 88, 238, .35);
-  box-shadow: 0 16px 40px rgba(103, 88, 238, .12);
+  border-color: rgba(109, 74, 255, .35);
+  box-shadow: 0 16px 40px rgba(109, 74, 255, .12);
 }
 
 /* Application */
