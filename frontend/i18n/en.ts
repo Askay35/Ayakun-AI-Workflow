@@ -1380,14 +1380,14 @@ export const en: typeof ru = {
     deliveryHeading: 'How you receive the order',
     deliveryLead: 'Ayakun does not ship physical goods. After payment you get access in the workspace immediately.',
     buyTitle: 'What you buy',
-    buyText: 'You pay for access to the {brand} online service and a stock of tokens. Tokens are charged for actual chain runs: search, processing and delivering the result.',
+    buyText: 'You pay for a 30-day {brand} plan: service access, tokens for the period and file storage. Tokens are charged for actual chain runs; unused tokens expire at the end of the period.',
     afterTitle: 'How you receive the service after payment',
     after1: 'Pay for a plan by card or another available method on the payment page.',
-    after2: 'After the payment is confirmed, tokens are added to the account balance immediately.',
+    after2: 'After the payment is confirmed, the 30-day plan period starts and tokens are added to the account balance immediately.',
     after3: 'Sign in to the workspace — access to the chain editor, schedule and run history opens automatically.',
     after4: 'The result of each run appears in the workspace and, if you set up delivery, in Telegram or by Email.',
     termTitle: 'Provision term',
-    termText: 'The service is considered provided when tokens are added and access is opened. There is no separate shipment, tracking number or pickup point.',
+    termText: 'The service is considered provided when the plan tokens are added and access for the period is opened. There is no separate shipment, tracking number or pickup point.',
     missingTitle: 'If access did not appear',
     missingText: 'Write to {email} — we will sort it out.'
   }
