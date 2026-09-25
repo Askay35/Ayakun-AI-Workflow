@@ -1,5 +1,5 @@
 import type {
-  AdminConfig, AdminListQuery, AdminPage, AdminPaymentRecord, AdminRunRecord,
+  AdminConfig, AdminListQuery, AdminStats, AdminStatsGranularity, AdminPage, AdminPaymentRecord, AdminRunRecord,
   AdminUserRecord, AdminWorkflowRecord, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
   ReferralSummary, SubscriptionInfo, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun, WorkflowTemplate
 } from '~/types/api'
@@ -577,6 +577,8 @@ export const useApi = () => {
     },
     admin: {
       config: (credentials: string) => adminRequest<AdminConfig>('/admin/config', credentials),
+      stats: (credentials: string, query: { granularity: AdminStatsGranularity; points: number; timezone: string }) =>
+        adminRequest<AdminStats>('/admin/stats', credentials, { query }),
       updatePricing: (credentials: string, rate: PricingRate) =>
         adminRequest<PricingRate>(`/admin/pricing/${rate.id}`, credentials, {
           method: 'PUT',

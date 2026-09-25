@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from deps.admin import AdminActor
 from deps.database import get_db
 from models.billing import BillingAudit, Plan, PricingRate, RuntimeSetting
+from schemas.admin import AdminStatsResponse
 from schemas.billing import (
     AdminPlanUpdate,
     PlanResponse,
@@ -13,6 +14,7 @@ from schemas.billing import (
     RuntimeSettingUpdate,
 )
 from schemas.common import ApiResponse
+from services.admin_stats import AdminStatsService, Granularity
 from services.media_settings import normalize_runtime_value
 
 router = APIRouter()
@@ -35,6 +37,17 @@ async def config(actor: AdminActor, db: AsyncSession = Depends(get_db)):
             for item in settings
         ],
     })
+
+
+@router.get("/stats", response_model=ApiResponse[AdminStatsResponse])
+async def stats(
+    actor: AdminActor,
+    granularity: Granularity = "day",
+    points: int = Query(30, ge=2, le=120),
+    timezone: str = Query("Europe/Moscow", max_length=64),
+    db: AsyncSession = Depends(get_db),
+):
+    return ApiResponse(success=True, data=await AdminStatsService(db).stats(granularity, points, timezone))
 
 
 @router.put("/pricing/{rate_id}", response_model=ApiResponse[PricingRateResponse])

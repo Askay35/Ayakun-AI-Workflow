@@ -351,6 +351,87 @@ export interface AdminRunRecord {
   created_at: string
 }
 
+export type AdminStatsGranularity = 'day' | 'week' | 'month'
+
+export interface AdminStatsMetric {
+  value: number
+  previous: number
+  delta: number
+  delta_pct: number | null
+}
+
+export interface AdminStatsPoint {
+  start: string
+  registrations: number
+  registrations_delta: number
+  registrations_delta_pct: number | null
+  referral_registrations: number
+  users_total: number
+  revenue: number
+  revenue_by_plan: Record<string, number>
+  payments: number
+  runs: number
+  failed_runs: number
+  credits_spent: number
+}
+
+export interface AdminStatsPlan {
+  code: string
+  name: string
+  revenue: number
+  payments: number
+  revenue_total: number
+  payments_total: number
+  active_subscriptions: number
+}
+
+export interface AdminStatsReferrer {
+  user_id: number
+  name: string
+  email?: string | null
+  referrals_period: number
+  referrals_total: number
+  paid_referrals: number
+  revenue: number
+}
+
+export interface AdminStatsCount {
+  key: string
+  count: number
+}
+
+export interface AdminStats {
+  granularity: AdminStatsGranularity
+  timezone: string
+  period_start: string
+  previous_start: string
+  registrations: AdminStatsMetric
+  referral_registrations: AdminStatsMetric
+  revenue: AdminStatsMetric
+  payments: AdminStatsMetric
+  avg_check: AdminStatsMetric
+  paying_users: AdminStatsMetric
+  active_users: AdminStatsMetric
+  runs: AdminStatsMetric
+  conversion_pct: number | null
+  credits_spent: number
+  provider_cost_usd: number
+  totals: {
+    users: number
+    paying_users: number
+    revenue: number
+    active_subscriptions: number
+    workflows: number
+    published_workflows: number
+    runs: number
+  }
+  series: AdminStatsPoint[]
+  plans: AdminStatsPlan[]
+  top_referrers: AdminStatsReferrer[]
+  signup_providers: AdminStatsCount[]
+  run_statuses: AdminStatsCount[]
+}
+
 export interface AdminListQuery {
   q?: string
   status?: string

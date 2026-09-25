@@ -45,6 +45,7 @@ const facts = computed(() => tm<Array<{ title: string; text: string }>>('pricing
             :key="plan.id"
             :plan="plan"
             :featured="plan.code === featuredCode"
+            :top="index === ordered.length - 1"
             class="reveal"
             :style="{ animationDelay: `${index * 90}ms` }"
           >

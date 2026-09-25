@@ -189,3 +189,84 @@ class AdminRunUpdate(BaseModel):
     error: str | None = Field(None, max_length=8000)
     cancel_requested: bool | None = None
     request_id: str = Field(min_length=8, max_length=160)
+
+
+class AdminStatsMetric(BaseModel):
+    value: float
+    previous: float
+    delta: float
+    delta_pct: float | None
+
+
+class AdminStatsPoint(BaseModel):
+    start: datetime.date
+    registrations: int
+    registrations_delta: int
+    registrations_delta_pct: float | None
+    referral_registrations: int
+    users_total: int
+    revenue: float
+    revenue_by_plan: dict[str, float]
+    payments: int
+    runs: int
+    failed_runs: int
+    credits_spent: float
+
+
+class AdminStatsPlan(BaseModel):
+    code: str
+    name: str
+    revenue: float
+    payments: int
+    revenue_total: float
+    payments_total: int
+    active_subscriptions: int
+
+
+class AdminStatsReferrer(BaseModel):
+    user_id: int
+    name: str
+    email: str | None
+    referrals_period: int
+    referrals_total: int
+    paid_referrals: int
+    revenue: float
+
+
+class AdminStatsCount(BaseModel):
+    key: str
+    count: int
+
+
+class AdminStatsTotals(BaseModel):
+    users: int
+    paying_users: int
+    revenue: float
+    active_subscriptions: int
+    workflows: int
+    published_workflows: int
+    runs: int
+
+
+class AdminStatsResponse(BaseModel):
+    granularity: str
+    timezone: str
+    period_start: datetime.datetime
+    previous_start: datetime.datetime
+    registrations: AdminStatsMetric
+    referral_registrations: AdminStatsMetric
+    revenue: AdminStatsMetric
+    payments: AdminStatsMetric
+    avg_check: AdminStatsMetric
+    paying_users: AdminStatsMetric
+    active_users: AdminStatsMetric
+    runs: AdminStatsMetric
+    conversion_pct: float | None
+    credits_spent: float
+    provider_cost_usd: float
+    totals: AdminStatsTotals
+    series: list[AdminStatsPoint]
+    plans: list[AdminStatsPlan]
+    top_referrers: list[AdminStatsReferrer]
+    signup_providers: list[AdminStatsCount]
+    run_statuses: list[AdminStatsCount]

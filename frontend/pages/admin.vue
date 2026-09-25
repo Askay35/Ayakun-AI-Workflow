@@ -32,24 +32,29 @@ const CREDIT_SETTING_KEYS = new Set([
 const api = useApi()
 const auth = useAuth()
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
+const { t } = useI18n()
 const login = ref('')
 const password = ref('')
 const credentials = ref('')
 const loading = ref(false)
 const config = ref<AdminConfig>()
-const tab = ref('users')
 
 const searchRates = computed(() =>
   (config.value?.pricing || []).filter(rate => rate.provider === 'serper')
 )
 
-const tabs = [
-  { label: 'Пользователи', icon: 'i-lucide-users', value: 'users', slot: 'users' },
-  { label: 'Транзакции', icon: 'i-lucide-receipt', value: 'payments', slot: 'payments' },
-  { label: 'Цепочки', icon: 'i-lucide-workflow', value: 'workflows', slot: 'workflows' },
-  { label: 'Запуски', icon: 'i-lucide-play', value: 'runs', slot: 'runs' },
-  { label: 'Настройки', icon: 'i-lucide-sliders-horizontal', value: 'settings', slot: 'settings' }
+const sections = [
+  { value: 'dashboard', label: 'Дашборд', icon: 'i-lucide-layout-dashboard', lead: 'Регистрации, доход, рефералы и активность по периодам.' },
+  { value: 'users', label: 'Пользователи', icon: 'i-lucide-users', lead: 'Поиск, правка баланса через ledger и вход под пользователем.' },
+  { value: 'payments', label: 'Транзакции', icon: 'i-lucide-receipt', lead: 'Платежи ЮKassa и пакеты, выданные вручную.' },
+  { value: 'workflows', label: 'Цепочки', icon: 'i-lucide-workflow', lead: 'Цепочки пользователей, статусы и расписания.' },
+  { value: 'runs', label: 'Запуски', icon: 'i-lucide-play', lead: 'История запусков, ошибки и стоимость.' },
+  { value: 'settings', label: 'Настройки', icon: 'i-lucide-sliders-horizontal', lead: 'Параметры выполнения, цена поиска и тарифы.' }
 ]
+const tab = ref(sections.some(item => item.value === route.query.tab) ? String(route.query.tab) : 'dashboard')
+const section = computed(() => sections.find(item => item.value === tab.value) || sections[0]!)
 
 const load = async () => {
   if (!credentials.value) return
@@ -271,8 +276,13 @@ useDelayedLoad(() => [workflowQ.value, workflowStatus.value, workflowPage.value]
 useDelayedLoad(() => [runQ.value, runStatus.value, runPage.value], loadRuns)
 
 watch(tab, (value) => {
+  router.replace({ query: { ...route.query, tab: value === 'dashboard' ? undefined : value } })
   loaders[value]?.()
 })
+const openUser = (id: number) => {
+  userQ.value = String(id)
+  tab.value = 'users'
+}
 
 const userColumns: AdminColumn[] = [
   { key: 'id', label: 'ID' },
@@ -546,342 +556,375 @@ onMounted(() => {
 })
 
 watch(credentials, (value) => {
-  if (value) loadUsers()
+  if (value) loaders[tab.value]?.()
 })
 </script>
 
 <template>
   <UApp>
-    <main class="admin-page">
-      <div class="shell admin-shell">
-        <div v-if="!config" class="admin-login panel">
-          <p class="eyebrow">Ayakun Admin</p>
-          <h1 class="page-title" style="font-size: 34px">Вход в панель</h1>
-          <form class="space-y-4" @submit.prevent="signIn">
-            <UFormField label="Логин">
-              <UInput v-model="login" autocomplete="username" class="w-full" />
-            </UFormField>
-            <UFormField label="Пароль">
-              <UInput v-model="password" type="password" autocomplete="current-password" class="w-full" />
-            </UFormField>
-            <UButton type="submit" label="Войти" block size="lg" :loading="loading" />
-          </form>
-        </div>
+    <main v-if="!config" class="admin-page">
+      <div class="admin-login panel">
+        <p class="eyebrow">Ayakun Admin</p>
+        <h1 class="page-title" style="font-size: 34px">Вход в панель</h1>
+        <form class="space-y-4" @submit.prevent="signIn">
+          <UFormField label="Логин">
+            <UInput v-model="login" autocomplete="username" class="w-full" />
+          </UFormField>
+          <UFormField label="Пароль">
+            <UInput v-model="password" type="password" autocomplete="current-password" class="w-full" />
+          </UFormField>
+          <UButton type="submit" label="Войти" block size="lg" :loading="loading" />
+        </form>
+      </div>
+    </main>
 
-        <template v-else>
+    <div v-else class="app-shell">
+      <aside class="app-sidebar">
+        <NuxtLink to="/" class="brand app-logo app-sidebar-logo">
+          <img src="~/assets/images/logo.png" alt="" class="app-logo-mark" width="32" height="32" />
+          Ayakun
+          <span class="admin-logo-badge">admin</span>
+        </NuxtLink>
+        <nav class="app-nav">
+          <button
+            v-for="item in sections"
+            :key="item.value"
+            type="button"
+            class="app-nav-item"
+            :class="{ 'is-active': tab === item.value }"
+            @click="tab = item.value"
+          >
+            <UIcon :name="item.icon" class="size-[18px]" />
+            {{ item.label }}
+          </button>
+        </nav>
+        <div class="app-user admin-user">
+          <div class="app-user-row">
+            <span class="app-avatar"><UIcon name="i-lucide-shield-check" class="size-4" /></span>
+            <p class="app-user-name">Администратор</p>
+            <button type="button" class="app-icon-button" aria-label="Выйти" title="Выйти" @click="signOut">
+              <UIcon name="i-lucide-log-out" class="size-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="app-main">
+        <div class="page admin-content">
           <header class="page-head">
             <div>
               <p class="eyebrow">Ayakun Admin</p>
-              <h1 class="page-title">Данные и настройки</h1>
-              <p class="muted">Пользователи, платежи, цепочки и запуски — с правкой баланса через ledger.</p>
+              <h1 class="page-title">{{ section.label }}</h1>
+              <p class="muted">{{ section.lead }}</p>
             </div>
-            <UButton label="Выйти" color="neutral" variant="soft" @click="signOut" />
           </header>
 
-          <UTabs v-model="tab" :items="tabs" variant="pill" class="admin-tabs" :unmount-on-hide="false">
-            <template #users>
-              <div class="panel admin-panel">
-                <AdminRecordsTab
-                  v-model:q="userQ"
-                  v-model:status="userStatus"
-                  v-model:page="userPage"
-                  title="Пользователи"
-                  search-placeholder="Имя, email, ID или chat_id"
-                  :status-options="userStatusOptions"
-                  :columns="userColumns"
-                  :fields="userFields"
-                  :items="users"
-                  :total="usersTotal"
-                  :page-size="PAGE_SIZE"
-                  :loading="usersLoading"
-                  :saving="usersSaving"
-                  :deleting="usersDeleting"
-                  edit-title="Пользователь"
-                  delete-title="Удалить пользователя"
-                  :delete-text="(row) => `Удалить «${row.name}» и все связанные данные: цепочки, платежи, токены?`"
-                  @open="onOpenUser"
-                  :on-save="saveUser"
-                  :on-remove="removeUser"
-                >
-                  <template #actions="{ row }">
-                    <UButton
-                      icon="i-lucide-log-in"
-                      color="neutral"
-                      variant="soft"
-                      size="sm"
-                      :disabled="!row.is_active"
-                      :loading="impersonatingId === row.id"
-                      aria-label="Войти как пользователь"
-                      :title="row.is_active ? 'Войти как этот пользователь' : 'Аккаунт отключён'"
-                      @click="loginAsUser(row)"
-                    />
-                  </template>
-                  <template #id="{ row, copy }">
-                    <button type="button" class="admin-id" :title="String(row.id)" @click="copy(row.id)">{{ row.id }}</button>
-                  </template>
-                  <template #name="{ row }">
-                    <div>
-                      <p class="admin-primary">{{ row.name }}</p>
-                      <p v-if="row.chat_id" class="admin-meta">Telegram {{ row.chat_id }}</p>
-                    </div>
-                  </template>
-                  <template #email="{ row }">{{ row.email || '—' }}</template>
-                  <template #identities="{ row }">
-                    <div class="admin-chips">
-                      <UBadge v-for="item in row.identities" :key="item.provider + item.subject" variant="soft" color="neutral">
-                        {{ identityLabel(item.provider) }}
-                      </UBadge>
-                      <span v-if="!row.identities.length" class="muted">—</span>
-                    </div>
-                  </template>
-                  <template #balance="{ row }">
-                    <div class="text-right">
-                      <p class="admin-primary tabular-nums">{{ formatCredits(row.balance) }}</p>
-                      <p v-if="row.reserved" class="admin-meta">резерв {{ formatCredits(row.reserved) }}</p>
-                    </div>
-                  </template>
-                  <template #is_active="{ row }">
-                    <UBadge :color="row.is_active ? 'success' : 'neutral'" variant="soft">
-                      {{ row.is_active ? 'Активен' : 'Отключён' }}
-                    </UBadge>
-                  </template>
-                  <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
-                  <template #edit-extra="{ row }">
-                    <UButton
-                      v-if="row"
-                      label="Войти как этот пользователь"
-                      icon="i-lucide-log-in"
-                      color="neutral"
-                      variant="soft"
-                      block
-                      :disabled="!row.is_active"
-                      :loading="impersonatingId === row.id"
-                      @click="loginAsUser(row)"
-                    />
-                    <div v-if="(editingUser?.id === row?.id ? editingUser : row)?.ledger?.length" class="admin-ledger">
-                      <p class="admin-ledger-title">Последние операции баланса</p>
-                      <div v-for="entry in (editingUser?.id === row?.id ? editingUser?.ledger : row?.ledger) || []" :key="entry.id" class="admin-ledger-row">
-                        <div>
-                          <p class="admin-primary">{{ ledgerDescription({ ...entry, metadata_: entry.metadata }) }}</p>
-                          <p class="admin-meta">{{ formatDate(entry.created_at) }}</p>
-                        </div>
-                        <strong :class="entry.amount >= 0 ? 'text-[#4b3dcc]' : 'text-[#c45c3e]'">
-                          {{ entry.amount > 0 ? '+' : '' }}{{ formatCredits(entry.amount) }}
-                        </strong>
-                      </div>
-                    </div>
-                  </template>
-                </AdminRecordsTab>
-              </div>
-            </template>
+          <section v-show="tab === 'dashboard'">
+            <AdminDashboard :credentials="credentials" @open-user="openUser" />
+          </section>
 
-            <template #payments>
-              <div class="panel admin-panel">
-                <AdminRecordsTab
-                  v-model:q="paymentQ"
-                  v-model:status="paymentStatus"
-                  v-model:page="paymentPage"
-                  search-placeholder="Пользователь, ID платежа или провайдер"
-                  :status-options="paymentStatusOptions"
-                  :columns="paymentColumns"
-                  :fields="paymentFields"
-                  :items="payments"
-                  :total="paymentsTotal"
-                  :page-size="PAGE_SIZE"
-                  :loading="paymentsLoading"
-                  :saving="paymentsSaving"
-                  :deleting="paymentsDeleting"
-                  edit-title="Платёж"
-                  delete-title="Удалить платёж"
-                  :delete-text="(row) => `Удалить платёж ${shortId(row.id)}? Credits на балансе не изменятся.`"
-                  :on-save="savePayment"
-                  :on-remove="removePayment"
-                >
-                  <template #id="{ row, copy }">
-                    <button type="button" class="admin-id" :title="row.id" @click="copy(row.id)">{{ shortId(row.id) }}</button>
-                  </template>
-                  <template #user="{ row }">
-                    <div>
-                      <p class="admin-primary">{{ row.user_name || `ID ${row.user_id}` }}</p>
-                      <p class="admin-meta">{{ row.user_email || `user #${row.user_id}` }}</p>
-                    </div>
-                  </template>
-                  <template #plan_name="{ row }">{{ row.plan_name || '—' }}</template>
-                  <template #amount="{ row }">
-                    <span class="tabular-nums">{{ Number(row.amount).toLocaleString('ru-RU') }} ₽</span>
-                  </template>
-                  <template #credits="{ row }">
-                    <span class="tabular-nums">{{ row.credits == null ? '—' : formatCredits(row.credits) }}</span>
-                  </template>
-                  <template #status="{ row }">
-                    <UBadge :color="paymentStatusColor(row.status)" variant="soft">{{ paymentStatusLabel(row.status) }}</UBadge>
-                  </template>
-                  <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
-                </AdminRecordsTab>
-              </div>
-            </template>
-
-            <template #workflows>
-              <div class="panel admin-panel">
-                <AdminRecordsTab
-                  v-model:q="workflowQ"
-                  v-model:status="workflowStatus"
-                  v-model:page="workflowPage"
-                  search-placeholder="Название, владелец или ID"
-                  :status-options="workflowStatusOptions"
-                  :columns="workflowColumns"
-                  :fields="workflowFields"
-                  :items="workflows"
-                  :total="workflowsTotal"
-                  :page-size="PAGE_SIZE"
-                  :loading="workflowsLoading"
-                  :saving="workflowsSaving"
-                  :deleting="workflowsDeleting"
-                  edit-title="Цепочка"
-                  delete-title="Удалить цепочку"
-                  :delete-text="(row) => `Удалить цепочку «${row.name}» и её запуски?`"
-                  :on-save="saveWorkflow"
-                  :on-remove="removeWorkflow"
-                >
-                  <template #id="{ row, copy }">
-                    <button type="button" class="admin-id" :title="row.id" @click="copy(row.id)">{{ shortId(row.id) }}</button>
-                  </template>
-                  <template #name="{ row }">
+          <section v-show="tab === 'users'">
+            <div class="panel admin-panel">
+              <AdminRecordsTab
+                v-model:q="userQ"
+                v-model:status="userStatus"
+                v-model:page="userPage"
+                title="Пользователи"
+                search-placeholder="Имя, email, ID или chat_id"
+                :status-options="userStatusOptions"
+                :columns="userColumns"
+                :fields="userFields"
+                :items="users"
+                :total="usersTotal"
+                :page-size="PAGE_SIZE"
+                :loading="usersLoading"
+                :saving="usersSaving"
+                :deleting="usersDeleting"
+                edit-title="Пользователь"
+                delete-title="Удалить пользователя"
+                :delete-text="(row) => `Удалить «${row.name}» и все связанные данные: цепочки, платежи, токены?`"
+                @open="onOpenUser"
+                :on-save="saveUser"
+                :on-remove="removeUser"
+              >
+                <template #actions="{ row }">
+                  <UButton
+                    icon="i-lucide-log-in"
+                    color="neutral"
+                    variant="soft"
+                    size="sm"
+                    :disabled="!row.is_active"
+                    :loading="impersonatingId === row.id"
+                    aria-label="Войти как пользователь"
+                    :title="row.is_active ? 'Войти как этот пользователь' : 'Аккаунт отключён'"
+                    @click="loginAsUser(row)"
+                  />
+                </template>
+                <template #id="{ row, copy }">
+                  <button type="button" class="admin-id" :title="String(row.id)" @click="copy(row.id)">{{ row.id }}</button>
+                </template>
+                <template #name="{ row }">
+                  <div>
                     <p class="admin-primary">{{ row.name }}</p>
-                    <p v-if="row.description" class="admin-meta">{{ row.description }}</p>
-                  </template>
-                  <template #owner="{ row }">
-                    <div>
-                      <p class="admin-primary">{{ row.owner_name || `ID ${row.owner_id}` }}</p>
-                      <p class="admin-meta">{{ row.owner_email || `user #${row.owner_id}` }}</p>
-                    </div>
-                  </template>
-                  <template #status="{ row }">
-                    <UBadge :color="workflowStatusColor(row.status)" variant="soft">{{ workflowStatusLabel(row.status) }}</UBadge>
-                  </template>
-                  <template #nodes_count="{ row }">{{ row.nodes_count }}</template>
-                  <template #schedule="{ row }">{{ row.schedule_cron || '—' }}</template>
-                  <template #updated_at="{ row }">{{ formatDate(row.updated_at) }}</template>
-                </AdminRecordsTab>
-              </div>
-            </template>
-
-            <template #runs>
-              <div class="panel admin-panel">
-                <AdminRecordsTab
-                  v-model:q="runQ"
-                  v-model:status="runStatus"
-                  v-model:page="runPage"
-                  search-placeholder="Цепочка, пользователь, ошибка или ID"
-                  :status-options="runStatusOptions"
-                  :columns="runColumns"
-                  :fields="runFields"
-                  :items="runs"
-                  :total="runsTotal"
-                  :page-size="PAGE_SIZE"
-                  :loading="runsLoading"
-                  :saving="runsSaving"
-                  :deleting="runsDeleting"
-                  edit-title="Запуск"
-                  delete-title="Удалить запуск"
-                  :delete-text="(row) => `Удалить запуск ${shortId(row.id)}?`"
-                  :on-save="saveRun"
-                  :on-remove="removeRun"
-                >
-                  <template #id="{ row, copy }">
-                    <button type="button" class="admin-id" :title="row.id" @click="copy(row.id)">{{ shortId(row.id) }}</button>
-                  </template>
-                  <template #workflow_name="{ row }">{{ row.workflow_name || shortId(row.workflow_id) }}</template>
-                  <template #owner="{ row }">
-                    <div>
-                      <p class="admin-primary">{{ row.owner_name || `ID ${row.owner_id}` }}</p>
-                      <p class="admin-meta">{{ row.owner_email || `user #${row.owner_id}` }}</p>
-                    </div>
-                  </template>
-                  <template #status="{ row }">
-                    <UBadge :color="statusColor(row.status)" variant="soft">{{ statusLabel(row.status) }}</UBadge>
-                  </template>
-                  <template #cost="{ row }">
-                    <span class="tabular-nums">{{ formatCredits(row.cost) }}</span>
-                  </template>
-                  <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
-                </AdminRecordsTab>
-              </div>
-            </template>
-
-            <template #settings>
-              <div class="pt-2">
-                <h2 class="admin-section-title">Настройки выполнения</h2>
-                <div class="mb-9 grid gap-3 md:grid-cols-2">
-                  <article v-for="setting in config.settings" :key="setting.key" class="panel admin-card">
-                    <p class="admin-card-title">{{ setting.description }}</p>
-                    <p class="admin-card-meta">{{ setting.key }}</p>
-                    <div class="flex gap-2">
-                      <USelect
-                        v-if="setting.key === 'vision_provider'"
-                        :model-value="String(setting.value)"
-                        :items="VISION_PROVIDERS"
-                        value-key="value"
-                        class="flex-1"
-                        @update:model-value="setting.value = String($event ?? '')"
-                      />
-                      <UInput
-                        v-else-if="isCreditSetting(setting.key)"
-                        :model-value="String(setting.value)"
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        class="flex-1"
-                        @update:model-value="setting.value = $event === '' ? 0 : Number($event)"
-                      />
-                      <UInput
-                        v-else
-                        :model-value="String(setting.value)"
-                        class="flex-1"
-                        @update:model-value="setting.value = String($event)"
-                      />
-                      <UButton label="Сохранить" variant="soft" @click="saveSetting(setting)" />
-                    </div>
-                  </article>
-                </div>
-
-                <h2 class="admin-section-title">Поиск</h2>
-                <div class="mb-9 grid gap-4 lg:grid-cols-2">
-                  <article v-for="rate in searchRates" :key="rate.id" class="panel admin-card">
-                    <div class="mb-5 flex items-center justify-between">
+                    <p v-if="row.chat_id" class="admin-meta">Telegram {{ row.chat_id }}</p>
+                  </div>
+                </template>
+                <template #email="{ row }">{{ row.email || '—' }}</template>
+                <template #identities="{ row }">
+                  <div class="admin-chips">
+                    <UBadge v-for="item in row.identities" :key="item.provider + item.subject" variant="soft" color="neutral">
+                      {{ identityLabel(item.provider) }}
+                    </UBadge>
+                    <span v-if="!row.identities.length" class="muted">—</span>
+                  </div>
+                </template>
+                <template #balance="{ row }">
+                  <div class="text-right">
+                    <p class="admin-primary tabular-nums">{{ formatCredits(row.balance) }}</p>
+                    <p v-if="row.reserved" class="admin-meta">резерв {{ formatCredits(row.reserved) }}</p>
+                  </div>
+                </template>
+                <template #is_active="{ row }">
+                  <UBadge :color="row.is_active ? 'success' : 'neutral'" variant="soft">
+                    {{ row.is_active ? 'Активен' : 'Отключён' }}
+                  </UBadge>
+                </template>
+                <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
+                <template #edit-extra="{ row }">
+                  <UButton
+                    v-if="row"
+                    label="Войти как этот пользователь"
+                    icon="i-lucide-log-in"
+                    color="neutral"
+                    variant="soft"
+                    block
+                    :disabled="!row.is_active"
+                    :loading="impersonatingId === row.id"
+                    @click="loginAsUser(row)"
+                  />
+                  <div v-if="(editingUser?.id === row?.id ? editingUser : row)?.ledger?.length" class="admin-ledger">
+                    <p class="admin-ledger-title">Последние операции баланса</p>
+                    <div v-for="entry in (editingUser?.id === row?.id ? editingUser?.ledger : row?.ledger) || []" :key="entry.id" class="admin-ledger-row">
                       <div>
-                        <strong class="admin-card-title">{{ rate.model }}</strong>
-                        <p class="admin-card-meta mb-0">{{ rate.provider }}</p>
+                        <p class="admin-primary">{{ ledgerDescription({ ...entry, metadata_: entry.metadata }) }}</p>
+                        <p class="admin-meta">{{ formatDate(entry.created_at) }}</p>
                       </div>
-                      <USwitch v-model="rate.active" />
+                      <strong :class="entry.amount >= 0 ? 'text-[#4b3dcc]' : 'text-[#c45c3e]'">
+                        {{ entry.amount > 0 ? '+' : '' }}{{ formatCredits(entry.amount) }}
+                      </strong>
                     </div>
-                    <UFormField label="Стоимость одного поиска в токенах">
-                      <UInput v-model="rate.search_credits" type="number" step="0.001" class="w-full" />
-                    </UFormField>
-                    <UButton class="mt-5" label="Сохранить" variant="soft" @click="saveSearchRate(rate)" />
-                  </article>
-                </div>
+                  </div>
+                </template>
+              </AdminRecordsTab>
+            </div>
+          </section>
 
-                <h2 class="admin-section-title">Тарифы</h2>
-                <div class="grid gap-4 lg:grid-cols-2">
-                  <article v-for="plan in config.plans" :key="plan.id" class="panel admin-card">
-                    <div class="grid gap-3 sm:grid-cols-2">
-                      <UFormField label="Название"><UInput v-model="plan.name" class="w-full" /></UFormField>
-                      <UFormField label="Цена"><UInput v-model="plan.price" type="number" step="1" class="w-full" /></UFormField>
-                      <UFormField label="Токенов в месяц"><UInput v-model="plan.limits.included_credits" type="number" class="w-full" /></UFormField>
-                      <UFormField label="Лимит одного запуска"><UInput v-model="plan.limits.run_cap_credits" type="number" class="w-full" /></UFormField>
-                      <UFormField label="Файлов в хранилище"><UInput v-model="plan.limits.max_files" type="number" class="w-full" /></UFormField>
-                      <UFormField label="Объём хранилища, МБ"><UInput v-model="plan.limits.max_storage_mb" type="number" class="w-full" /></UFormField>
-                      <UFormField label="Валюта"><UInput v-model="plan.currency" maxlength="3" class="w-full" /></UFormField>
-                    </div>
-                    <UButton class="mt-5" label="Сохранить тариф" variant="soft" @click="savePlan(plan)" />
-                  </article>
-                </div>
+          <section v-show="tab === 'payments'">
+            <div class="panel admin-panel">
+              <AdminRecordsTab
+                v-model:q="paymentQ"
+                v-model:status="paymentStatus"
+                v-model:page="paymentPage"
+                search-placeholder="Пользователь, ID платежа или провайдер"
+                :status-options="paymentStatusOptions"
+                :columns="paymentColumns"
+                :fields="paymentFields"
+                :items="payments"
+                :total="paymentsTotal"
+                :page-size="PAGE_SIZE"
+                :loading="paymentsLoading"
+                :saving="paymentsSaving"
+                :deleting="paymentsDeleting"
+                edit-title="Платёж"
+                delete-title="Удалить платёж"
+                :delete-text="(row) => `Удалить платёж ${shortId(row.id)}? Credits на балансе не изменятся.`"
+                :on-save="savePayment"
+                :on-remove="removePayment"
+              >
+                <template #id="{ row, copy }">
+                  <button type="button" class="admin-id" :title="row.id" @click="copy(row.id)">{{ shortId(row.id) }}</button>
+                </template>
+                <template #user="{ row }">
+                  <div>
+                    <p class="admin-primary">{{ row.user_name || `ID ${row.user_id}` }}</p>
+                    <p class="admin-meta">{{ row.user_email || `user #${row.user_id}` }}</p>
+                  </div>
+                </template>
+                <template #plan_name="{ row }">{{ row.plan_name || '—' }}</template>
+                <template #amount="{ row }">
+                  <span class="tabular-nums">{{ Number(row.amount).toLocaleString('ru-RU') }} ₽</span>
+                </template>
+                <template #credits="{ row }">
+                  <span class="tabular-nums">{{ row.credits == null ? '—' : formatCredits(row.credits) }}</span>
+                </template>
+                <template #status="{ row }">
+                  <UBadge :color="paymentStatusColor(row.status)" variant="soft">{{ paymentStatusLabel(row.status) }}</UBadge>
+                </template>
+                <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
+              </AdminRecordsTab>
+            </div>
+          </section>
+
+          <section v-show="tab === 'workflows'">
+            <div class="panel admin-panel">
+              <AdminRecordsTab
+                v-model:q="workflowQ"
+                v-model:status="workflowStatus"
+                v-model:page="workflowPage"
+                search-placeholder="Название, владелец или ID"
+                :status-options="workflowStatusOptions"
+                :columns="workflowColumns"
+                :fields="workflowFields"
+                :items="workflows"
+                :total="workflowsTotal"
+                :page-size="PAGE_SIZE"
+                :loading="workflowsLoading"
+                :saving="workflowsSaving"
+                :deleting="workflowsDeleting"
+                edit-title="Цепочка"
+                delete-title="Удалить цепочку"
+                :delete-text="(row) => `Удалить цепочку «${row.name}» и её запуски?`"
+                :on-save="saveWorkflow"
+                :on-remove="removeWorkflow"
+              >
+                <template #id="{ row, copy }">
+                  <button type="button" class="admin-id" :title="row.id" @click="copy(row.id)">{{ shortId(row.id) }}</button>
+                </template>
+                <template #name="{ row }">
+                  <p class="admin-primary">{{ row.name }}</p>
+                  <p v-if="row.description" class="admin-meta">{{ row.description }}</p>
+                </template>
+                <template #owner="{ row }">
+                  <div>
+                    <p class="admin-primary">{{ row.owner_name || `ID ${row.owner_id}` }}</p>
+                    <p class="admin-meta">{{ row.owner_email || `user #${row.owner_id}` }}</p>
+                  </div>
+                </template>
+                <template #status="{ row }">
+                  <UBadge :color="workflowStatusColor(row.status)" variant="soft">{{ workflowStatusLabel(row.status) }}</UBadge>
+                </template>
+                <template #nodes_count="{ row }">{{ row.nodes_count }}</template>
+                <template #schedule="{ row }">{{ row.schedule_cron || '—' }}</template>
+                <template #updated_at="{ row }">{{ formatDate(row.updated_at) }}</template>
+              </AdminRecordsTab>
+            </div>
+          </section>
+
+          <section v-show="tab === 'runs'">
+            <div class="panel admin-panel">
+              <AdminRecordsTab
+                v-model:q="runQ"
+                v-model:status="runStatus"
+                v-model:page="runPage"
+                search-placeholder="Цепочка, пользователь, ошибка или ID"
+                :status-options="runStatusOptions"
+                :columns="runColumns"
+                :fields="runFields"
+                :items="runs"
+                :total="runsTotal"
+                :page-size="PAGE_SIZE"
+                :loading="runsLoading"
+                :saving="runsSaving"
+                :deleting="runsDeleting"
+                edit-title="Запуск"
+                delete-title="Удалить запуск"
+                :delete-text="(row) => `Удалить запуск ${shortId(row.id)}?`"
+                :on-save="saveRun"
+                :on-remove="removeRun"
+              >
+                <template #id="{ row, copy }">
+                  <button type="button" class="admin-id" :title="row.id" @click="copy(row.id)">{{ shortId(row.id) }}</button>
+                </template>
+                <template #workflow_name="{ row }">{{ row.workflow_name || shortId(row.workflow_id) }}</template>
+                <template #owner="{ row }">
+                  <div>
+                    <p class="admin-primary">{{ row.owner_name || `ID ${row.owner_id}` }}</p>
+                    <p class="admin-meta">{{ row.owner_email || `user #${row.owner_id}` }}</p>
+                  </div>
+                </template>
+                <template #status="{ row }">
+                  <UBadge :color="statusColor(row.status)" variant="soft">{{ statusLabel(row.status, t) }}</UBadge>
+                </template>
+                <template #cost="{ row }">
+                  <span class="tabular-nums">{{ formatCredits(row.cost) }}</span>
+                </template>
+                <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
+              </AdminRecordsTab>
+            </div>
+          </section>
+
+          <section v-show="tab === 'settings'">
+            <div class="pt-2">
+              <h2 class="admin-section-title">Настройки выполнения</h2>
+              <div class="mb-9 grid gap-3 md:grid-cols-2">
+                <article v-for="setting in config.settings" :key="setting.key" class="panel admin-card">
+                  <p class="admin-card-title">{{ setting.description }}</p>
+                  <p class="admin-card-meta">{{ setting.key }}</p>
+                  <div class="flex gap-2">
+                    <USelect
+                      v-if="setting.key === 'vision_provider'"
+                      :model-value="String(setting.value)"
+                      :items="VISION_PROVIDERS"
+                      value-key="value"
+                      class="flex-1"
+                      @update:model-value="setting.value = String($event ?? '')"
+                    />
+                    <UInput
+                      v-else-if="isCreditSetting(setting.key)"
+                      :model-value="String(setting.value)"
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      class="flex-1"
+                      @update:model-value="setting.value = $event === '' ? 0 : Number($event)"
+                    />
+                    <UInput
+                      v-else
+                      :model-value="String(setting.value)"
+                      class="flex-1"
+                      @update:model-value="setting.value = String($event)"
+                    />
+                    <UButton label="Сохранить" variant="soft" @click="saveSetting(setting)" />
+                  </div>
+                </article>
               </div>
-            </template>
-          </UTabs>
-        </template>
-      </div>
-    </main>
+
+              <h2 class="admin-section-title">Поиск</h2>
+              <div class="mb-9 grid gap-4 lg:grid-cols-2">
+                <article v-for="rate in searchRates" :key="rate.id" class="panel admin-card">
+                  <div class="mb-5 flex items-center justify-between">
+                    <div>
+                      <strong class="admin-card-title">{{ rate.model }}</strong>
+                      <p class="admin-card-meta mb-0">{{ rate.provider }}</p>
+                    </div>
+                    <USwitch v-model="rate.active" />
+                  </div>
+                  <UFormField label="Стоимость одного поиска в токенах">
+                    <UInput v-model="rate.search_credits" type="number" step="0.001" class="w-full" />
+                  </UFormField>
+                  <UButton class="mt-5" label="Сохранить" variant="soft" @click="saveSearchRate(rate)" />
+                </article>
+              </div>
+
+              <h2 class="admin-section-title">Тарифы</h2>
+              <div class="grid gap-4 lg:grid-cols-2">
+                <article v-for="plan in config.plans" :key="plan.id" class="panel admin-card">
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <UFormField label="Название"><UInput v-model="plan.name" class="w-full" /></UFormField>
+                    <UFormField label="Цена"><UInput v-model="plan.price" type="number" step="1" class="w-full" /></UFormField>
+                    <UFormField label="Токенов в месяц"><UInput v-model="plan.limits.included_credits" type="number" class="w-full" /></UFormField>
+                    <UFormField label="Лимит одного запуска"><UInput v-model="plan.limits.run_cap_credits" type="number" class="w-full" /></UFormField>
+                    <UFormField label="Файлов в хранилище"><UInput v-model="plan.limits.max_files" type="number" class="w-full" /></UFormField>
+                    <UFormField label="Объём хранилища, МБ"><UInput v-model="plan.limits.max_storage_mb" type="number" class="w-full" /></UFormField>
+                    <UFormField label="Валюта"><UInput v-model="plan.currency" maxlength="3" class="w-full" /></UFormField>
+                  </div>
+                  <UButton class="mt-5" label="Сохранить тариф" variant="soft" @click="savePlan(plan)" />
+                </article>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
   </UApp>
 </template>

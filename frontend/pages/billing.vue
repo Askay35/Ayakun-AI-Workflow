@@ -167,10 +167,11 @@ const onEmailModalOpen = (open: boolean) => {
     </div>
     <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
       <PlanCard
-        v-for="plan in orderedPlans"
+        v-for="(plan, index) in orderedPlans"
         :key="plan.id"
         :plan="plan"
         :featured="plan.code === featuredCode"
+        :top="index === orderedPlans.length - 1"
         :current="currentPlan ? plan.id === currentPlan.id : !Number(plan.price)"
       >
         <UButton
