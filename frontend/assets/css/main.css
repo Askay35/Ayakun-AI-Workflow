@@ -1439,8 +1439,8 @@ a { color: inherit; text-decoration: none; }
 .editor-tab.is-active { color: var(--ink); background: #fff; box-shadow: 0 1px 3px rgba(15, 19, 48, .08); }
 .editor-tab-dot {
   position: absolute;
-  top: 6px;
-  right: 8px;
+  right: 1px;
+  top: 2px;
   width: 6px;
   height: 6px;
   border-radius: 50%;

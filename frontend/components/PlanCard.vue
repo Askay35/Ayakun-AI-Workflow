@@ -21,7 +21,7 @@ const features = computed(() => {
   if (files && bytes) items.push(t('pricing.storage', { files, size: formatStorage(bytes, locale.value) }))
   items.push(paid.value ? t('pricing.featureMedia') : t('pricing.featureNoMedia'))
   items.push(paid.value ? t('pricing.featureBlocks') : t('pricing.featureTemplates'))
-  if (paid.value) items.push(t('pricing.featureUpgrade'))
+  if (paid.value && props.plan.code !== "super") items.push(t('pricing.featureUpgrade'))
   return items
 })
 </script>
