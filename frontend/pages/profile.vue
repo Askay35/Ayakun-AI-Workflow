@@ -119,9 +119,9 @@ const linkTelegram = async () => {
 <template>
   <div class="page max-w-3xl">
     <div class="page-head"><div><p class="eyebrow">{{ t('profile.eyebrow') }}</p><h1 class="page-title">{{ t('profile.title') }}</h1><p class="muted">{{ t('profile.lead') }}</p></div></div>
-    <div class="mb-6 inline-flex rounded-xl bg-white p-1 shadow-sm"><UButton :label="t('profile.tabProfile')" :variant="tab === 'profile' ? 'soft' : 'ghost'" @click="showProfile" /><UButton :label="t('profile.tabIntegrations')" :variant="tab === 'integrations' ? 'soft' : 'ghost'" @click="showIntegrations" /></div>
+    <div class="mb-6 inline-flex gap-1 rounded-xl border border-[var(--line)] bg-white p-1 shadow-[var(--shadow-sm)]"><UButton :label="t('profile.tabProfile')" :variant="tab === 'profile' ? 'soft' : 'ghost'" @click="showProfile" /><UButton :label="t('profile.tabIntegrations')" :variant="tab === 'integrations' ? 'soft' : 'ghost'" @click="showIntegrations" /></div>
     <div v-if="tab === 'profile'" class="panel p-6">
-      <div class="mb-6 flex items-center gap-4"><span class="grid size-14 place-items-center rounded-2xl bg-[#efedff] text-xl font-extrabold text-[#6758ee]">{{ (name || email || 'A').slice(0, 1).toUpperCase() }}</span><div><h2 class="mb-1 text-xl font-extrabold">{{ t('profile.personal') }}</h2><p class="mb-0 text-sm muted">{{ t('profile.personalHint') }}</p></div></div>
+      <div class="mb-6 flex items-center gap-4"><span class="grid size-14 place-items-center rounded-2xl text-xl font-extrabold text-white shadow-[0_8px_18px_rgba(109,74,255,.25)]" style="background: var(--grad)">{{ (name || email || 'A').slice(0, 1).toUpperCase() }}</span><div><h2 class="mb-1 text-xl font-extrabold tracking-tight">{{ t('profile.personal') }}</h2><p class="mb-0 text-sm muted">{{ t('profile.personalHint') }}</p></div></div>
       <div class="space-y-4">
         <UFormField :label="t('profile.name')"><UInput v-model="name" size="lg" class="w-full" /></UFormField>
         <UFormField label="Email">
@@ -136,7 +136,7 @@ const linkTelegram = async () => {
           />
         </UFormField>
         <p v-if="!emailLocked" class="mb-0 text-sm muted">{{ t('profile.emailHint') }}</p>
-        <div v-if="emailStep" class="space-y-3 rounded-2xl border border-[#ece9ff] bg-[#f8f7ff] p-4">
+        <div v-if="emailStep" class="space-y-3 rounded-2xl border border-[rgba(109,74,255,.2)] bg-[var(--violet-soft)] p-4">
           <p class="mb-0 text-sm muted">{{ t('profile.codeSentTo', { email: pendingEmail }) }}</p>
           <UInput
             v-model="emailCode"
@@ -160,7 +160,7 @@ const linkTelegram = async () => {
       <div class="panel p-5">
         <div class="flex items-center justify-between gap-4">
           <div class="flex items-center gap-4">
-            <span class="grid size-12 place-items-center rounded-2xl bg-[#e8f5ff] text-[#229ed9]"><UIcon name="i-simple-icons-telegram" class="size-6" /></span>
+            <span class="grid size-12 place-items-center rounded-2xl bg-[rgba(34,158,217,.1)] text-[#229ed9]"><UIcon name="i-simple-icons-telegram" class="size-6" /></span>
             <div>
               <h2 class="mb-1 font-extrabold">Telegram</h2>
               <p class="mb-0 text-sm muted">{{ t('profile.tgHint') }}</p>
@@ -169,7 +169,7 @@ const linkTelegram = async () => {
           <UBadge v-if="linked('telegram')" :label="t('profile.connected')" color="success" variant="soft" />
           <UButton v-else :label="t('profile.connect')" variant="outline" @click="openTelegramStep" />
         </div>
-        <div v-if="telegramStep && !linked('telegram')" class="mt-4 space-y-3 border-t border-[#ece9ff] pt-4">
+        <div v-if="telegramStep && !linked('telegram')" class="mt-4 space-y-3 border-t border-[var(--line)] pt-4">
           <p class="mb-0 text-sm muted">{{ t('profile.tgLinkHint') }}</p>
           <a href="https://t.me/ayakun_bot?start=link" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm font-bold text-[#229ed9]">
             {{ t('profile.openBot') }}
@@ -190,7 +190,7 @@ const linkTelegram = async () => {
           </div>
         </div>
       </div>
-      <div class="panel p-5"><div class="flex items-center justify-between gap-4"><div class="flex items-center gap-4"><span class="grid size-12 place-items-center rounded-2xl bg-[#f3f3f3]"><UIcon name="i-simple-icons-google" class="size-6" /></span><div><h2 class="mb-1 font-extrabold">Google</h2><p class="mb-0 text-sm muted">{{ t('profile.googleHint') }}</p></div></div><UBadge v-if="linked('google')" :label="t('profile.connected')" color="success" variant="soft" /><UButton v-else :label="t('profile.connect')" variant="outline" :loading="linking" @click="connectGoogle" /></div></div>
+      <div class="panel p-5"><div class="flex items-center justify-between gap-4"><div class="flex items-center gap-4"><span class="grid size-12 place-items-center rounded-2xl bg-[var(--soft)]"><UIcon name="i-simple-icons-google" class="size-6" /></span><div><h2 class="mb-1 font-extrabold">Google</h2><p class="mb-0 text-sm muted">{{ t('profile.googleHint') }}</p></div></div><UBadge v-if="linked('google')" :label="t('profile.connected')" color="success" variant="soft" /><UButton v-else :label="t('profile.connect')" variant="outline" :loading="linking" @click="connectGoogle" /></div></div>
     </div>
   </div>
 </template>
