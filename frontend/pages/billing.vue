@@ -18,6 +18,11 @@ const featuredCode = 'pro'
 const active = computed(() => subscription.value?.status === 'active')
 const currentPlan = computed(() => (active.value ? subscription.value?.plan : null) || null)
 const currentPrice = computed(() => Number(currentPlan.value?.price || 0))
+const isTrial = computed(() => currentPlan.value?.code === 'free')
+const purgeDate = computed(() => {
+  const at = subscription.value?.files_purge_at
+  return !active.value && at && new Date(at).getTime() > Date.now() ? at : null
+})
 const daysLeft = computed(() => {
   const expires = subscription.value?.expires_at
   if (!active.value || !expires) return 0
@@ -30,9 +35,9 @@ type PlanAction = { label: string; disabled: boolean; note?: string; variant: 's
 const planAction = (plan: Plan): PlanAction => {
   const price = Number(plan.price)
   if (!price) {
-    return { label: currentPlan.value ? t('billing.downgradeLocked') : t('billing.freeCurrent'), disabled: true, variant: 'outline' }
+    return { label: isTrial.value ? t('billing.trialActive') : t('billing.trialUsed'), disabled: true, variant: 'outline' }
   }
-  if (!currentPlan.value) return { label: t('billing.connect'), disabled: false, variant: 'solid' }
+  if (!currentPlan.value || isTrial.value) return { label: t('billing.connect'), disabled: false, variant: 'solid' }
   if (plan.id === currentPlan.value.id) return { label: t('billing.renew'), disabled: false, variant: 'soft' }
   if (price > currentPrice.value) {
     return { label: t('billing.upgrade', { name: plan.name }), disabled: false, note: t('billing.upgradeNote'), variant: 'solid' }
@@ -106,11 +111,17 @@ const onEmailModalOpen = (open: boolean) => {
         <span class="metric-icon"><UIcon name="i-lucide-rocket" class="size-6" /></span>
         <div class="min-w-0">
           <p class="mb-0 text-sm font-semibold muted">{{ t('billing.currentPlan') }}</p>
-          <p class="metric-value">{{ currentPlan?.name || t('billing.freePlan') }}</p>
-          <p v-if="active && subscription?.expires_at" class="mb-0 mt-1 text-xs muted">
+          <p class="metric-value">{{ currentPlan?.name || t('billing.noSubscription') }}</p>
+          <p v-if="active && isTrial && subscription?.expires_at" class="mb-0 mt-1 text-xs muted">
+            {{ t('billing.trialNote', { date: formatDateOnly(subscription.expires_at) }) }} · {{ t('billing.daysLeft', { n: daysLeft }) }}
+          </p>
+          <p v-else-if="active && subscription?.expires_at" class="mb-0 mt-1 text-xs muted">
             {{ t('billing.activeUntil', { date: formatDateOnly(subscription.expires_at) }) }} · {{ t('billing.daysLeft', { n: daysLeft }) }}
           </p>
-          <p v-else-if="subscription?.status === 'expired'" class="mb-0 mt-1 text-xs text-[#c2410c]">{{ t('billing.expiredNote') }}</p>
+          <p v-else-if="subscription?.status === 'expired'" class="mb-0 mt-1 text-xs text-[#c2410c]">
+            {{ t('billing.expiredNote') }}
+            <template v-if="purgeDate">{{ t('billing.filesPurgeNote', { date: formatDateOnly(purgeDate) }) }}</template>
+          </p>
           <p v-else class="mb-0 mt-1 text-xs muted">{{ t('billing.noPlanNote') }}</p>
         </div>
       </div>
@@ -134,12 +145,13 @@ const onEmailModalOpen = (open: boolean) => {
       </div>
     </div>
 
-    <div v-if="storage" class="panel mt-4 p-6">
+    <div v-if="storage && (active || storage.files > 0)" class="panel mt-4 p-6">
       <div class="flex flex-wrap items-baseline justify-between gap-2">
         <h2 class="mb-0 text-lg font-extrabold tracking-tight">{{ t('billing.storageTitle') }}</h2>
         <p class="mb-0 text-xs muted">{{ t('billing.storageHint') }}</p>
       </div>
-      <div class="mt-4 grid gap-5 md:grid-cols-2">
+      <p v-if="!active" class="mb-0 mt-4 text-sm font-semibold">{{ t('billing.storageClosed', { n: storage.files }) }}</p>
+      <div v-else class="mt-4 grid gap-5 md:grid-cols-2">
         <div>
           <div class="mb-2 flex justify-between text-sm font-semibold">
             <span>{{ t('billing.storageFiles') }}</span>
@@ -172,7 +184,7 @@ const onEmailModalOpen = (open: boolean) => {
         :plan="plan"
         :featured="plan.code === featuredCode"
         :top="index === orderedPlans.length - 1"
-        :current="currentPlan ? plan.id === currentPlan.id : !Number(plan.price)"
+        :current="currentPlan ? plan.id === currentPlan.id : false"
       >
         <UButton
           :label="planAction(plan).label"

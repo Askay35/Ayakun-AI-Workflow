@@ -55,7 +55,6 @@ from schemas.workflow import (
 )
 from helper import display_telegram_output
 from services.billing import BillingService
-from services.billing.access import PAID_MEDIA_REQUIRED, graph_uses_paid_media, user_has_paid_pack
 from services.billing.subscriptions import SubscriptionService
 from services.stored_images import (
     consume_image_node_budget,
@@ -448,6 +447,7 @@ class WorkflowService:
         return workflow
 
     async def create(self, data: WorkflowCreate, user: User) -> Workflow:
+        await SubscriptionService(self.db).require_active(user.id)
         workflows_count = await self.db.scalar(select(func.count(Workflow.id)).where(Workflow.owner_id == user.id))
         if workflows_count >= settings.max_workflows_count:
             raise HTTPException(400, "Вы достигли максимального количества workflows")
@@ -535,6 +535,7 @@ class WorkflowService:
             old_files, old_bytes = await self._image_usage(user.id, previous, replace_id)
             if files <= old_files and nbytes <= old_bytes:
                 return
+        await SubscriptionService(self.db).require_active(user.id)
         raise HTTPException(422, storage_quota_message(limits.max_files, limits.max_bytes))
 
     async def storage_usage(self, user: User) -> tuple[int, int]:
@@ -576,10 +577,6 @@ class WorkflowService:
                 version.graph_snapshot = snapshot
                 flag_modified(version, "graph_snapshot")
 
-    async def _require_paid_media(self, user: User, graph: WorkflowGraph) -> None:
-        if graph_uses_paid_media(graph) and not await user_has_paid_pack(self.db, user.id):
-            raise HTTPException(402, PAID_MEDIA_REQUIRED)
-
     async def validate(self, workflow_id: uuid.UUID, user: User) -> list[str]:
         workflow = await self._owned(workflow_id, user)
         return validate_graph(WorkflowGraph.model_validate(workflow.draft_graph), strict=True)
@@ -605,8 +602,6 @@ class WorkflowService:
             )
             if not has_telegram:
                 errors.append("Для telegram_send необходимо привязать Telegram")
-        if graph_uses_paid_media(graph) and not await user_has_paid_pack(self.db, user.id):
-            errors.append(PAID_MEDIA_REQUIRED)
         if errors:
             raise HTTPException(422, errors)
         snapshot = graph.model_dump(mode="json")
@@ -627,11 +622,11 @@ class WorkflowService:
     async def run(self, workflow_id: uuid.UUID, user: User, input_data: dict) -> WorkflowRun:
         """Создаёт WorkflowRun и кладёт задачу в Celery; исполнение — на worker."""
         workflow = await self._owned(workflow_id, user)
+        await SubscriptionService(self.db).require_active(user.id)
         if not workflow.published_version_id:
             raise HTTPException(409, "Workflow не опубликован")
         version = await self.db.get(WorkflowVersion, workflow.published_version_id)
         graph = WorkflowGraph.model_validate(version.graph_snapshot if version else {"nodes": []})
-        await self._require_paid_media(user, graph)
         if self.billing:
             wallet = await self.billing.ensure_initial_credit(user)
             estimate = await PricingService(self.db).estimate_graph(graph)
@@ -687,6 +682,7 @@ class WorkflowService:
     ) -> WorkflowRun:
         """Запускает один узел из текущего черновика, без публикации всей цепочки."""
         workflow = await self._owned(workflow_id, user)
+        await SubscriptionService(self.db).require_active(user.id)
         graph = WorkflowGraph.model_validate(workflow.draft_graph or {"nodes": []})
         graph.variables = dict(workflow.variables or {})
         node = next((item for item in graph.nodes if item.id == node_id), None)
@@ -704,7 +700,6 @@ class WorkflowService:
                 errors.append("Для telegram_send необходимо привязать Telegram или указать chat_id")
         if errors:
             raise HTTPException(422, errors)
-        await self._require_paid_media(user, WorkflowGraph(nodes=[node]))
         solo_graph = solo_graph_for_node(node)
         solo_graph.variables = dict(workflow.variables or {})
         if self.billing:

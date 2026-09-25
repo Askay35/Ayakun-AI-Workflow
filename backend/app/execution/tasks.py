@@ -20,6 +20,7 @@ from sqlalchemy.pool import NullPool
 
 from core.config import settings
 from execution.celery_app import celery_app
+from models.billing import Subscription
 from models.user import User
 from models.workflow import (
     NodeRun,
@@ -32,7 +33,7 @@ from models.workflow import (
 )
 from schemas.workflow import NodeType, WorkflowGraph, WorkflowNode, normalize_workflow_variables
 from services.billing import BillingService
-from services.billing.access import PAID_MEDIA_REQUIRED, graph_uses_paid_media, user_has_paid_pack
+from services.billing.subscriptions import SUBSCRIPTION_REQUIRED, SubscriptionService
 from services.execution import DefaultExecutors, NodeRegistry, node_type_value
 from services.execution.errors import user_visible_error
 from services.media_files import billed_audio_minutes
@@ -245,19 +246,19 @@ class WorkflowRunExecutor:
         user = await db.get(User, run.owner_id)
         graph = WorkflowGraph.model_validate(version.graph_snapshot)
         billing = BillingService(db)
-        if user is not None and graph_uses_paid_media(graph) and not await user_has_paid_pack(db, user.id):
+        if user is not None and await SubscriptionService(db).active(user.id) is None:
             run.status = RunStatus.failed
-            run.error = PAID_MEDIA_REQUIRED
+            run.error = SUBSCRIPTION_REQUIRED
             run.finished_at = datetime.datetime.now(datetime.UTC)
             await db.commit()
             logger.error(
-                "Запуск не начат: медиа-узлы закрыты до покупки пакета",
+                "Запуск не начат: нет действующей подписки",
                 extra={
                     "event": "run.failed",
                     "run_id": str(run.id),
                     "workflow_id": str(run.workflow_id),
                     "owner_id": run.owner_id,
-                    "error": PAID_MEDIA_REQUIRED,
+                    "error": SUBSCRIPTION_REQUIRED,
                 },
             )
             return None
@@ -608,7 +609,24 @@ async def _poll_scheduled() -> list[str]:
                 )
                 .with_for_update(skip_locked=True)
             ))
+            active_owners = set(await db.scalars(
+                select(Subscription.user_id).where(
+                    Subscription.user_id.in_({item.owner_id for item in workflows}),
+                    Subscription.status == "active",
+                    Subscription.expires_at > now,
+                )
+            ))
             for workflow in workflows:
+                slots = load_slots(workflow.schedule_slots) or slots_from_legacy(workflow.schedule_cron)
+                slots = advance_due_slots(slots, workflow.schedule_timezone, now)
+                workflow.schedule_slots = dump_slots(slots)
+                workflow.next_run_at = earliest_next(slots)
+                if workflow.owner_id not in active_owners:
+                    logger.info(
+                        "Запланированный запуск пропущен: нет действующей подписки",
+                        extra={"event": "run.skipped", "workflow_id": str(workflow.id), "owner_id": workflow.owner_id},
+                    )
+                    continue
                 run = WorkflowRun(
                     workflow_id=workflow.id,
                     workflow_version_id=workflow.published_version_id,
@@ -618,10 +636,6 @@ async def _poll_scheduled() -> list[str]:
                 db.add(run)
                 await db.flush()
                 run_ids.append(str(run.id))
-                slots = load_slots(workflow.schedule_slots) or slots_from_legacy(workflow.schedule_cron)
-                slots = advance_due_slots(slots, workflow.schedule_timezone, now)
-                workflow.schedule_slots = dump_slots(slots)
-                workflow.next_run_at = earliest_next(slots)
                 logger.info(
                     "Запланированный запуск поставлен в очередь",
                     extra={

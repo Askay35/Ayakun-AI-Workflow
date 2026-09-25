@@ -152,6 +152,7 @@ class Subscription(Base):
     started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     expires_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), index=True)
     reminded_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    files_purge_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

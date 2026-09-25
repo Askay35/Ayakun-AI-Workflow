@@ -45,13 +45,6 @@ const { data: workflow, error: workflowError, status } = await useAuthAsyncData<
   `workflow-${id}`,
   () => api.workflows.get(id)
 )
-const { data: editorWallet } = await useAuthAsyncData(
-  `editor-wallet-${id}`,
-  () => api.billing.wallet().catch(() => ({ balance: 0, media_unlocked: false }))
-)
-const mediaUnlocked = computed(() => editorWallet.value == null || Boolean(editorWallet.value.media_unlocked))
-const paidMediaTypes = new Set<NodeKind>(['image_generation', 'image_recognition', 'audio_transcription'])
-const mediaLocked = (type: NodeKind) => paidMediaTypes.has(type) && !mediaUnlocked.value
 if (status.value === 'error' || !workflow.value) {
   throw createError({
     statusCode: (workflowError.value as any)?.statusCode || 404,
@@ -576,27 +569,16 @@ const onEdgesChange = (changes: EdgeChange[]) => {
       : (selectedEdgeId.value === change.id ? undefined : selectedEdgeId.value)
   }
 }
-const refuseLockedMedia = (type: NodeKind) => {
-  if (!mediaLocked(type)) return false
-  toast.add({ title: t('editor.mediaLocked'), color: 'warning' })
-  return true
-}
 const onDragStart = (event: DragEvent, type: NodeKind) => {
-  if (mediaLocked(type)) {
-    event.preventDefault()
-    return
-  }
   event.dataTransfer?.setData('application/ayakun-node', type)
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 const onDrop = (event: DragEvent) => {
   const type = event.dataTransfer?.getData('application/ayakun-node') as NodeKind
   if (!type || !(type in NODE_META)) return
-  if (refuseLockedMedia(type)) return
   addNode(type, screenToFlowCoordinate({ x: event.clientX, y: event.clientY }))
 }
 const addFromPalette = (type: NodeKind) => {
-  if (refuseLockedMedia(type)) return
   const origin = screenToFlowCoordinate({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
   addNode(type, { x: origin.x + nodes.value.length * 24, y: origin.y + nodes.value.length * 16 })
 }
@@ -738,19 +720,14 @@ const runSelectedNode = async () => {
             :placeholder="t('editor.nodesSearch')"
             class="palette-search w-full"
           />
-          <p v-if="!mediaUnlocked" class="editor-warn mb-2">
-            {{ t('editor.mediaLockedHint') }}
-            <NuxtLink to="/billing" class="font-bold underline">{{ t('editor.mediaLockedLink') }}</NuxtLink>
-          </p>
           <div v-for="group in paletteGroups" :key="group.key" class="palette-group" role="list">
             <p class="palette-group-title">{{ t(`editor.groups.${group.key}`) }}</p>
             <button
               v-for="item in group.items"
               :key="item.type"
               type="button"
-              :draggable="!mediaLocked(item.type)"
+              :draggable="true"
               class="palette-item"
-              :class="{ 'is-locked': mediaLocked(item.type) }"
               role="listitem"
               :title="t('editor.nodesHint')"
               @dragstart="onDragStart($event, item.type)"
@@ -761,7 +738,7 @@ const runSelectedNode = async () => {
               </span>
               <span class="min-w-0 text-left">
                 <span class="palette-name">{{ item.label }}</span>
-                <span class="palette-caption">{{ mediaLocked(item.type) ? t('editor.mediaLockedShort') : item.caption }}</span>
+                <span class="palette-caption">{{ item.caption }}</span>
               </span>
               <UIcon name="i-lucide-plus" class="palette-add size-4" />
             </button>
@@ -1105,7 +1082,6 @@ const runSelectedNode = async () => {
               <p class="editor-hint">{{ t('editor.yandexHint') }}</p>
             </template>
             <template v-if="selected.type === 'image_generation'">
-              <p v-if="mediaLocked('image_generation')" class="editor-warn">{{ t('editor.mediaLockedHint') }}</p>
               <UFormField :label="t('editor.imagePrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="6" class="w-full" :placeholder="t('editor.imagePromptPlaceholder')" />
               </UFormField>
@@ -1124,14 +1100,12 @@ const runSelectedNode = async () => {
               <p v-if="selected.data.source === 'upstream'" class="editor-hint">{{ t('editor.imageUpstreamHint') }}</p>
             </template>
             <template v-if="selected.type === 'image_recognition'">
-              <p v-if="mediaLocked('image_recognition')" class="editor-warn">{{ t('editor.mediaLockedHint') }}</p>
               <UFormField :label="t('editor.recognizePrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="5" class="w-full" :placeholder="t('editor.recognizePlaceholder')" />
               </UFormField>
               <p class="editor-hint">{{ t('editor.recognizeHint') }}</p>
             </template>
             <template v-if="selected.type === 'audio_transcription'">
-              <p v-if="mediaLocked('audio_transcription')" class="editor-warn">{{ t('editor.mediaLockedHint') }}</p>
               <UFormField :label="t('editor.imageSource')">
                 <USelect v-model="selected.data.source" :items="mediaSources" value-key="value" class="w-full" />
               </UFormField>

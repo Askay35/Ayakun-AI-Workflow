@@ -38,6 +38,10 @@ celery_app.conf.update(
             "task": "execution.billing_tasks.expire_subscriptions",
             "schedule": 300.0,
         },
+        "purge-expired-files": {
+            "task": "execution.billing_tasks.purge_expired_files",
+            "schedule": 900.0,
+        },
         "remind-expiring-subscriptions": {
             "task": "execution.billing_tasks.remind_expiring_subscriptions",
             "schedule": 3600.0,

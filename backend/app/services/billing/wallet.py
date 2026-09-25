@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from models.billing import LedgerKind, Payment, Plan, UsageRecord, Wallet, WalletLedger
 from schemas.billing import PaymentStatus
-from services.billing.access import user_has_paid_pack
+from services.billing.subscriptions import SubscriptionService
 from models.user import User
 
 
@@ -71,9 +71,6 @@ class WalletService:
             await self.db.flush()
         return wallet
 
-    async def has_paid_pack(self, user: User) -> bool:
-        return await user_has_paid_pack(self.db, user.id)
-
     async def ensure_initial_credit(self, user: User) -> Wallet:
         wallet = await self.wallet(user, lock=True)
         free_plan = await self.db.scalar(select(Plan).where(Plan.code == "free"))
@@ -91,6 +88,7 @@ class WalletService:
                 idempotency_key=key,
                 reference="free-plan",
             ))
+            await SubscriptionService(self.db).ensure_trial(user.id)
         await self.db.commit()
         return wallet
 

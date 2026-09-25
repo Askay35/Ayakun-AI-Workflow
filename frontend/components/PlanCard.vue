@@ -12,6 +12,7 @@ const props = defineProps<{
 
 const { t, locale, formatMoney } = useI18n()
 const paid = computed(() => Number(props.plan.price) > 0)
+const trialDays = computed(() => Number(props.plan.limits?.period_days) || 7)
 const features = computed(() => {
   const files = Number(props.plan.limits?.max_files || 0)
   const bytes = planStorageBytes(props.plan)
@@ -21,8 +22,9 @@ const features = computed(() => {
       : t('pricing.tokensOnce', { n: formatCredits(packCredits(props.plan)) })
   ]
   if (files && bytes) items.push(t('pricing.storage', { files, size: formatStorage(bytes, locale.value) }))
-  items.push(paid.value ? t('pricing.featureMedia') : t('pricing.featureNoMedia'))
-  items.push(paid.value ? t('pricing.featureBlocks') : t('pricing.featureTemplates'))
+  items.push(t('pricing.featureMedia'))
+  items.push(t('pricing.featureBlocks'))
+  if (!paid.value) items.push(t('pricing.featureTrial', { n: trialDays.value }))
   if (paid.value && !props.top) items.push(t('pricing.featureUpgrade'))
   return items
 })
@@ -44,7 +46,10 @@ const features = computed(() => {
         <strong>{{ formatMoney(Number(plan.price)) }} ₽</strong>
         <span>{{ t('pricing.perMonth') }}</span>
       </template>
-      <strong v-else>{{ t('pricing.free') }}</strong>
+      <template v-else>
+        <strong>{{ t('pricing.free') }}</strong>
+        <span>{{ t('pricing.trialFor', { n: trialDays }) }}</span>
+      </template>
     </p>
     <span class="credit-pack-rule" aria-hidden="true" />
     <ul class="plan-card-features">

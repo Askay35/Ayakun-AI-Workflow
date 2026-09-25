@@ -38,9 +38,6 @@ class BillingService:
     async def ensure_initial_credit(self, user: User) -> Wallet:
         return await self.wallets.ensure_initial_credit(user)
 
-    async def has_paid_pack(self, user: User) -> bool:
-        return await self.wallets.has_paid_pack(user)
-
     async def _already_applied(self, key: str) -> bool:
         return await self.wallets.already_applied(key)
 

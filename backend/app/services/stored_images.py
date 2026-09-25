@@ -65,15 +65,21 @@ def decoded_base64_size(encoded: str) -> int:
     return max((len(payload) * 3) // 4 - pad, 0)
 
 
+def _node_items(nodes: object) -> object:
+    if isinstance(nodes, dict):
+        return nodes.get("nodes")
+    return getattr(nodes, "nodes", nodes)
+
+
 def image_node_ids(nodes: object) -> set[str]:
-    items = getattr(nodes, "nodes", nodes)
+    items = _node_items(nodes)
     if not isinstance(items, (list, tuple)):
         return set()
     return {_node_id(node) for node in items if _type_name(node) == "image" and _node_id(node)}
 
 
 def uploaded_images(nodes: object) -> list[tuple[str, int]]:
-    items = getattr(nodes, "nodes", nodes)
+    items = _node_items(nodes)
     if not isinstance(items, (list, tuple)):
         return []
     found: list[tuple[str, int]] = []

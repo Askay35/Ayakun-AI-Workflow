@@ -533,7 +533,7 @@ export const useApi = () => {
     },
     billing: {
       plans: () => request<Plan[]>('/billing/plans'),
-      wallet: () => request<{ balance: number, media_unlocked?: boolean }>('/billing/wallet'),
+      wallet: () => request<{ balance: number }>('/billing/wallet'),
       subscription: () => request<SubscriptionInfo>('/billing/subscription'),
       summary: async (): Promise<BillingSummary> => {
         const [wallet, ledger, usage] = await Promise.all([

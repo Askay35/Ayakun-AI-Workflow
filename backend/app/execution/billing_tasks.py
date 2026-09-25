@@ -1,4 +1,4 @@
-"""Celery-задачи тарифов: окончание периода и напоминание о продлении."""
+"""Celery-задачи тарифов: окончание периода, напоминание о продлении и удаление файлов после окончания."""
 
 from __future__ import annotations
 
@@ -39,12 +39,30 @@ def expire_subscriptions() -> int:
     return asyncio.run(_expire_subscriptions())
 
 
+async def _purge_files() -> int:
+    task_engine, TaskSession = task_session_factory()
+    try:
+        async with TaskSession() as db:
+            purged = await SubscriptionService(db).purge_due()
+        for user_id in purged:
+            logger.info("Файлы удалены после окончания подписки", extra={"event": "subscription.files_purged", "owner_id": user_id})
+        return len(purged)
+    finally:
+        await task_engine.dispose()
+
+
+@celery_app.task(name="execution.billing_tasks.purge_expired_files")
+def purge_expired_files() -> int:
+    return asyncio.run(_purge_files())
+
+
 def _reminder_text(plan_name: str, expires_at: datetime.datetime) -> str:
     date = expires_at.astimezone(datetime.UTC).strftime("%d.%m.%Y")
     return (
         f"Тариф «{plan_name}» в Ayakun действует до {date}. "
-        "Неиспользованные токены сгорят в конце периода — продлите тариф или перейдите на старший, "
-        f"чтобы токены сохранились: {settings.frontend_url.rstrip('/')}/billing"
+        "Неиспользованные токены сгорят в конце периода, а без подписки нельзя создавать и запускать цепочки. "
+        "Через 3 дня после окончания загруженные файлы удаляются. "
+        f"Продлите тариф или перейдите на старший: {settings.frontend_url.rstrip('/')}/billing"
     )
 
 

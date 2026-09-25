@@ -86,7 +86,7 @@ export const en: typeof ru = {
     seeExamples: 'See templates',
     trustNoCode: 'No code, no servers',
     trustPrice: 'Price visible before a run',
-    trustTokens: '100 tokens on signup',
+    trustTokens: '100 tokens and a 7-day trial',
     uniqueEyebrow: 'Why Ayakun',
     uniqueTitle: 'Automation you do not have to figure out',
     unique: [
@@ -165,7 +165,7 @@ export const en: typeof ru = {
       { q: 'How much does a run cost?', a: 'Before a run you see the estimated cost in tokens. After it finishes, the actual usage is charged and any unused reserve is returned.' },
       { q: 'How do chains start?', a: 'With a button, on a schedule, or on an event: a webhook starts the chain when a lead, a payment or a form arrives from your site.' },
       { q: 'Where does the result go?', a: 'To your workspace, Telegram, Slack, email, Google Sheets or Excel, Yandex Disk, Trello, Jira or a LinkedIn post — wherever you prefer to receive it.' },
-      { q: 'What do I get when I sign up?', a: 'You get 100 free tokens to build and test your first chains.' },
+      { q: 'What do I get when I sign up?', a: 'You get 100 free tokens and a 7-day trial to build and test your first chains. After that you need a subscription to keep working.' },
       { q: 'Is there a referral program?', a: 'Yes. Share the link from the “Referrals” section: when the invited person pays for any plan, you both get 200 tokens, and you get them again for every next payment.' }
     ],
     shots: {
@@ -526,11 +526,7 @@ export const en: typeof ru = {
     recognizePrompt: 'Prompt',
     recognizePlaceholder: 'What is in this image?',
     recognizeHint: 'Exactly one incoming link, and it must come from the Image node. The model key stays on the server.',
-    imageCredits: '50 tokens per generation. The node unlocks on any paid plan.',
-    mediaLockedShort: 'On a paid plan',
-    mediaLocked: 'This node is available on a paid plan',
-    mediaLockedHint: 'Image generation, image recognition and audio transcription stay locked until you subscribe to a paid plan at least once. Signup credits do not unlock them.',
-    mediaLockedLink: 'Choose a plan',
+    imageCredits: '50 tokens per generation. Available on any plan, including the trial.',
     audioPrompt: 'Prompt',
     audioPromptPlaceholder: 'Transcribe the attached audio. Keep the transcript as close to the recording as possible. Do not shorten it and keep filler words. Mark anything you cannot make out as [unintelligible].',
     audioUrlLabel: 'Audio URL',
@@ -687,16 +683,16 @@ export const en: typeof ru = {
     buy: 'Subscribe',
     perMonth: '/ mo',
     tokensMonth: '{n} tokens per month',
-    tokensOnce: '{n} tokens on signup',
+    tokensOnce: '{n} tokens for the trial',
+    trialFor: 'for {n} days',
+    featureTrial: '{n}-day trial, then a subscription is required',
     storage: 'Up to {files} files · {size}',
     featureMedia: 'Image generation and recognition, audio transcription',
-    featureNoMedia: 'All blocks except media blocks',
     featureBlocks: 'All blocks, templates and scheduling',
-    featureTemplates: 'Templates and scheduling',
     featureUpgrade: 'Upgrade anytime and keep your tokens',
     howEyebrow: 'How it works',
     howTitle: 'Monthly plan, fair charging',
-    howLead: 'Plans differ in tokens and storage. All blocks and templates are available on every paid plan.',
+    howLead: 'Plans differ in tokens and storage. All blocks and templates are available on every plan. Without an active subscription you cannot create or run workflows.',
     facts: [
       { title: 'Tokens per month', text: 'After payment the plan tokens land on your balance. Unused tokens expire after 30 days.' },
       { title: 'Charged on usage', text: 'Only the run cost is spent. The maximum estimate is shown in the editor before you start.' },
@@ -712,12 +708,23 @@ export const en: typeof ru = {
     forRuns: 'tokens for runs',
     spentMonth: 'Spent this month',
     currentPlan: 'Current plan',
-    freePlan: 'Free',
+    noSubscription: 'No subscription',
+    trialLabel: 'Trial',
     activeUntil: 'Active until {date}',
     daysLeft: '{n} days left',
     expiresNote: 'Unused tokens expire on {date}',
-    noPlanNote: 'Subscribe to get monthly tokens and more file storage.',
-    expiredNote: 'Your plan period has ended. Subscribe again to continue.',
+    noPlanNote: 'Subscribe to create and run workflows.',
+    expiredNote: 'Your subscription has ended: you cannot create or run workflows.',
+    trialNote: 'Trial: subscribe before {date} to keep going.',
+    filesPurgeNote: 'Your files will be deleted on {date} unless you renew.',
+    filesPurgedNote: 'Uploaded files were deleted. Subscribe to continue.',
+    storageClosed: 'Storage is closed without a subscription. Files now: {n}.',
+    trialUsed: 'Trial has ended',
+    trialActive: 'Trial in progress',
+    bannerTitle: 'Your subscription has ended',
+    bannerText: 'You cannot create or run workflows. Renew your plan or choose a new one.',
+    bannerPurge: 'Files will be deleted on {date}.',
+    bannerLink: 'Choose a plan',
     storageTitle: 'File storage',
     storageFiles: 'Files',
     storageSize: 'Size',
@@ -730,7 +737,6 @@ export const en: typeof ru = {
     upgradeNote: 'Tokens are kept',
     current: 'Your plan',
     downgradeLocked: 'After the period ends',
-    freeCurrent: 'Already active',
     payError: 'Payment unavailable',
     emailTitle: 'Email for the receipt',
     emailDesc: 'Enter an email for the receipt — it will be saved to your profile.',
@@ -1199,7 +1205,7 @@ export const en: typeof ru = {
         ],
         output: '{ source: "generated", mime: "image/jpeg", filename, path }. The picture can go straight to Telegram or Yandex Disk. Connect an Image node if the next step is recognition.',
         notes: [
-          'One generation costs 50 tokens and is available on any paid plan. Signup tokens do not unlock the node.',
+          'One generation costs 50 tokens and is available on any plan, including the trial.',
           'The picture is downloaded in the same request. A new access token deletes files from the previous one immediately, so the token is not refreshed while a file is open.'
         ]
       },
@@ -1229,7 +1235,7 @@ export const en: typeof ru = {
         ],
         output: '{ text } — the model answer.',
         notes: [
-          'The node is available on any paid plan.',
+          'The node is available on any plan, including the trial.',
           'Refreshing the access token wipes files immediately, so a new token is not requested while a file is using.'
         ]
       },
@@ -1247,7 +1253,7 @@ export const en: typeof ru = {
         output: '{ text, duration_seconds, duration_minutes }. duration_seconds is null when the file length cannot be read; billing then uses 1 minute.',
         notes: [
           'Price is 0.5 RUB per billed minute, converted to credits. WAV duration is read from the file; other containers may fall back to 1 minute.',
-          'The node is available on any paid plan. A new access token deletes the uploaded file immediately, so transcription stays on the same token without a refresh in the middle.'
+          'The node is available on any plan, including the trial. A new access token deletes the uploaded file immediately, so transcription stays on the same token without a refresh in the middle.'
         ]
       },
       slack: {

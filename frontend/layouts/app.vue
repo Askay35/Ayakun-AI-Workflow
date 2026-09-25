@@ -5,13 +5,26 @@ import { formatCredits } from '~/utils/credits'
 const route = useRoute()
 const auth = useAuth()
 const api = useApi()
-const { t } = useI18n()
+const { t, formatDateOnly } = useI18n()
 useAppTitle()
 
 const { data: wallet } = await useAuthAsyncData(
   'app-wallet',
   () => api.billing.wallet().catch(() => null)
 )
+
+const { data: subscription, refresh: refreshSubscription } = await useAuthAsyncData(
+  'app-subscription',
+  () => api.billing.subscription().catch(() => null)
+)
+const subscriptionEnded = computed(() => Boolean(subscription.value) && subscription.value?.status !== 'active')
+const purgeAt = computed(() => {
+  const at = subscription.value?.files_purge_at
+  return at && new Date(at).getTime() > Date.now() ? at : null
+})
+watch(() => route.path, () => {
+  if (subscriptionEnded.value) refreshSubscription()
+})
 
 const isActive = (to: string) => activeNavPath(route.path) === to
 const userName = computed(() => auth.user.value?.name || auth.user.value?.email || t('common.account'))
@@ -52,6 +65,17 @@ const userName = computed(() => auth.user.value?.name || auth.user.value?.email 
         <LanguageSwitcher />
       </div>
     </aside>
-    <main class="app-main"><slot /></main>
+    <main class="app-main">
+      <NuxtLink v-if="subscriptionEnded && route.path !== '/billing'" to="/billing" class="app-banner">
+        <UIcon name="i-lucide-triangle-alert" class="size-5 shrink-0" />
+        <span>
+          <strong>{{ t('billing.bannerTitle') }}.</strong>
+          {{ t('billing.bannerText') }}
+          <template v-if="purgeAt">{{ t('billing.bannerPurge', { date: formatDateOnly(purgeAt) }) }}</template>
+        </span>
+        <span class="app-banner-link">{{ t('billing.bannerLink') }} <UIcon name="i-lucide-arrow-right" class="size-3.5" /></span>
+      </NuxtLink>
+      <slot />
+    </main>
   </div>
 </template>

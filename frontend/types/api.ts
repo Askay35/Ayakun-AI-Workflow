@@ -212,6 +212,7 @@ export interface SubscriptionInfo {
   status: 'none' | 'active' | 'expired'
   started_at?: string | null
   expires_at?: string | null
+  files_purge_at?: string | null
   storage: { files: number; max_files: number; bytes: number; max_bytes: number }
 }
 

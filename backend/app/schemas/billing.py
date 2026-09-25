@@ -54,12 +54,13 @@ class StorageUsage(BaseModel):
 
 
 class SubscriptionResponse(BaseModel):
-    """Текущий тариф: активный платный или бесплатный, если периода нет."""
+    """Действующая подписка (пробный период — тоже подписка); без неё plan пуст."""
 
     plan: PlanResponse | None = None
     status: str = "none"
     started_at: datetime.datetime | None = None
     expires_at: datetime.datetime | None = None
+    files_purge_at: datetime.datetime | None = None
     storage: StorageUsage
 
 
@@ -72,7 +73,6 @@ class WalletResponse(BaseModel):
     balance: Decimal
     reserved: Decimal
     currency: str = "CRD"
-    media_unlocked: bool = False
     model_config = ConfigDict(from_attributes=True)
 
 class LedgerResponse(BaseModel):

@@ -1,8 +1,11 @@
 """Месячные тарифы: период 30 дней, неиспользованные токены сгорают в конце периода.
 
-Покупка без активного тарифа начинает период. Повторная покупка того же тарифа
-продлевает его на период. Переход на более дорогой тариф начинает новый период,
+Новый пользователь получает пробный период (бесплатный тариф на 7 дней). Без действующей подписки
+цепочки нельзя ни создавать, ни запускать. Покупка без активного тарифа начинает период. Повторная покупка
+того же тарифа продлевает его на период. Переход на более дорогой тариф начинает новый период,
 токены с баланса сохраняются. Дешевле текущего купить нельзя, пока период не закончился.
+Через три дня после окончания подписки файлы пользователя удаляются; если новый тариф вмещает меньше,
+чем лежит в хранилище, лишние файлы удаляются при оформлении.
 """
 
 from __future__ import annotations
@@ -16,12 +19,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.billing import LedgerKind, Plan, Subscription, Wallet, WalletLedger
+from services.billing.storage import purge_user_files, trim_user_files
 from services.stored_images import MAX_USER_IMAGE_BYTES, MAX_USER_IMAGE_FILES
 
 DEFAULT_PERIOD_DAYS = 30
+FILES_GRACE = datetime.timedelta(days=3)
 MB = 1024 * 1024
 FREE_STORAGE_LIMITS = (MAX_USER_IMAGE_FILES, MAX_USER_IMAGE_BYTES)
 DOWNGRADE_BLOCKED = "Нельзя перейти на более дешёвый тариф, пока не закончился текущий период"
+SUBSCRIPTION_REQUIRED = (
+    "Подписка закончилась: создавать и запускать цепочки нельзя. Продлите тариф или выберите новый."
+)
 
 
 @dataclass(frozen=True)
@@ -40,6 +48,9 @@ def _int_limit(limits: dict, key: str) -> int | None:
 
 
 def storage_limits(plan: Plan | None) -> StorageLimits:
+    """Без действующего тарифа хранилище закрыто: новые файлы добавлять нельзя."""
+    if plan is None:
+        return StorageLimits(0, 0)
     limits = plan.limits if plan is not None and isinstance(plan.limits, dict) else {}
     files = _int_limit(limits, "max_files") or FREE_STORAGE_LIMITS[0]
     megabytes = _int_limit(limits, "max_storage_mb")
@@ -77,9 +88,30 @@ class SubscriptionService:
 
     async def current_plan(self, user_id: int) -> Plan | None:
         subscription = await self.active(user_id)
-        if subscription is not None:
-            return subscription.plan or await self.db.get(Plan, subscription.plan_id)
-        return await self.db.scalar(select(Plan).where(Plan.code == "free"))
+        if subscription is None:
+            return None
+        return subscription.plan or await self.db.get(Plan, subscription.plan_id)
+
+    async def require_active(self, user_id: int) -> None:
+        if await self.active(user_id) is None:
+            raise HTTPException(402, SUBSCRIPTION_REQUIRED)
+
+    async def ensure_trial(self, user_id: int) -> None:
+        """Пробный период выдаётся один раз: только пользователю, у которого подписки ещё не было."""
+        if await self.get(user_id) is not None:
+            return
+        free = await self.db.scalar(select(Plan).where(Plan.code == "free"))
+        if free is None:
+            return
+        now = _now()
+        self.db.add(Subscription(
+            user_id=user_id,
+            plan_id=free.id,
+            status="active",
+            started_at=now,
+            expires_at=now + datetime.timedelta(days=period_days(free)),
+        ))
+        await self.db.flush()
 
     async def storage_limits(self, user_id: int) -> StorageLimits:
         return storage_limits(await self.current_plan(user_id))
@@ -126,7 +158,15 @@ class SubscriptionService:
         subscription.plan = await self.db.get(Plan, subscription.plan_id)
         subscription.status = "active"
         subscription.reminded_at = None
+        subscription.files_purge_at = None
+        if kind == "new":
+            await self._fit_storage(user_id, subscription.plan)
         return kind
+
+    async def _fit_storage(self, user_id: int, plan: Plan | None) -> None:
+        """Новая подписка вмещает меньше прежней: лишние файлы удаляются, пока не уложатся в лимиты."""
+        limits = storage_limits(plan)
+        await trim_user_files(self.db, user_id, limits.max_files, limits.max_bytes)
 
     async def expire_due(self, now: datetime.datetime | None = None, limit: int = 200) -> list[int]:
         """Закрывает истёкшие периоды и сжигает свободный остаток токенов. Идемпотентно."""
@@ -142,9 +182,37 @@ class SubscriptionService:
         for subscription in subscriptions:
             await self._burn(subscription)
             subscription.status = "expired"
+            if subscription.files_purge_at is None:
+                subscription.files_purge_at = subscription.expires_at + FILES_GRACE
             expired.append(subscription.user_id)
         await self.db.commit()
         return expired
+
+    async def purge_due(self, now: datetime.datetime | None = None, limit: int = 100) -> list[int]:
+        """Удаляет файлы тех, кто не продлил подписку за три дня после окончания. Идемпотентно."""
+        now = now or _now()
+        due = list(await self.db.scalars(
+            select(Subscription.id)
+            .where(
+                Subscription.files_purge_at.is_not(None),
+                Subscription.files_purge_at <= now,
+                Subscription.expires_at <= now,
+            )
+            .order_by(Subscription.files_purge_at)
+            .limit(limit)
+        ))
+        purged: list[int] = []
+        for subscription_id in due:
+            subscription = await self.db.scalar(
+                select(Subscription).where(Subscription.id == subscription_id).with_for_update(skip_locked=True)
+            )
+            if subscription is None or subscription.files_purge_at is None or is_active(subscription, now):
+                continue
+            await purge_user_files(self.db, subscription.user_id)
+            subscription.files_purge_at = None
+            await self.db.commit()
+            purged.append(subscription.user_id)
+        return purged
 
     async def _burn(self, subscription: Subscription) -> None:
         """Сжигает свободный остаток за закончившийся период. Резерв идущих запусков не трогаем."""

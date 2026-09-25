@@ -1288,6 +1288,19 @@ button.app-nav-item {
 }
 .app-icon-button:hover { color: var(--ink); background: var(--soft); }
 .app-main { min-height: 100vh; margin-left: 256px; }
+.app-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 32px;
+  border-bottom: 1px solid #f6d3a8;
+  color: #9a3412;
+  font-size: 14px;
+  background: #fff4e5;
+}
+.app-banner:hover { background: #ffedd5; }
+.app-banner-link { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; margin-left: auto; font-weight: 800; }
+@media (max-width: 640px) { .app-banner { padding: 10px 14px; font-size: 13px; } .app-banner-link { display: none; } }
 
 .editor-shell {
   display: flex;
@@ -1668,8 +1681,6 @@ button.app-nav-item {
 .palette-item:hover { background: var(--soft); }
 .palette-item:hover .palette-add { opacity: 1; }
 .palette-item:active { cursor: grabbing; background: #eceefa; }
-.palette-item.is-locked { cursor: not-allowed; opacity: .5; }
-.palette-item.is-locked:active { cursor: not-allowed; }
 .palette-icon {
   display: grid;
   width: 32px;

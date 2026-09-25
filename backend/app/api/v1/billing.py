@@ -28,9 +28,7 @@ async def plans(service: BillingService = Depends(get_billing_service)):
 @router.get("/wallet", response_model=ApiResponse[WalletResponse])
 async def wallet(user: CurrentUser, service: BillingService = Depends(get_billing_service)):
     result = await service.ensure_initial_credit(user)
-    payload = WalletResponse.model_validate(result)
-    payload.media_unlocked = await service.has_paid_pack(user)
-    return ApiResponse(success=True, data=payload)
+    return ApiResponse(success=True, data=WalletResponse.model_validate(result))
 
 
 @router.get("/subscription", response_model=ApiResponse[SubscriptionResponse])
@@ -49,6 +47,7 @@ async def subscription(
         status="none" if current is None else "active" if is_active(current) else "expired",
         started_at=current.started_at if current else None,
         expires_at=current.expires_at if current else None,
+        files_purge_at=current.files_purge_at if current else None,
         storage=StorageUsage(files=files, max_files=limits.max_files, bytes=nbytes, max_bytes=limits.max_bytes),
     )
     return ApiResponse(success=True, data=payload)
