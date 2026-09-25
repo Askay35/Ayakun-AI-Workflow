@@ -2,7 +2,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@nuxt/ui'],
-  css: ['~/assets/css/main.css', '@vue-flow/core/dist/style.css', '@vue-flow/core/dist/theme-default.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/landing.css', '@vue-flow/core/dist/style.css', '@vue-flow/core/dist/theme-default.css'],
   runtimeConfig: {
     // Server-only (NUXT_API_BASE) — docker internal hostname
     apiBase: '',

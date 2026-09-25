@@ -71,24 +71,37 @@ export const en: typeof ru = {
     googleCallback: 'Log in'
   },
   landing: {
-    eyebrow: 'Visual AI chains',
-    heroTitleBefore: 'Automation',
-    heroTitleAccent: 'you can see',
-    heroCopy: 'Build a process on one canvas: find data, shape it, and send the result by email, into a spreadsheet, or to Telegram. No code and no server of your own.',
-    startFree: 'Start for free',
+    eyebrow: 'Visual AI automation builder',
+    heroTitleBefore: 'Automate routine work with AI',
+    heroTitleAccent: 'in minutes',
+    heroCopy: 'Build a chain of blocks: find data on the web, process it with a neural network and get the result in Telegram, by email or in a spreadsheet. No code, no servers, no AI subscriptions.',
+    startFree: 'Try it for free',
     seeExamples: 'See examples',
     trustNoCode: 'No code, no servers',
     trustPrice: 'Price visible before a run',
     trustTokens: '200 tokens on signup',
+    uniqueEyebrow: 'Why Ayakun',
+    uniqueTitle: 'Automation you do not have to figure out',
     unique: [
-      { title: 'A diagram, not code', text: 'On one screen you see where the data comes from and where the result goes.' },
-      { title: 'Mail, sheets, files', text: 'Email, spreadsheets and cloud files sit next to search and AI. No server of your own.' },
-      { title: 'On your schedule', text: 'Run it with a button, on a schedule, or when something happens.' },
-      { title: 'A clear price', text: 'You see the possible cost before the run. Only actual usage is charged.' }
+      { title: 'See the whole picture', text: 'Every step on one canvas: where the data comes from, what AI does with it and where the result goes.' },
+      { title: 'AI is already connected', text: 'No subscriptions to sign up for and no keys to get: neural networks and search work right inside Ayakun.' },
+      { title: 'Run it your way', text: 'With a button, on a schedule, or the moment an event arrives from your site.' },
+      { title: 'A clear price', text: 'The estimated cost is shown before the run, and only actual usage is charged.' }
     ],
-    featuresEyebrow: 'What you can automate',
-    featuresTitle: 'One chain instead of a dozen manual steps',
-    featuresLead: 'Find data, shape it, save the result and send it where you actually read it. All on one canvas.',
+    stats: [
+      { value: '17', label: 'ready-made blocks' },
+      { value: '3', label: 'ways to run' },
+      { value: '200', label: 'free tokens' },
+      { value: '0', label: 'lines of code' }
+    ],
+    railTitle: 'Connect everything you need',
+    categories: { all: 'All blocks', data: 'Data', ai: 'AI', logic: 'Logic', delivery: 'Triggers and delivery' },
+    showMore: 'Show all blocks',
+    showLess: 'Show less',
+    tryExample: 'Build this chain',
+    featuresEyebrow: 'Blocks',
+    featuresTitle: 'Everything you need to automate, in one editor',
+    featuresLead: 'Snap blocks together like a construction set: data, AI, logic and delivery. One chain replaces a dozen manual steps.',
     blocks: [
       { number: '01', title: 'Web search', text: 'News, jobs, prices and mentions — from a query, without browsing by hand.' },
       { number: '02', title: 'AI writing', text: 'Summarize, compare, or draft a message in the tone you need.' },
@@ -109,8 +122,8 @@ export const en: typeof ru = {
       { number: '17', title: 'Text from a recording', text: 'An audio file or link becomes text.' }
     ],
     examplesEyebrow: 'Chain examples',
-    examplesTitle: 'Build a scenario around your routine',
-    examplesLead: 'Ready-made ideas below. In the editor you change queries, conditions and message text to fit you.',
+    examplesTitle: 'Ready-made ideas for your routine',
+    examplesLead: 'In the editor you change queries, conditions and message text to fit you.',
     examples: [
       { tag: 'Careers', schedule: 'Every day · 10:00', title: 'New jobs without manual browsing', text: 'In the morning the service finds fresh roles, AI picks the matches and writes a short message — you just open Telegram.', chain: ['Job search', 'AI: filter and copy', 'Telegram'] },
       { tag: 'Monitoring', schedule: 'On demand or on a schedule', title: 'A competitor price with a threshold', text: 'The service watches the price and messages Telegram only when it drops below the number you set.', chain: ['Competitor price', 'Threshold', 'Telegram'] },
@@ -120,15 +133,15 @@ export const en: typeof ru = {
       { tag: 'Warehouse', schedule: 'Every hour', title: 'An email when stock runs low', text: 'While stock is fine, nothing happens. When it runs low, purchasing gets an email.', chain: ['Stock', 'Threshold', 'Mail'] }
     ],
     howEyebrow: 'How it looks',
-    howTitle: 'From an idea to a working chain',
-    howLead: 'Assemble on the canvas, run, get a message. Nearby — a larger scenario with branches.',
+    howTitle: 'Three steps from idea to result',
+    howLead: 'Assemble on the canvas, run, get a message. This is what a real chain in Ayakun looks like.',
     steps: [
       { number: '01', title: 'Place the steps on the canvas', text: 'Add search, writing, email, a spreadsheet, files or Telegram and connect them in the order you need.' },
       { number: '02', title: 'Describe the task in your own words', text: 'What to find, what to write, when to continue and where to send the result. No code and no server of your own.' },
       { number: '03', title: 'Run it or set a schedule', text: 'The cost is visible in advance. Run from a button, from a site event, or on time. The result arrives in the workspace, by email or in Telegram.' }
     ],
     audienceEyebrow: 'Who it is for',
-    audienceTitle: 'If the task repeats — give it to a chain',
+    audienceTitle: 'If a task repeats, hand it to a chain',
     audience: [
       { title: 'Specialists and managers', text: 'Daily monitoring of the market, competitors and news without a manual brief.', example: 'Example: mention search → AI summary → Telegram' },
       { title: 'Job seekers', text: 'Stop scrolling dozens of sites — get filtered vacancies in one message.', example: 'Example: job search → AI filter → Telegram' },
@@ -139,7 +152,18 @@ export const en: typeof ru = {
     ],
     ctaEyebrow: 'Free start',
     ctaTitle: 'Build your first chain today',
+    ctaLead: 'Signing up takes a minute, and 200 free tokens are enough to launch your first chains.',
     ctaButton: 'Create an account',
+    faqEyebrow: 'Questions and answers',
+    faqTitle: 'Frequently asked questions',
+    faq: [
+      { q: 'Do I need to know how to code?', a: 'No. You assemble the chain from ready-made blocks on a canvas and describe AI tasks in plain words.' },
+      { q: 'Do I need my own AI subscriptions or API keys?', a: 'No. Neural networks and search are already connected to Ayakun — you only pay for usage inside the service.' },
+      { q: 'How much does a run cost?', a: 'Before a run you see the estimated cost in tokens. After it finishes, the actual usage is charged and any unused reserve is returned.' },
+      { q: 'How do chains start?', a: 'With a button, on a schedule, or on an event: a webhook starts the chain when a lead, a payment or a form arrives from your site.' },
+      { q: 'Where does the result go?', a: 'To your workspace, Telegram, email, a spreadsheet or Yandex Disk — wherever you prefer to receive it.' },
+      { q: 'What do I get when I sign up?', a: 'You get 200 free tokens to build and test your first chains.' }
+    ],
     shots: {
       chainStep: '01 · Chain',
       chainTitle: 'Laravel jobs this week',
@@ -152,11 +176,7 @@ export const en: typeof ru = {
       tgStep: '03 · Telegram',
       tgTitle: 'A ready list in chat',
       tgText: 'What the chain assembled arrives as a message.',
-      tgAlt: 'Telegram message with a list of Laravel jobs',
-      moreStep: 'Another scenario',
-      moreTitle: 'Branches on one canvas',
-      moreText: 'One event can go to chat, email and a spreadsheet — under different rules.',
-      moreAlt: 'A large chain with branches into Telegram, email and spreadsheets'
+      tgAlt: 'Telegram message with a list of Laravel jobs'
     },
     canvas: {
       name: 'Morning market brief',

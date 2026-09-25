@@ -1,38 +1,58 @@
 <template>
   <main class="landing">
     <section class="hero">
-      <div class="shell hero-grid">
-        <div class="reveal">
-          <p class="eyebrow">{{ t('landing.eyebrow') }}</p>
-          <h1>{{ t('landing.heroTitleBefore') }}<br><span class="hero-shine">{{ t('landing.heroTitleAccent') }}</span></h1>
-          <p class="hero-copy">{{ t('landing.heroCopy') }}</p>
-          <div class="hero-actions">
-            <UButton to="/login" size="xl" :label="t('landing.startFree')" trailing-icon="i-lucide-arrow-right" />
-            <UButton to="/#examples" size="xl" :label="t('landing.seeExamples')" class="text-white!" color="neutral" variant="outline" />
-          </div>
-          <div class="trust-row">
-            <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustNoCode') }}</span>
-            <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustPrice') }}</span>
-            <span><UIcon name="i-lucide-check-circle-2" /> {{ t('landing.trustTokens') }}</span>
+      <div class="shell hero-inner">
+        <p class="hero-badge reveal"><UIcon name="i-lucide-sparkles" class="size-4" /> {{ t('landing.eyebrow') }}</p>
+        <h1 class="reveal" style="animation-delay: 60ms">{{ t('landing.heroTitleBefore') }} <span class="hero-accent">{{ t('landing.heroTitleAccent') }}</span></h1>
+        <p class="hero-copy reveal" style="animation-delay: 120ms">{{ t('landing.heroCopy') }}</p>
+        <div class="hero-actions reveal" style="animation-delay: 180ms">
+          <NuxtLink to="/login" class="site-button large">{{ t('landing.startFree') }} <UIcon name="i-lucide-arrow-right" /></NuxtLink>
+          <NuxtLink to="/#examples" class="site-button large secondary">{{ t('landing.seeExamples') }}</NuxtLink>
+        </div>
+        <div class="trust-row reveal" style="animation-delay: 220ms">
+          <span><UIcon name="i-lucide-check" /> {{ t('landing.trustNoCode') }}</span>
+          <span><UIcon name="i-lucide-check" /> {{ t('landing.trustPrice') }}</span>
+          <span><UIcon name="i-lucide-check" /> {{ t('landing.trustTokens') }}</span>
+        </div>
+      </div>
+      <div class="shell hero-visual reveal" style="animation-delay: 280ms">
+        <LandingCanvas />
+      </div>
+      <div class="shell">
+        <div class="stats">
+          <div v-for="item in stats" :key="item.label" class="stat">
+            <b>{{ item.value }}</b>
+            <span>{{ item.label }}</span>
           </div>
         </div>
-        <LandingCanvas class="reveal" style="animation-delay: 140ms" />
       </div>
     </section>
 
-    <div class="node-rail" aria-hidden="true">
-      <div class="node-rail-track">
-        <span v-for="(label, index) in railLoop" :key="`${label}-${index}`">{{ label }}</span>
+    <section class="rail">
+      <div class="shell">
+        <p class="rail-title">{{ t('landing.railTitle') }}</p>
+        <div class="rail-chips">
+          <span v-for="item in rail" :key="item.label" class="rail-chip">
+            <UIcon :name="item.icon" class="size-4" :style="{ color: item.accent }" />
+            {{ item.label }}
+          </span>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <section class="unique-strip">
-      <div class="shell unique-grid">
-        <article v-for="(item, index) in unique" :key="item.title" class="unique-card" :style="{ animationDelay: `${index * 80}ms` }">
-          <span class="unique-icon"><UIcon :name="item.icon" class="size-5" /></span>
-          <h3>{{ item.title }}</h3>
-          <p>{{ item.text }}</p>
-        </article>
+    <section class="section">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">{{ t('landing.uniqueEyebrow') }}</p>
+          <h2>{{ t('landing.uniqueTitle') }}</h2>
+        </div>
+        <div class="unique-grid">
+          <article v-for="item in unique" :key="item.title" class="unique-card">
+            <span class="tile"><UIcon :name="item.icon" class="size-5" /></span>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.text }}</p>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -43,15 +63,34 @@
           <h2>{{ t('landing.featuresTitle') }}</h2>
           <p>{{ t('landing.featuresLead') }}</p>
         </div>
-        <div class="blocks-grid landing-bento">
-          <article v-for="card in blocks" :key="card.title" class="feature-card">
-            <span class="feature-number">{{ card.number }}</span>
-            <span class="feature-icon" :style="{ color: card.accent, background: `${card.accent}22` }">
+        <div class="cat-tabs" role="tablist">
+          <button
+            v-for="cat in categories"
+            :key="cat"
+            type="button"
+            role="tab"
+            class="cat-tab"
+            :class="{ active: activeCat === cat }"
+            :aria-selected="activeCat === cat"
+            @click="activeCat = cat"
+          >
+            {{ t(`landing.categories.${cat}`) }}
+          </button>
+        </div>
+        <div class="blocks-grid">
+          <article v-for="card in visibleBlocks" :key="card.title" class="block-card">
+            <span class="block-icon" :style="{ color: card.accent, background: `${card.accent}1f` }">
               <UIcon :name="card.icon" class="size-5" />
             </span>
             <h3>{{ card.title }}</h3>
             <p>{{ card.text }}</p>
           </article>
+        </div>
+        <div v-if="activeCat === 'all'" class="blocks-more">
+          <button type="button" class="site-button secondary" @click="expanded = !expanded">
+            {{ expanded ? t('landing.showLess') : t('landing.showMore') }}
+            <UIcon :name="expanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" />
+          </button>
         </div>
       </div>
     </section>
@@ -67,17 +106,17 @@
           <article v-for="example in examples" :key="example.title" class="example-card">
             <div class="example-top">
               <span class="example-tag">{{ example.tag }}</span>
-              <span class="example-schedule">{{ example.schedule }}</span>
+              <span class="example-schedule"><UIcon name="i-lucide-clock-3" class="size-3.5" /> {{ example.schedule }}</span>
             </div>
             <h3>{{ example.title }}</h3>
             <p>{{ example.text }}</p>
             <div class="example-chain">
               <template v-for="(step, index) in example.chain" :key="`${example.title}-${step}`">
-                <span class="example-step" :style="{ '--step-accent': example.accents[index] }">
-                  <UIcon :name="example.icons[index]" class="size-3.5" />
+                <span class="example-step">
+                  <UIcon :name="example.icons[index]" class="size-3.5" :style="{ color: example.accents[index] }" />
                   {{ step }}
                 </span>
-                <UIcon v-if="index < example.chain.length - 1" name="i-lucide-arrow-right" class="example-arrow" />
+                <UIcon v-if="index < example.chain.length - 1" name="i-lucide-chevron-right" class="example-arrow" />
               </template>
             </div>
           </article>
@@ -85,38 +124,33 @@
       </div>
     </section>
 
-    <section id="how" class="section how-section">
+    <section id="how" class="section alt">
       <div class="shell">
-        <div class="section-heading">
+        <div class="section-heading center">
           <p class="eyebrow">{{ t('landing.howEyebrow') }}</p>
           <h2>{{ t('landing.howTitle') }}</h2>
           <p>{{ t('landing.howLead') }}</p>
         </div>
-        <LandingShots />
-        <div class="build-track">
-          <article v-for="(step, index) in steps" :key="step.title" class="build-step">
-            <div class="build-visual" :class="`is-${step.id}`">
-              <span v-for="dot in step.icons.length" :key="dot" class="build-chip" :style="{ animationDelay: `${index * 180 + dot * 90}ms` }">
-                <UIcon :name="step.icons[dot - 1]" class="size-3.5" />
-              </span>
-            </div>
-            <b>{{ step.number }}</b>
+        <div class="steps-grid">
+          <article v-for="step in steps" :key="step.title" class="step-card">
+            <span class="step-number">{{ step.number }}</span>
             <h3>{{ step.title }}</h3>
             <p>{{ step.text }}</p>
           </article>
         </div>
+        <LandingShots />
       </div>
     </section>
 
-    <section class="section audience">
+    <section class="section">
       <div class="shell">
-        <div class="section-heading">
+        <div class="section-heading center">
           <p class="eyebrow">{{ t('landing.audienceEyebrow') }}</p>
           <h2>{{ t('landing.audienceTitle') }}</h2>
         </div>
-        <div class="audience-grid audience-grid-wide">
+        <div class="audience-grid">
           <article v-for="item in audience" :key="item.title" class="audience-card">
-            <span class="audience-icon"><UIcon :name="item.icon" class="size-6" /></span>
+            <span class="tile"><UIcon :name="item.icon" class="size-5" /></span>
             <h3>{{ item.title }}</h3>
             <p>{{ item.text }}</p>
             <p class="audience-example">{{ item.example }}</p>
@@ -125,14 +159,31 @@
       </div>
     </section>
 
-    <section class="section pt-0!">
+    <section class="section alt">
+      <div class="shell faq">
+        <div class="section-heading center">
+          <p class="eyebrow">{{ t('landing.faqEyebrow') }}</p>
+          <h2>{{ t('landing.faqTitle') }}</h2>
+        </div>
+        <div class="faq-list">
+          <details v-for="item in faq" :key="item.q" class="faq-item">
+            <summary>
+              {{ item.q }}
+              <UIcon name="i-lucide-plus" class="faq-icon size-5" />
+            </summary>
+            <p>{{ item.a }}</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cta-section">
       <div class="shell">
         <div class="cta-band">
-          <div>
-            <p class="eyebrow mb-3! text-[#3d4a12]!">{{ t('landing.ctaEyebrow') }}</p>
-            <h2 class="text-[#3d4a12]! font-bold">{{ t('landing.ctaTitle') }}</h2>
-          </div>
-          <UButton to="/login" size="xl" color="neutral" :ui="{ label: 'text-[#3d4a12]!', trailingIcon: 'text-[#3d4a12]!' }" :label="t('landing.ctaButton')" trailing-icon="i-lucide-arrow-up-right" />
+          <p class="cta-eyebrow">{{ t('landing.ctaEyebrow') }}</p>
+          <h2>{{ t('landing.ctaTitle') }}</h2>
+          <p>{{ t('landing.ctaLead') }}</p>
+          <NuxtLink to="/login" class="cta-button">{{ t('landing.ctaButton') }} <UIcon name="i-lucide-arrow-right" /></NuxtLink>
         </div>
       </div>
     </section>
@@ -146,79 +197,83 @@ useSeoMeta({
   description: () => t('meta.siteDescription')
 })
 
-const uniqueIcons = ['i-lucide-mouse-pointer-click', 'i-lucide-unplug', 'i-lucide-calendar-clock', 'i-lucide-wallet']
+const stats = computed(() => tm<Array<{ value: string; label: string }>>('landing.stats'))
+
+const uniqueIcons = ['i-lucide-layout-dashboard', 'i-lucide-bot', 'i-lucide-calendar-clock', 'i-lucide-wallet']
 const unique = computed(() => tm<Array<{ title: string; text: string }>>('landing.unique').map((item, index) => ({
   ...item,
   icon: uniqueIcons[index]
 })))
 
+// Порядок совпадает с landing.blocks в i18n.
 const blockMeta = [
-  { icon: 'i-lucide-search', accent: '#2bbf8e' },
-  { icon: 'i-lucide-sparkles', accent: '#8b7cff' },
-  { icon: 'i-lucide-globe', accent: '#f59e0b' },
-  { icon: 'i-lucide-git-branch', accent: '#e8b84a' },
-  { icon: 'i-lucide-send', accent: '#2aa8e0' },
-  { icon: 'i-lucide-webhook', accent: '#f472b6' },
-  { icon: 'i-lucide-table', accent: '#22c55e' },
-  { icon: 'i-lucide-mail', accent: '#ea4335' },
-  { icon: 'i-lucide-replace', accent: '#38bdf8' },
-  { icon: 'i-lucide-database', accent: '#6366f1' },
-  { icon: 'i-lucide-repeat', accent: '#f97316' },
-  { icon: 'i-lucide-timer', accent: '#94a3b8' },
-  { icon: 'i-lucide-hard-drive', accent: '#ffcc00' },
-  { icon: 'i-lucide-image-plus', accent: '#ec4899' },
-  { icon: 'i-lucide-image', accent: '#fb7185' },
-  { icon: 'i-lucide-scan-eye', accent: '#a78bfa' },
-  { icon: 'i-lucide-audio-lines', accent: '#14b8a6' }
+  { icon: 'i-lucide-search', accent: '#12a67a', cat: 'data' },
+  { icon: 'i-lucide-sparkles', accent: '#6d4aff', cat: 'ai' },
+  { icon: 'i-lucide-globe', accent: '#e58a0b', cat: 'data' },
+  { icon: 'i-lucide-git-branch', accent: '#c99a12', cat: 'logic' },
+  { icon: 'i-lucide-send', accent: '#229ed9', cat: 'delivery' },
+  { icon: 'i-lucide-webhook', accent: '#e0439b', cat: 'delivery' },
+  { icon: 'i-lucide-table', accent: '#1f9d55', cat: 'data' },
+  { icon: 'i-lucide-mail', accent: '#e03c2e', cat: 'delivery' },
+  { icon: 'i-lucide-replace', accent: '#0e8fd6', cat: 'logic' },
+  { icon: 'i-lucide-database', accent: '#4f56e0', cat: 'data' },
+  { icon: 'i-lucide-repeat', accent: '#ea6a0c', cat: 'logic' },
+  { icon: 'i-lucide-timer', accent: '#64748b', cat: 'logic' },
+  { icon: 'i-lucide-hard-drive', accent: '#d9a400', cat: 'data' },
+  { icon: 'i-lucide-image-plus', accent: '#d6338a', cat: 'ai' },
+  { icon: 'i-lucide-image', accent: '#e5484d', cat: 'data' },
+  { icon: 'i-lucide-scan-eye', accent: '#7c5cff', cat: 'ai' },
+  { icon: 'i-lucide-audio-lines', accent: '#0d9488', cat: 'ai' }
 ]
-const blocks = computed(() => tm<Array<{ number: string; title: string; text: string }>>('landing.blocks').map((item, index) => ({
+const blocks = computed(() => tm<Array<{ title: string; text: string }>>('landing.blocks').map((item, index) => ({
   ...item,
-  ...(blockMeta[index] || { icon: 'i-lucide-box', accent: '#8b7cff' })
+  ...(blockMeta[index] || { icon: 'i-lucide-box', accent: '#6d4aff', cat: 'logic' })
 })))
 
+const categories = ['all', 'data', 'ai', 'logic', 'delivery'] as const
+const activeCat = ref<(typeof categories)[number]>('all')
+const expanded = ref(false)
+const PREVIEW_COUNT = 8
+const visibleBlocks = computed(() => {
+  const list = activeCat.value === 'all' ? blocks.value : blocks.value.filter(block => block.cat === activeCat.value)
+  return activeCat.value === 'all' && !expanded.value ? list.slice(0, PREVIEW_COUNT) : list
+})
+
 const exampleMeta = [
-  { icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'], accents: ['#2bbf8e', '#8b7cff', '#2aa8e0'] },
-  { icons: ['i-lucide-globe', 'i-lucide-git-branch', 'i-lucide-send'], accents: ['#f59e0b', '#e8b84a', '#2aa8e0'] },
-  { icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'], accents: ['#2bbf8e', '#8b7cff', '#2aa8e0'] },
-  { icons: ['i-lucide-webhook', 'i-lucide-table', 'i-lucide-send'], accents: ['#f472b6', '#22c55e', '#2aa8e0'] },
-  { icons: ['i-lucide-webhook', 'i-lucide-sparkles', 'i-lucide-mail'], accents: ['#f472b6', '#8b7cff', '#ea4335'] },
-  { icons: ['i-lucide-database', 'i-lucide-git-branch', 'i-lucide-mail'], accents: ['#6366f1', '#e8b84a', '#ea4335'] }
+  { icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'], accents: ['#12a67a', '#6d4aff', '#229ed9'] },
+  { icons: ['i-lucide-globe', 'i-lucide-git-branch', 'i-lucide-send'], accents: ['#e58a0b', '#c99a12', '#229ed9'] },
+  { icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'], accents: ['#12a67a', '#6d4aff', '#229ed9'] },
+  { icons: ['i-lucide-webhook', 'i-lucide-table', 'i-lucide-send'], accents: ['#e0439b', '#1f9d55', '#229ed9'] },
+  { icons: ['i-lucide-webhook', 'i-lucide-sparkles', 'i-lucide-mail'], accents: ['#e0439b', '#6d4aff', '#e03c2e'] },
+  { icons: ['i-lucide-database', 'i-lucide-git-branch', 'i-lucide-mail'], accents: ['#4f56e0', '#c99a12', '#e03c2e'] }
 ]
 const examples = computed(() => tm<Array<{ tag: string; schedule: string; title: string; text: string; chain: string[] }>>('landing.examples').map((item, index) => ({
   ...item,
   ...exampleMeta[index]
 })))
 
-const stepMeta = [
-  { id: 'assemble', icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-mail', 'i-lucide-database', 'i-lucide-send'] },
-  { id: 'describe', icons: ['i-lucide-type', 'i-lucide-braces', 'i-lucide-git-branch'] },
-  { id: 'run', icons: ['i-lucide-play', 'i-lucide-clock', 'i-lucide-mail'] }
-]
-const steps = computed(() => tm<Array<{ number: string; title: string; text: string }>>('landing.steps').map((item, index) => ({
-  ...item,
-  ...stepMeta[index]
-})))
+const steps = computed(() => tm<Array<{ number: string; title: string; text: string }>>('landing.steps'))
 
 const railKinds = [
-  'web_search',
-  'prompt',
-  'http_request',
-  'if_else',
-  'telegram_send',
-  'webhook',
-  'google_sheets',
-  'email',
-  'loop',
-  'delay',
-  'image_generation',
-  'audio_transcription'
-] as const
-const rail = computed(() => railKinds.map(kind => t(`nodes.${kind}.label`)))
-const railLoop = computed(() => [...rail.value, ...rail.value])
+  { kind: 'web_search', icon: 'i-lucide-search', accent: '#12a67a' },
+  { kind: 'prompt', icon: 'i-lucide-sparkles', accent: '#6d4aff' },
+  { kind: 'telegram_send', icon: 'i-lucide-send', accent: '#229ed9' },
+  { kind: 'google_sheets', icon: 'i-lucide-table', accent: '#1f9d55' },
+  { kind: 'email', icon: 'i-lucide-mail', accent: '#e03c2e' },
+  { kind: 'webhook', icon: 'i-lucide-webhook', accent: '#e0439b' },
+  { kind: 'http_request', icon: 'i-lucide-globe', accent: '#e58a0b' },
+  { kind: 'sql_query', icon: 'i-lucide-database', accent: '#4f56e0' },
+  { kind: 'yandex_disk', icon: 'i-lucide-hard-drive', accent: '#d9a400' },
+  { kind: 'image_generation', icon: 'i-lucide-image-plus', accent: '#d6338a' },
+  { kind: 'audio_transcription', icon: 'i-lucide-audio-lines', accent: '#0d9488' }
+]
+const rail = computed(() => railKinds.map(item => ({ ...item, label: t(`nodes.${item.kind}.label`) })))
 
-const audienceIcons = ['i-lucide-briefcase', 'i-lucide-user-round-search', 'i-lucide-pen-line', 'i-lucide-trending-up', 'i-lucide-building-2', 'i-lucide-code-2']
+const audienceIcons = ['i-lucide-briefcase', 'i-lucide-user-round-search', 'i-lucide-pen-line', 'i-lucide-trending-up', 'i-lucide-building-2', 'i-lucide-users']
 const audience = computed(() => tm<Array<{ title: string; text: string; example: string }>>('landing.audience').map((item, index) => ({
   ...item,
   icon: audienceIcons[index]
 })))
+
+const faq = computed(() => tm<Array<{ q: string; a: string }>>('landing.faq'))
 </script>
