@@ -75,10 +75,24 @@ const onEmailModalOpen = (open: boolean) => {
       </div>
     </div>
     <div class="grid-cards">
-      <div class="panel metric-card" style="--card-accent:#c9f169"><p class="mb-0 text-sm font-bold muted">{{ t('billing.onBalance') }}</p><p class="metric-value">{{ formatCredits(summary?.balance) }}</p><p class="mb-0 mt-1 text-xs muted">{{ t('billing.forRuns') }}</p></div>
-      <div class="panel metric-card" style="--card-accent:#ffb681"><p class="mb-0 text-sm font-bold muted">{{ t('billing.spentMonth') }}</p><p class="metric-value">{{ formatCredits(summary?.usage_this_month) }}</p><p class="mb-0 mt-1 text-xs muted">{{ t('common.tokens') }}</p></div>
+      <div class="panel metric-card" style="--card-accent:#12a67a">
+        <span class="metric-icon"><UIcon name="i-lucide-wallet" class="size-6" /></span>
+        <div>
+          <p class="mb-0 text-sm font-semibold muted">{{ t('billing.onBalance') }}</p>
+          <p class="metric-value">{{ formatCredits(summary?.balance) }}</p>
+          <p class="mb-0 mt-1 text-xs muted">{{ t('billing.forRuns') }}</p>
+        </div>
+      </div>
+      <div class="panel metric-card" style="--card-accent:#e58a0b">
+        <span class="metric-icon"><UIcon name="i-lucide-trending-down" class="size-6" /></span>
+        <div>
+          <p class="mb-0 text-sm font-semibold muted">{{ t('billing.spentMonth') }}</p>
+          <p class="metric-value">{{ formatCredits(summary?.usage_this_month) }}</p>
+          <p class="mb-0 mt-1 text-xs muted">{{ t('common.tokens') }}</p>
+        </div>
+      </div>
     </div>
-    <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold">{{ t('billing.topupTitle') }}</h2><p class="mb-0 muted">{{ t('billing.topupLead') }}</p></div>
+    <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold tracking-tight">{{ t('billing.topupTitle') }}</h2><p class="mb-0 muted">{{ t('billing.topupLead') }}</p></div>
     <div class="grid-cards">
       <div
         v-for="plan in orderedPlans"
@@ -128,7 +142,7 @@ const onEmailModalOpen = (open: boolean) => {
     >
       <template #body>
         <form class="space-y-4" @submit.prevent="confirmReceiptEmail">
-          <UFormField label="Email" :ui="{ label: 'text-white!' }">
+          <UFormField label="Email">
             <UInput
               v-model="receiptEmail"
               type="email"
@@ -147,15 +161,15 @@ const onEmailModalOpen = (open: boolean) => {
       </template>
     </UModal>
     <div class="panel mt-8 p-6">
-      <h2 class="mb-1 text-xl font-extrabold">{{ t('billing.history') }}</h2>
+      <h2 class="mb-1 text-xl font-extrabold tracking-tight">{{ t('billing.history') }}</h2>
       <p class="mb-4 text-sm muted">{{ t('billing.historyLead') }}</p>
-      <div v-if="summary?.ledger?.length" class="mt-3 divide-y divide-default">
+      <div v-if="summary?.ledger?.length" class="row-list mt-3">
         <div v-for="entry in summary.ledger" :key="entry.id" class="flex justify-between gap-4 py-3">
           <div>
             <p class="mb-0 font-medium">{{ entry.description }}</p>
             <p class="mb-0 mt-1 text-xs muted">{{ formatDate(entry.created_at) }}</p>
           </div>
-          <strong class="shrink-0" :class="entry.amount > 0 ? 'text-[#4b3dcc]' : 'text-[#c45c3e]'">
+          <strong class="shrink-0" :class="entry.amount > 0 ? 'text-[#15803d]' : 'text-[#c2410c]'">
             {{ entry.amount > 0 ? '+' : '' }}{{ formatCredits(entry.amount) }}
           </strong>
         </div>
