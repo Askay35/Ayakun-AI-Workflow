@@ -158,7 +158,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', syncActive))
         :class="{ 'is-active': activeId === 'general' }"
         @click="go('general')"
       >
-        <span class="docs-toc-icon" style="color:#6758ee;background:#6758ee22">
+        <span class="docs-toc-icon" style="color:#6d4aff;background:#6d4aff22">
           <UIcon name="i-lucide-book-open" class="size-4" />
         </span>
         <span>{{ t('docs.tocGeneral') }}</span>
