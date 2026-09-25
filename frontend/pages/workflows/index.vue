@@ -101,11 +101,11 @@ const commitRename = async (workflowId: string) => {
         <UButton :label="t('workflows.create')" size="lg" icon="i-lucide-plus" :loading="creating" @click="create" />
       </div>
     </div>
-    <div v-if="pending" class="grid-cards"><div v-for="i in 3" :key="i" class="panel h-52 animate-pulse bg-white/50" /></div>
+    <div v-if="pending" class="flex-cards"><div v-for="i in 3" :key="i" class="panel h-52 animate-pulse" /></div>
     <div v-else-if="workflows?.length" class="flex-cards">
       <div v-for="workflow in workflows" :key="workflow.id" class="panel workflow-card">
         <div class="flex items-start justify-between gap-3">
-          <button type="button" class="grid size-11 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]" @click="openWorkflow(workflow.id)">
+          <button type="button" class="workflow-card-icon" @click="openWorkflow(workflow.id)">
             <UIcon name="i-lucide-workflow" class="size-5" />
           </button>
           <div class="flex items-center gap-1">
@@ -145,8 +145,8 @@ const commitRename = async (workflowId: string) => {
           </div>
         </div>
         <button v-else type="button" class="block w-full cursor-pointer text-left" @click="openWorkflow(workflow.id)">
-          <h2 class="mb-2 mt-5 text-xl font-extrabold">{{ workflow.name }}</h2>
-          <p class="mb-5 text-sm muted">{{ workflow.next_run_at || workflow.schedule_cron ? t('workflows.auto') : t('workflows.manual') }}</p>
+          <h2 class="mb-2 mt-5 text-xl font-extrabold tracking-tight">{{ workflow.name }}</h2>
+          <p class="mb-6 text-sm muted">{{ workflow.next_run_at || workflow.schedule_cron ? t('workflows.auto') : t('workflows.manual') }}</p>
           <div class="workflow-card-footer">
             <div class="flex items-center gap-2"><span class="status-dot" :class="{ online: workflow.status === 'published' }" /><span class="text-xs font-bold">{{ workflow.status === 'published' ? t('workflows.published') : t('workflows.draft') }}</span></div>
             <span class="text-xs muted">{{ t('workflows.updated', { date: formatDateOnly(workflow.updated_at) }) }}</span>
@@ -155,7 +155,7 @@ const commitRename = async (workflowId: string) => {
       </div>
     </div>
     <div v-else class="panel py-16 text-center">
-      <span class="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]"><UIcon name="i-lucide-workflow" class="size-7" /></span>
+      <span class="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-[var(--violet-soft)] text-[var(--violet)]"><UIcon name="i-lucide-workflow" class="size-7" /></span>
       <h2 class="mb-2 text-xl font-extrabold">{{ t('workflows.emptyTitle') }}</h2>
       <p class="mx-auto mb-0 max-w-md muted">{{ t('workflows.emptyText') }}</p>
     </div>
