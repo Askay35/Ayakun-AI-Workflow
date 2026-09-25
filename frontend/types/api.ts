@@ -21,6 +21,13 @@ export type NodeKind =
   | 'image'
   | 'image_recognition'
   | 'audio_transcription'
+  | 'slack'
+  | 'trello'
+  | 'jira'
+  | 'excel'
+  | 'file'
+  | 'spreadsheet'
+  | 'linkedin'
 export type SearchPeriod = 'h' | 'd' | 'w' | 'm' | 'y'
 
 export interface ApiEnvelope<T> {
@@ -110,6 +117,32 @@ export interface WorkflowNode {
     url?: string
     filename?: string
     file_base64?: string
+    webhook_url?: string
+    channel?: string
+    list_id?: string
+    card_id?: string
+    name?: string
+    description?: string
+    base_url?: string
+    email?: string
+    api_token?: string
+    project_key?: string
+    issue_type?: string
+    summary?: string
+    jql?: string
+    issue_key?: string
+    comment?: string
+    file_path?: string
+    worksheet?: string
+    cell_range?: string
+    table?: string
+    file_format?: 'auto' | 'csv' | 'xlsx'
+    sheet?: string
+    header_row?: boolean
+    delimiter?: string
+    author?: string
+    text?: string
+    visibility?: 'PUBLIC' | 'CONNECTIONS'
     status?: RunStatus
     output?: string
   }

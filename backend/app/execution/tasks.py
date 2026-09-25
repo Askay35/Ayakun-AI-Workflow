@@ -71,6 +71,13 @@ _ZERO_COST_TYPES = {
     NodeType.DELAY,
     NodeType.YANDEX_DISK,
     NodeType.IMAGE,
+    NodeType.SLACK,
+    NodeType.TRELLO,
+    NodeType.JIRA,
+    NodeType.EXCEL,
+    NodeType.FILE,
+    NodeType.SPREADSHEET,
+    NodeType.LINKEDIN,
 }
 _SECRET_NODE_FIELDS = frozenset({
     "access_token",
@@ -79,6 +86,9 @@ _SECRET_NODE_FIELDS = frozenset({
     "dsn",
     "token",
     "file_base64",
+    "api_token",
+    "bot_token",
+    "webhook_url",
 })
 
 

@@ -1,9 +1,10 @@
-"""Загруженные картинки блоков «Изображение» лежат в JSON цепочки (черновик и снимок публикации)."""
+"""Загруженные файлы блоков «Изображение», «Файл» и «Расшифровка аудио» лежат в JSON цепочки (черновик и снимок публикации)."""
 
 from __future__ import annotations
 
 MAX_USER_IMAGE_FILES = 50
 MAX_USER_IMAGE_BYTES = 250 * 1024 * 1024
+STORED_FILE_NODE_TYPES = frozenset({"image", "file", "audio_transcription"})
 IMAGE_NODE_RATE_LIMIT = 60
 IMAGE_NODE_RATE_WINDOW_SECONDS = 60
 
@@ -35,7 +36,7 @@ def _file_base64(node: object) -> str:
         source = node.get("source") or "file"
         raw = node.get("file_base64") or ""
     else:
-        source = getattr(node, "source", "file") or "file"
+        source = getattr(node, "source", None) or "file"
         raw = getattr(node, "file_base64", "") or ""
     if source != "file":
         return ""
@@ -63,7 +64,7 @@ def uploaded_images(nodes: object) -> list[tuple[str, int]]:
         return []
     found: list[tuple[str, int]] = []
     for node in items:
-        if _type_name(node) != "image":
+        if _type_name(node) not in STORED_FILE_NODE_TYPES:
             continue
         encoded = _file_base64(node)
         if not encoded:
@@ -79,7 +80,7 @@ def strip_stored_images(snapshot: dict) -> bool:
         return False
     changed = False
     for node in nodes:
-        if not isinstance(node, dict) or node.get("type") != "image":
+        if not isinstance(node, dict) or node.get("type") not in STORED_FILE_NODE_TYPES:
             continue
         if node.get("file_base64"):
             node["file_base64"] = ""

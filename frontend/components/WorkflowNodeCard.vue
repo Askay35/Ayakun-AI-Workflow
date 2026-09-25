@@ -56,6 +56,21 @@ const preview = computed(() => {
   if (props.kind === 'image') return props.data.url?.trim() || props.data.filename?.trim() || t('nodePreview.imageEmpty')
   if (props.kind === 'image_recognition') return props.data.prompt?.trim() || t('nodePreview.recognizeEmpty')
   if (props.kind === 'audio_transcription') return props.data.url?.trim() || props.data.filename?.trim() || t('nodePreview.audioEmpty')
+  if (props.kind === 'slack') return props.data.message?.trim() || props.data.channel?.trim() || t('nodePreview.slackEmpty')
+  if (props.kind === 'trello') return t(`trelloOps.${props.data.operation || 'create_card'}`)
+  if (props.kind === 'jira') {
+    const op = t(`jiraOps.${props.data.operation || 'create_issue'}`)
+    return props.data.project_key?.trim() ? `${op} · ${props.data.project_key}` : op
+  }
+  if (props.kind === 'excel') {
+    const op = t(`excelOps.${props.data.operation || 'read'}`)
+    return props.data.file_path?.trim() ? `${op} · ${props.data.file_path}` : op
+  }
+  if (props.kind === 'file') return props.data.filename?.trim() || t('nodePreview.fileEmpty')
+  if (props.kind === 'spreadsheet') {
+    return props.data.operation === 'write' ? t('nodePreview.spreadsheetWrite') : t('nodePreview.spreadsheetRead')
+  }
+  if (props.kind === 'linkedin') return props.data.text?.trim() || t('nodePreview.linkedinEmpty')
   return label.value
 })
 const hintTitle = (mark: VariableHint['mark']) => (

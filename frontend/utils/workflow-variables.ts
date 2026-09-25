@@ -59,6 +59,18 @@ export function nodeUsedKeys(node: WorkflowNode): string[] {
     chunks.push(node.data.prompt)
   } else if (node.type === 'image' || node.type === 'audio_transcription') {
     chunks.push(node.data.url, node.data.prompt)
+  } else if (node.type === 'slack') {
+    chunks.push(node.data.webhook_url, node.data.channel, node.data.message)
+  } else if (node.type === 'trello') {
+    chunks.push(node.data.list_id, node.data.card_id, node.data.name, node.data.description)
+  } else if (node.type === 'jira') {
+    chunks.push(node.data.base_url, node.data.project_key, node.data.summary, node.data.description, node.data.jql, node.data.issue_key, node.data.comment)
+  } else if (node.type === 'excel') {
+    chunks.push(node.data.file_path, node.data.worksheet, node.data.cell_range, node.data.table, node.data.values_json)
+  } else if (node.type === 'spreadsheet') {
+    chunks.push(node.data.path, node.data.filename)
+  } else if (node.type === 'linkedin') {
+    chunks.push(node.data.author, node.data.text)
   }
   for (const item of node.data.assignments || []) chunks.push(item.value)
   const names: string[] = []

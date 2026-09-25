@@ -29,16 +29,23 @@ from schemas.workflow import (
     DataTransformNode,
     DelayNode,
     EmailNode,
+    ExcelNode,
+    FileNode,
     GoogleSheetsNode,
     ImageGenerationNode,
     ImageNode,
     ImageRecognitionNode,
+    JiraNode,
+    LinkedInNode,
     LoopNode,
     NodeType,
     RunStepResponse,
     ScheduleSlot,
+    SlackNode,
+    SpreadsheetNode,
     SqlQueryNode,
     TelegramSendNode,
+    TrelloNode,
     WeeklyScheduleSlot,
     WorkflowCreate,
     WorkflowGraph,
@@ -116,6 +123,13 @@ def _single_incoming_label(node_type: NodeType) -> str:
         NodeType.IMAGE: "Изображение",
         NodeType.IMAGE_RECOGNITION: "Распознавание изображения",
         NodeType.AUDIO_TRANSCRIPTION: "Расшифровка аудио",
+        NodeType.SLACK: "Slack",
+        NodeType.TRELLO: "Trello",
+        NodeType.JIRA: "Jira",
+        NodeType.EXCEL: "Excel",
+        NodeType.FILE: "Файл",
+        NodeType.SPREADSHEET: "Таблица",
+        NodeType.LINKEDIN: "LinkedIn",
     }.get(node_type, node_type.value)
 
 
@@ -203,6 +217,52 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
             errors.append(f"Узел {label}: загрузите аудиофайл")
         elif node.source == "upstream" and not node.parents:
             errors.append(f"Узел {label}: подключите предыдущий узел")
+    elif isinstance(node, SlackNode):
+        if not node.webhook_url.strip() and not (node.bot_token.strip() and node.channel.strip()):
+            errors.append(f"Узел {label}: укажите вебхук Slack или токен бота и канал")
+    elif isinstance(node, TrelloNode):
+        if not node.api_key.strip() or not node.token.strip():
+            errors.append(f"Узел {label}: укажите API-ключ и токен Trello")
+        if node.operation in {"create_card", "list_cards", "move_card"} and not node.list_id.strip():
+            errors.append(f"Узел {label}: укажите список Trello")
+        if node.operation in {"move_card", "add_comment"} and not node.card_id.strip():
+            errors.append(f"Узел {label}: укажите карточку Trello")
+        if node.operation == "create_card" and not node.name.strip():
+            errors.append(f"Узел {label}: укажите название карточки")
+        if node.operation == "add_comment" and not node.description.strip():
+            errors.append(f"Узел {label}: укажите текст комментария")
+    elif isinstance(node, JiraNode):
+        if not node.base_url.strip() or not node.email.strip() or not node.api_token.strip():
+            errors.append(f"Узел {label}: укажите адрес Jira, email и API-токен")
+        if node.operation == "create_issue" and (not node.project_key.strip() or not node.summary.strip()):
+            errors.append(f"Узел {label}: укажите проект и заголовок задачи")
+        elif node.operation == "search" and not node.jql.strip():
+            errors.append(f"Узел {label}: укажите JQL-запрос")
+        elif node.operation == "add_comment" and (not node.issue_key.strip() or not node.comment.strip()):
+            errors.append(f"Узел {label}: укажите ключ задачи и комментарий")
+    elif isinstance(node, ExcelNode):
+        if not node.access_token.strip():
+            errors.append(f"Узел {label}: укажите токен Microsoft")
+        if not node.file_path.strip():
+            errors.append(f"Узел {label}: укажите путь к книге Excel")
+        if node.operation == "append" and not node.table.strip():
+            errors.append(f"Узел {label}: укажите имя таблицы для добавления строк")
+        elif node.operation == "update" and not node.cell_range.strip():
+            errors.append(f"Узел {label}: укажите диапазон для обновления")
+    elif isinstance(node, FileNode):
+        if not node.file_base64.strip():
+            errors.append(f"Узел {label}: загрузите файл")
+    elif isinstance(node, SpreadsheetNode):
+        if node.operation == "read" and not node.parents:
+            errors.append(f"Узел {label}: подключите узел «Файл» или «Яндекс Диск»")
+    elif isinstance(node, LinkedInNode):
+        if not node.access_token.strip() or not node.author.strip():
+            errors.append(f"Узел {label}: укажите токен LinkedIn и автора")
+
+
+def _allows_many_parents(node: WorkflowNode) -> bool:
+    """Merge собирает данные из нескольких веток, поэтому ему можно несколько входов."""
+    return isinstance(node, DataTransformNode) and node.operation == "merge"
 
 
 def _validate_image_recognition_parents(node: WorkflowNode, by_id: dict, errors: list[str], *, strict: bool) -> None:
@@ -250,7 +310,7 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
                     errors.append(f"Узел {node.label}: родитель IF ELSE должен быть узлом с выводом")
             elif node.type == NodeType.IMAGE_RECOGNITION:
                 _validate_image_recognition_parents(node, by_id, errors, strict=True)
-            elif node.type in extra_single:
+            elif node.type in extra_single and not _allows_many_parents(node):
                 if len(node.parents) > 1:
                     errors.append(f"Узел {node.label}: {_single_incoming_label(node.type)} может иметь только одну входящую связь")
                 elif len(node.parents) == 1 and node.parents[0] in by_id and by_id[node.parents[0]].type not in NodeType.with_output():
@@ -275,7 +335,7 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
         if node.type == NodeType.IF_ELSE:
             if not strict and len(node.parents) > 1:
                 errors.append(f"Узел {node.label}: IF ELSE может иметь только одну входящую связь")
-        if node.type in extra_single and not strict and len(node.parents) > 1:
+        if node.type in extra_single and not strict and len(node.parents) > 1 and not _allows_many_parents(node):
             errors.append(f"Узел {node.label}: {_single_incoming_label(node.type)} может иметь только одну входящую связь")
         if node.type == NodeType.IMAGE_RECOGNITION and not strict:
             _validate_image_recognition_parents(node, by_id, errors, strict=False)

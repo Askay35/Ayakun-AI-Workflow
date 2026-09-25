@@ -14,7 +14,7 @@ from helper import (
 )
 from schemas.workflow import DataTransformNode
 from services.execution.actions.base import NodeAction
-from services.execution.context import incoming_payload
+from services.execution.context import incoming_payload, parent_records
 
 
 def parse_field_list(raw: str) -> list[str]:
@@ -170,8 +170,47 @@ def _map_items(data: object, mapping: dict[str, Any] | str, variables: dict) -> 
     return mapped if was_list else mapped[0]
 
 
+def _deep_merge(target: dict, source: dict) -> dict:
+    for key, value in source.items():
+        current = target.get(key)
+        if isinstance(current, dict) and isinstance(value, dict):
+            target[key] = _deep_merge(dict(current), value)
+        else:
+            target[key] = value
+    return target
+
+
+def _merge_sources(node: DataTransformNode, context: dict) -> list[object]:
+    """Что объединять: выходы всех входящих узлов или элементы массива единственного входа."""
+    records = parent_records(node, context)
+    if len(records) > 1:
+        return [_extract_path(json_root_from_output(record.get("output")), node.path) for record in records]
+    data = _extract_path(incoming_payload(node, context), node.path)
+    return list(data) if isinstance(data, list) else [data]
+
+
+def _merge(node: DataTransformNode, context: dict, variables: dict) -> dict:
+    merged: dict = {}
+    for item in _merge_sources(node, context):
+        if item is None:
+            continue
+        if not isinstance(item, dict):
+            raise ValueError("Merge: объединять можно только объекты")
+        merged = _deep_merge(merged, item)
+    extra = parse_mapping(node.mapping_json)
+    if extra:
+        merged = _set_fields(merged, extra, variables)
+    if not merged:
+        raise ValueError("Merge: нет данных для объединения")
+    return merged
+
+
 class DataTransformAction(NodeAction):
     async def execute(self, node: DataTransformNode, context: dict) -> dict | list:
+        if node.operation == "merge":
+            output = _merge(node, context, context.setdefault("variables", {}))
+            apply_variable_assignments(node.assignments, output, context)
+            return output
         payload = incoming_payload(node, context)
         variables = context.setdefault("variables", {})
         data = _extract_path(payload, node.path)

@@ -93,7 +93,7 @@ export const en: typeof ru = {
       { title: 'A clear price', text: 'The estimated cost is shown before the run, and only actual usage is charged.' }
     ],
     stats: [
-      { value: '17', label: 'ready-made blocks' },
+      { value: '24', label: 'ready-made blocks' },
       { value: '3', label: 'ways to run' },
       { value: '200', label: 'free tokens' },
       { value: '0', label: 'lines of code' }
@@ -123,7 +123,14 @@ export const en: typeof ru = {
       { number: '14', title: 'Picture from a description', text: 'Describe what to draw. The image can continue down the chain.' },
       { number: '15', title: 'Image', text: 'Upload a file or paste a link so later steps share one picture.' },
       { number: '16', title: 'What is in the picture', text: 'Ask a question about an image and get the answer as text.' },
-      { number: '17', title: 'Text from a recording', text: 'An audio file or link becomes text.' }
+      { number: '17', title: 'Text from a recording', text: 'An audio file or link becomes text.' },
+      { number: '18', title: 'Slack', text: 'A message to your team channel via webhook or bot.' },
+      { number: '19', title: 'Trello', text: 'Cards get created, moved and commented automatically.' },
+      { number: '20', title: 'Jira', text: 'Issues from leads and emails, JQL search and comments.' },
+      { number: '21', title: 'Excel', text: 'OneDrive workbooks: read ranges and append rows.' },
+      { number: '22', title: 'File', text: 'Upload a file from your computer — a spreadsheet, document or picture.' },
+      { number: '23', title: 'Spreadsheet', text: 'CSV and XLSX become rows, and rows become a file again.' },
+      { number: '24', title: 'LinkedIn', text: 'A post as you or as your company page.' }
     ],
     examplesEyebrow: 'Chain examples',
     examplesTitle: 'Ready-made ideas for your routine',
@@ -165,7 +172,7 @@ export const en: typeof ru = {
       { q: 'Do I need my own AI subscriptions or API keys?', a: 'No. Neural networks and search are already connected to Ayakun — you only pay for usage inside the service.' },
       { q: 'How much does a run cost?', a: 'Before a run you see the estimated cost in tokens. After it finishes, the actual usage is charged and any unused reserve is returned.' },
       { q: 'How do chains start?', a: 'With a button, on a schedule, or on an event: a webhook starts the chain when a lead, a payment or a form arrives from your site.' },
-      { q: 'Where does the result go?', a: 'To your workspace, Telegram, email, a spreadsheet or Yandex Disk — wherever you prefer to receive it.' },
+      { q: 'Where does the result go?', a: 'To your workspace, Telegram, Slack, email, Google Sheets or Excel, Yandex Disk, Trello, Jira or a LinkedIn post — wherever you prefer to receive it.' },
       { q: 'What do I get when I sign up?', a: 'You get 200 free tokens to build and test your first chains.' }
     ],
     shots: {
@@ -221,7 +228,14 @@ export const en: typeof ru = {
     image_generation: { label: 'Image generation', caption: 'Picture from text' },
     image: { label: 'Image', caption: 'File or link' },
     image_recognition: { label: 'Image recognition', caption: 'Text from a picture' },
-    audio_transcription: { label: 'Audio transcription', caption: 'Text from a recording' }
+    audio_transcription: { label: 'Audio transcription', caption: 'Text from a recording' },
+    slack: { label: 'Slack', caption: 'Channel message' },
+    trello: { label: 'Trello', caption: 'Board cards' },
+    jira: { label: 'Jira', caption: 'Project issues' },
+    excel: { label: 'Excel', caption: 'OneDrive workbook' },
+    file: { label: 'File', caption: 'Upload from computer' },
+    spreadsheet: { label: 'Spreadsheet', caption: 'CSV and XLSX' },
+    linkedin: { label: 'LinkedIn', caption: 'Publish a post' }
   },
   nodePreview: {
     queryEmpty: 'Query not set yet',
@@ -249,6 +263,11 @@ export const en: typeof ru = {
     imageEmpty: 'Image not set yet',
     recognizeEmpty: 'Prompt not set yet',
     audioEmpty: 'Audio not set yet',
+    slackEmpty: 'Message not set yet',
+    fileEmpty: 'No file uploaded yet',
+    spreadsheetRead: 'Read rows from a file',
+    spreadsheetWrite: 'Build a file from data',
+    linkedinEmpty: 'Post text not set yet',
     hintUndefined: 'Variable is not defined yet',
     hintWrite: 'Created or updated by this block',
     hintRead: 'Used, not changed',
@@ -261,7 +280,24 @@ export const en: typeof ru = {
     remove: 'Remove — drop fields',
     filter: 'Filter — filter items',
     sort: 'Sort — sort',
-    map: 'Map — transform items'
+    map: 'Map — transform items',
+    merge: 'Merge — combine objects'
+  },
+  trelloOps: {
+    create_card: 'Create card',
+    list_cards: 'List cards',
+    move_card: 'Move card',
+    add_comment: 'Comment on card'
+  },
+  jiraOps: {
+    create_issue: 'Create issue',
+    search: 'Search issues (JQL)',
+    add_comment: 'Comment on issue'
+  },
+  excelOps: {
+    read: 'Read range',
+    append: 'Append rows to table',
+    update: 'Update range'
   },
   dashboard: {
     eyebrow: 'Workspace',
@@ -393,6 +429,9 @@ export const en: typeof ru = {
     transformFilter: 'Filter — keep matching items',
     transformSort: 'Sort — sort',
     transformMap: 'Map — transform each array item',
+    transformMerge: 'Merge — combine into one object',
+    mergeExtra: 'Extra fields (optional)',
+    mergeHint: 'Combines several objects into one: outputs of all connected blocks (you can draw several links here) or array items at the path. Nested objects are merged; on key conflicts the last one wins. Extra fields are key=value lines with placeholders.',
     searchQuery: 'What to find',
     searchPlaceholder: 'Top market news from the last day',
     period: 'Period',
@@ -435,6 +474,52 @@ export const en: typeof ru = {
     yandexRemote: 'Path on Yandex Disk',
     yandexContent: 'Text file',
     yandexHint: 'Upload takes the previous block’s file: a picture, a generated image, or a downloaded file. If there is no file, the text below is uploaded instead. The token is not written to logs.',
+    slackWebhook: 'Slack incoming webhook',
+    slackOr: 'Or send as a bot: token and channel.',
+    slackChannel: 'Channel',
+    slackHint: 'Empty text sends the previous block’s answer. {json}, {variable} and loops work. Webhook and token are not logged.',
+    trelloToken: 'Token',
+    trelloList: 'List ID',
+    trelloTargetList: 'Target list ID',
+    trelloCard: 'Card ID',
+    trelloName: 'Card name',
+    trelloNamePlaceholder: 'Lead: {{$body.name}}',
+    comment: 'Comment',
+    description: 'Description',
+    trelloHint: 'Get the key and token at trello.com/power-ups/admin. List and card IDs are in the board JSON (add .json to the board URL).',
+    jiraUrl: 'Jira URL',
+    apiToken: 'API token',
+    jiraProject: 'Project key',
+    jiraIssueType: 'Issue type',
+    jiraSummary: 'Summary',
+    jiraIssueKey: 'Issue key',
+    jiraHint: 'Jira Cloud: account email and an API token from id.atlassian.com. Search returns up to 50 issues.',
+    excelToken: 'Microsoft token (Graph)',
+    excelPath: 'Workbook path in OneDrive',
+    excelSheet: 'Sheet',
+    excelTable: 'Table',
+    excelRange: 'Range',
+    excelHint: 'Needs a Microsoft Graph token with Files.ReadWrite. An empty range on read returns the whole used sheet. Rows are appended to a named Excel table.',
+    fileLabel: 'File from your computer',
+    fileHint: 'Up to 10 MB. The file is stored in the workflow and counts toward your plan storage limit. Read it with “Spreadsheet”, send it to Telegram or upload it to Yandex Disk.',
+    spreadsheetRead: 'Read a file',
+    spreadsheetWrite: 'Build a file',
+    formatAuto: 'Detect from file',
+    fileFormat: 'Format',
+    delimiter: 'Delimiter',
+    delimiterAuto: 'auto',
+    headerRow: 'First row is headers',
+    fileName: 'File name',
+    spreadsheetReadHint: 'Connect a “File” or “Yandex Disk” (download) block before it. Output: rows — an array of row objects keyed by headers.',
+    spreadsheetWriteHint: 'Takes an array of objects or rows from the previous block and builds a CSV or XLSX. Upload it to Yandex Disk or send it to Telegram.',
+    linkedinToken: 'LinkedIn token',
+    linkedinAuthor: 'Author (URN)',
+    linkedinVisibility: 'Visibility',
+    linkedinPublic: 'Everyone',
+    linkedinConnections: 'Connections only',
+    linkedinText: 'Post text',
+    linkedinTextPlaceholder: 'Empty text publishes the previous block’s answer',
+    linkedinHint: 'Needs a LinkedIn OAuth token with w_member_social (or w_organization_social for a company page). Up to 3000 characters.',
     imagePrompt: 'Prompt',
     imagePromptPlaceholder: 'Draw a red bicycle on a white background',
     imageSource: 'Source',
@@ -779,6 +864,9 @@ export const en: typeof ru = {
     mapTitle: 'Map — transform items',
     mapP: 'Builds a new object from a template for each item. Unlike Select, you can set different field names and take nested paths.',
     mapAfter: 'Next you can send the array to Telegram as a whole or list it with a loop.',
+    mergeTitle: 'Merge — combine objects',
+    mergeP: 'Combines several objects into one. If several blocks are connected, their outputs are merged — this is the only operation that accepts several incoming links. With a single input, array items at the path are merged. Nested objects are merged; on key conflicts the last one wins.',
+    mergeAfter: 'Use “Extra fields” to add keys: source=crm or title={{$name}} — placeholders read from the merged object.',
     ifTitle: 'IF condition',
     ifP: 'Compare fields of the previous node: {a}, {b}. Empty / null / missing field in a standalone check is treated as false.',
     ifOps: 'Operators: == != > < >= <=. You can write only a field — empty, null or missing counts as false.',
@@ -1073,6 +1161,109 @@ export const en: typeof ru = {
           'Price is 0.5 RUB per billed minute, converted to credits. WAV duration is read from the file; other containers may fall back to 1 minute.',
           'The node is available after you buy any pack. A new access token deletes the uploaded file immediately, so transcription stays on the same token without a refresh in the middle.'
         ]
+      },
+      slack: {
+        what: 'Sends a message to a Slack channel via an incoming webhook or as a bot.',
+        how: [
+          'At most one incoming link.',
+          'A webhook is simplest: create an Incoming Webhook in your Slack app settings and paste the URL.',
+          'Bot: an xoxb-… token and a channel (#general or ID). Invite the bot to the channel.'
+        ],
+        settings: [
+          { name: 'Webhook', text: 'A hooks.slack.com URL. If set, token and channel are not needed.' },
+          { name: 'Bot token and channel', text: 'Alternative to the webhook.' },
+          { name: 'Text', text: '{{$path}}, {{variable}} and loops work. Empty sends the previous block’s answer.' }
+        ],
+        output: '{ sent, channel, ts, text }.',
+        notes: ['Webhook and token are stored as secrets and are not written to run logs.']
+      },
+      trello: {
+        what: 'Works with a Trello board: creates and moves cards, lists cards, adds comments.',
+        how: [
+          'At most one incoming link. All fields support placeholders.',
+          'Get the key and token at trello.com/power-ups/admin.',
+          'List and card IDs are easiest to find in the board JSON: add .json to the board URL.'
+        ],
+        settings: [
+          { name: 'Operation', text: 'Create card, list cards, move card, comment.' },
+          { name: 'List / card', text: 'Trello IDs, can come from the previous block: {{$card.id}}.' },
+          { name: 'Name and description', text: 'Card or comment text.' }
+        ],
+        output: 'Create and move: { card: { id, name, url, list_id } }. List: { cards: [...], count }. Comment: { card_id, comment_id }.',
+        notes: ['Save results to variables with the node’s “Variables” block.']
+      },
+      jira: {
+        what: 'Creates Jira Cloud issues, searches them with JQL and adds comments.',
+        how: [
+          'At most one incoming link.',
+          'Auth: Atlassian account email and an API token from id.atlassian.com.',
+          'Search returns up to 50 issues with key fields.'
+        ],
+        settings: [
+          { name: 'URL', text: 'https://your-company.atlassian.net.' },
+          { name: 'Project, type, summary', text: 'To create an issue. Description is plain text.' },
+          { name: 'JQL', text: 'For example: project = OPS AND status != Done.' },
+          { name: 'Issue key and comment', text: 'To comment, e.g. OPS-123.' }
+        ],
+        output: 'Create: { key, id, url }. Search: { issues: [{ key, summary, status, assignee, priority, url }], count }. Comment: { key, comment_id }.',
+        notes: ['The token is stored as a secret and is not logged.']
+      },
+      excel: {
+        what: 'Reads and writes an Excel workbook in OneDrive / Microsoft 365 via Microsoft Graph.',
+        how: [
+          'At most one incoming link.',
+          'Read: a range like A1:D50, or empty for the whole used sheet.',
+          'Appending goes to a named Excel table, updating goes to the given range.'
+        ],
+        settings: [
+          { name: 'Token', text: 'Microsoft Graph OAuth token with Files.ReadWrite.' },
+          { name: 'Path', text: 'File path in OneDrive, e.g. /Reports/sales.xlsx.' },
+          { name: 'Row values', text: 'JSON: an array of arrays or objects. Empty uses the previous block’s input.' }
+        ],
+        output: '{ values, rows, row_count, range }. rows are objects keyed by the header row.',
+        notes: ['For local .xlsx files use “File” → “Spreadsheet”.']
+      },
+      file: {
+        what: 'Uploads a file from your computer into the workflow so the next blocks can process it.',
+        how: [
+          'Usually a starting block.',
+          'Files up to 10 MB are stored in the workflow and count toward your plan storage limit.',
+          'Text files (txt, csv, json, md) also expose their content in the text field — pass it straight to “AI Prompt”.'
+        ],
+        settings: [{ name: 'File', text: 'Any file: spreadsheet, document, picture.' }],
+        output: '{ source: "file", filename, mime, size, path, text? }.',
+        notes: ['Read spreadsheets with the next “Spreadsheet” block, upload the file to Yandex Disk or send it to Telegram.']
+      },
+      spreadsheet: {
+        what: 'Reads CSV/XLSX from a “File” or “Yandex Disk” block into rows, or builds a file from data.',
+        how: [
+          'Read: connect “File” or “Yandex Disk” (download) before it.',
+          'The format is detected from the extension; the CSV delimiter is detected automatically.',
+          'Write: an array of objects becomes a table with headers from the keys.'
+        ],
+        settings: [
+          { name: 'Operation', text: 'Read a file or build a file.' },
+          { name: 'Sheet', text: 'For XLSX. Empty — active sheet.' },
+          { name: 'First row is headers', text: 'When on, rows become objects.' },
+          { name: 'Data path and file name', text: 'For writing: which array to take and how to name the file.' }
+        ],
+        output: 'Read: { rows, columns, row_count, sheet }. Write: a file { source: "file", filename, path, mime, row_count }.',
+        notes: ['Up to 5000 rows are read. Iterate them with “Loop” or filter with “Data transform”.']
+      },
+      linkedin: {
+        what: 'Publishes a LinkedIn post as a person or a company page.',
+        how: [
+          'At most one incoming link.',
+          'Empty text publishes the previous block’s answer, e.g. from “AI Prompt”.',
+          'Author is a URN like urn:li:person:… or urn:li:organization:….'
+        ],
+        settings: [
+          { name: 'Token', text: 'LinkedIn OAuth token with w_member_social or w_organization_social.' },
+          { name: 'Visibility', text: 'Everyone or connections only.' },
+          { name: 'Text', text: 'Up to 3000 characters, placeholders work.' }
+        ],
+        output: '{ published, id, author, text }.',
+        notes: ['The token is stored as a secret and is not logged.']
       }
     }
   },

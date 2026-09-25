@@ -25,7 +25,14 @@ const NODE_ORDER: NodeKind[] = [
   'image_generation',
   'image',
   'image_recognition',
-  'audio_transcription'
+  'audio_transcription',
+  'file',
+  'spreadsheet',
+  'excel',
+  'slack',
+  'trello',
+  'jira',
+  'linkedin'
 ]
 
 type NodeGuide = {
@@ -66,6 +73,8 @@ const examples = {
   sortOut: '[\n  { "id": 2, "name": "ETH", "symbol": "ETH", "score": 1, "secret": "y" },\n  { "id": 1, "name": "BTC", "symbol": "BTC", "score": 3, "secret": "x" }\n]',
   map: '{\n  "title": "{{$name}}",\n  "symbol": "{{$symbol}}",\n  "points": "{{$score}}"\n}',
   mapOut: '[\n  { "title": "BTC", "symbol": "BTC", "points": 3 },\n  { "title": "ETH", "symbol": "ETH", "points": 1 }\n]',
+  mergeIn: '// CRM\n{ "user": { "name": "Ada" }, "source": "crm" }\n// Биллинг / Billing\n{ "user": { "plan": "pro" }, "paid": true }',
+  mergeOut: '{ "user": { "name": "Ada", "plan": "pro" }, "source": "crm", "paid": true }',
   ifScore: '{{$score}} >= 0.8',
   ifStatus: '{{$status}} == "active"'
 }
@@ -300,6 +309,12 @@ onBeforeUnmount(() => window.removeEventListener('scroll', syncActive))
           <pre><code>{{ examples.map }}</code></pre>
           <pre><code>{{ examples.mapOut }}</code></pre>
           <p>{{ t('docs.mapAfter') }}</p>
+
+          <h3>{{ t('docs.mergeTitle') }}</h3>
+          <p>{{ t('docs.mergeP') }}</p>
+          <pre><code>{{ examples.mergeIn }}</code></pre>
+          <pre><code>{{ examples.mergeOut }}</code></pre>
+          <p>{{ t('docs.mergeAfter') }}</p>
         </template>
       </article>
     </div>

@@ -223,7 +223,14 @@ const blockMeta = [
   { icon: 'i-lucide-image-plus', accent: '#d6338a', cat: 'ai' },
   { icon: 'i-lucide-image', accent: '#e5484d', cat: 'data' },
   { icon: 'i-lucide-scan-eye', accent: '#7c5cff', cat: 'ai' },
-  { icon: 'i-lucide-audio-lines', accent: '#0d9488', cat: 'ai' }
+  { icon: 'i-lucide-audio-lines', accent: '#0d9488', cat: 'ai' },
+  { icon: 'i-simple-icons-slack', accent: '#611f69', cat: 'delivery' },
+  { icon: 'i-simple-icons-trello', accent: '#0079bf', cat: 'delivery' },
+  { icon: 'i-simple-icons-jira', accent: '#0052cc', cat: 'delivery' },
+  { icon: 'i-simple-icons-microsoftexcel', accent: '#107c41', cat: 'data' },
+  { icon: 'i-lucide-file-up', accent: '#64748b', cat: 'data' },
+  { icon: 'i-lucide-table-2', accent: '#0f9d58', cat: 'data' },
+  { icon: 'i-simple-icons-linkedin', accent: '#0a66c2', cat: 'delivery' }
 ]
 const blocks = computed(() => tm<Array<{ title: string; text: string }>>('landing.blocks').map((item, index) => ({
   ...item,
@@ -264,6 +271,12 @@ const railKinds = [
   { kind: 'http_request', icon: 'i-lucide-globe', accent: '#e58a0b' },
   { kind: 'sql_query', icon: 'i-lucide-database', accent: '#4f56e0' },
   { kind: 'yandex_disk', icon: 'i-lucide-hard-drive', accent: '#d9a400' },
+  { kind: 'slack', icon: 'i-simple-icons-slack', accent: '#611f69' },
+  { kind: 'trello', icon: 'i-simple-icons-trello', accent: '#0079bf' },
+  { kind: 'jira', icon: 'i-simple-icons-jira', accent: '#0052cc' },
+  { kind: 'excel', icon: 'i-simple-icons-microsoftexcel', accent: '#107c41' },
+  { kind: 'linkedin', icon: 'i-simple-icons-linkedin', accent: '#0a66c2' },
+  { kind: 'spreadsheet', icon: 'i-lucide-table-2', accent: '#0f9d58' },
   { kind: 'image_generation', icon: 'i-lucide-image-plus', accent: '#d6338a' },
   { kind: 'audio_transcription', icon: 'i-lucide-audio-lines', accent: '#0d9488' }
 ]

@@ -93,6 +93,7 @@ const {
 const hasSelectedNodes = computed(() => getSelectedNodes.value.length > 0)
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 
+const nodeKinds = Object.keys(NODE_META) as NodeKind[]
 const leftTab = ref<'nodes' | 'vars' | 'schedule'>('nodes')
 const leftTabs = computed(() => [
   { key: 'nodes' as const, label: t('editor.tabNodes'), dot: false },
@@ -190,7 +191,9 @@ const readMediaFile = (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file || !selected.value) return
-  const max = selected.value.type === 'audio_transcription' ? 6 * 1024 * 1024 : 30 * 1024 * 1024
+  const max = selected.value.type === 'audio_transcription'
+    ? 6 * 1024 * 1024
+    : selected.value.type === 'file' ? 10 * 1024 * 1024 : 30 * 1024 * 1024
   if (file.size > max) {
     toast.add({ title: t('editor.fileTooBig'), color: 'warning' })
     input.value = ''
@@ -224,7 +227,24 @@ const transformOperations = computed(() => [
   { label: t('editor.transformRemove'), value: 'remove' },
   { label: t('editor.transformFilter'), value: 'filter' },
   { label: t('editor.transformSort'), value: 'sort' },
-  { label: t('editor.transformMap'), value: 'map' }
+  { label: t('editor.transformMap'), value: 'map' },
+  { label: t('editor.transformMerge'), value: 'merge' }
+])
+const trelloOperations = computed(() => ['create_card', 'list_cards', 'move_card', 'add_comment'].map(value => ({ label: t(`trelloOps.${value}`), value })))
+const jiraOperations = computed(() => ['create_issue', 'search', 'add_comment'].map(value => ({ label: t(`jiraOps.${value}`), value })))
+const excelOperations = computed(() => ['read', 'append', 'update'].map(value => ({ label: t(`excelOps.${value}`), value })))
+const spreadsheetOperations = computed(() => [
+  { label: t('editor.spreadsheetRead'), value: 'read' },
+  { label: t('editor.spreadsheetWrite'), value: 'write' }
+])
+const spreadsheetFormats = computed(() => [
+  { label: t('editor.formatAuto'), value: 'auto' },
+  { label: 'CSV', value: 'csv' },
+  { label: 'XLSX', value: 'xlsx' }
+])
+const linkedinVisibility = computed(() => [
+  { label: t('editor.linkedinPublic'), value: 'PUBLIC' },
+  { label: t('editor.linkedinConnections'), value: 'CONNECTIONS' }
 ])
 const sortDirections = computed(() => [
   { label: t('editor.sortAsc'), value: 'asc' },
@@ -439,6 +459,16 @@ onMounted(async () => {
   window.addEventListener('keydown', onEditorKey)
 })
 
+const ASSIGNABLE_TYPES = new Set<NodeKind>(['prompt', 'http_request', 'google_sheets', 'email', 'data_transform', 'sql_query', 'trello', 'jira', 'excel', 'spreadsheet'])
+const NEW_NODE_DEFAULTS: Partial<Record<NodeKind, Partial<WorkflowNode['data']>>> = {
+  slack: { webhook_url: '', bot_token: '', channel: '', message: '' },
+  trello: { operation: 'create_card', api_key: '', token: '', list_id: '', card_id: '', name: '', description: '' },
+  jira: { operation: 'create_issue', base_url: '', email: '', api_token: '', project_key: '', issue_type: 'Task', summary: '', description: '', jql: '', issue_key: '', comment: '' },
+  excel: { operation: 'read', access_token: '', file_path: '', worksheet: 'Sheet1', cell_range: '', table: '', values_json: '' },
+  file: { filename: '', file_base64: '' },
+  spreadsheet: { operation: 'read', file_format: 'auto', sheet: '', header_row: true, delimiter: '', path: '', filename: '' },
+  linkedin: { access_token: '', author: '', text: '', visibility: 'PUBLIC' }
+}
 const addNode = (type: NodeKind, position: { x: number; y: number }) => {
   const node: WorkflowNode = {
     id: crypto.randomUUID(),
@@ -477,7 +507,8 @@ const addNode = (type: NodeKind, position: { x: number; y: number }) => {
       to: type === 'email' ? '' : undefined,
       subject: type === 'email' ? '' : undefined,
       body: type === 'email' ? '' : undefined,
-      assignments: type === 'prompt' || type === 'http_request' || type === 'google_sheets' || type === 'email' || type === 'data_transform' || type === 'sql_query' ? [] : undefined
+      assignments: ASSIGNABLE_TYPES.has(type) ? [] : undefined,
+      ...NEW_NODE_DEFAULTS[type]
     }
   }
   nodes.value = [...nodes.value, node]
@@ -777,56 +808,8 @@ const runSelectedNode = async () => {
             <template #edge-workflow="edgeProps">
               <WorkflowEdge v-bind="edgeProps" @remove="unlinkEdge" />
             </template>
-            <template #node-web_search="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="web_search" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-prompt="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="prompt" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-http_request="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="http_request" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-if_else="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="if_else" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-telegram_send="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="telegram_send" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-webhook="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="webhook" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-google_sheets="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="google_sheets" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-email="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="email" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-data_transform="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="data_transform" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-sql_query="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="sql_query" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-loop="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="loop" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-delay="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="delay" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-yandex_disk="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="yandex_disk" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-image_generation="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="image_generation" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-image="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="image" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-image_recognition="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="image_recognition" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
-            </template>
-            <template #node-audio_transcription="{ id: nodeId, data, selected: active }">
-              <WorkflowNodeCard :node-id="nodeId" kind="audio_transcription" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
+            <template v-for="kind in nodeKinds" #[`node-${kind}`]="{ id: nodeId, data, selected: active }">
+              <WorkflowNodeCard :node-id="nodeId" :kind="kind" :data="data" :selected="active" :hints="hintsFor(nodeId)" />
             </template>
           </VueFlow>
           <template #fallback>
@@ -1032,12 +1015,12 @@ const runSelectedNode = async () => {
               <UFormField v-if="selected.data.operation === 'select' || selected.data.operation === 'remove'" :label="t('editor.fields')">
                 <UInput v-model="selected.data.fields" class="w-full font-mono text-xs" placeholder="id, name, email" />
               </UFormField>
-              <UFormField v-if="selected.data.operation === 'rename' || selected.data.operation === 'set' || selected.data.operation === 'map'" :label="selected.data.operation === 'map' ? t('editor.mapTemplate') : t('editor.fieldMap')">
+              <UFormField v-if="selected.data.operation === 'rename' || selected.data.operation === 'set' || selected.data.operation === 'map' || selected.data.operation === 'merge'" :label="selected.data.operation === 'map' ? t('editor.mapTemplate') : selected.data.operation === 'merge' ? t('editor.mergeExtra') : t('editor.fieldMap')">
                 <UTextarea
                   v-model="selected.data.mapping_json"
                   :rows="8"
                   class="w-full font-mono text-xs"
-                  :placeholder="selected.data.operation === 'rename' ? TRANSFORM_RENAME_PLACEHOLDER : selected.data.operation === 'set' ? TRANSFORM_SET_PLACEHOLDER : TRANSFORM_MAP_PLACEHOLDER"
+                  :placeholder="selected.data.operation === 'rename' ? TRANSFORM_RENAME_PLACEHOLDER : selected.data.operation === 'set' || selected.data.operation === 'merge' ? TRANSFORM_SET_PLACEHOLDER : TRANSFORM_MAP_PLACEHOLDER"
                 />
               </UFormField>
               <UFormField v-if="selected.data.operation === 'filter'" :label="t('editor.condition')">
@@ -1051,7 +1034,7 @@ const runSelectedNode = async () => {
                   <USelect v-model="selected.data.sort_direction" :items="sortDirections" value-key="value" class="w-full" />
                 </UFormField>
               </template>
-              <p class="editor-hint">{{ t('editor.transformHint') }}</p>
+              <p class="editor-hint">{{ selected.data.operation === 'merge' ? t('editor.mergeHint') : t('editor.transformHint') }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'sql_query'">
@@ -1162,6 +1145,173 @@ const runSelectedNode = async () => {
               <UFormField :label="t('editor.audioPrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="4" class="w-full" :placeholder="t('editor.audioPromptPlaceholder')" />
               </UFormField>
+            </template>
+            <template v-if="selected.type === 'slack'">
+              <UFormField :label="t('editor.slackWebhook')">
+                <UInput v-model="selected.data.webhook_url" type="password" autocomplete="new-password" class="w-full font-mono text-xs" placeholder="https://hooks.slack.com/services/…" />
+              </UFormField>
+              <p class="editor-hint">{{ t('editor.slackOr') }}</p>
+              <UFormField :label="t('editor.botToken')">
+                <UInput v-model="selected.data.bot_token" type="password" autocomplete="new-password" class="w-full font-mono text-xs" placeholder="xoxb-…" />
+              </UFormField>
+              <UFormField :label="t('editor.slackChannel')">
+                <UInput v-model="selected.data.channel" class="w-full font-mono text-xs" placeholder="#general" />
+              </UFormField>
+              <UFormField :label="t('editor.messageText')">
+                <UTextarea v-model="selected.data.message" :rows="6" class="w-full font-mono text-xs" :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER" />
+              </UFormField>
+              <p class="editor-hint">{{ t('editor.slackHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
+            </template>
+            <template v-if="selected.type === 'trello'">
+              <UFormField :label="t('editor.operation')">
+                <USelect v-model="selected.data.operation" :items="trelloOperations" value-key="value" class="w-full" />
+              </UFormField>
+              <div class="grid grid-cols-2 gap-2">
+                <UFormField :label="t('editor.apiKey')">
+                  <UInput v-model="selected.data.api_key" type="password" autocomplete="new-password" class="w-full" />
+                </UFormField>
+                <UFormField :label="t('editor.trelloToken')">
+                  <UInput v-model="selected.data.token" type="password" autocomplete="new-password" class="w-full" />
+                </UFormField>
+              </div>
+              <UFormField v-if="selected.data.operation !== 'add_comment'" :label="selected.data.operation === 'move_card' ? t('editor.trelloTargetList') : t('editor.trelloList')">
+                <UInput v-model="selected.data.list_id" class="w-full font-mono text-xs" placeholder="64f1c0…" />
+              </UFormField>
+              <UFormField v-if="selected.data.operation === 'move_card' || selected.data.operation === 'add_comment'" :label="t('editor.trelloCard')">
+                <UInput v-model="selected.data.card_id" class="w-full font-mono text-xs" :placeholder="JSON_EXPRESSION_EXAMPLE" />
+              </UFormField>
+              <UFormField v-if="selected.data.operation === 'create_card'" :label="t('editor.trelloName')">
+                <UInput v-model="selected.data.name" class="w-full" :placeholder="t('editor.trelloNamePlaceholder')" />
+              </UFormField>
+              <UFormField v-if="selected.data.operation === 'create_card' || selected.data.operation === 'add_comment'" :label="selected.data.operation === 'add_comment' ? t('editor.comment') : t('editor.description')">
+                <UTextarea v-model="selected.data.description" :rows="5" class="w-full font-mono text-xs" />
+              </UFormField>
+              <p class="editor-hint">{{ t('editor.trelloHint') }}</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+            </template>
+            <template v-if="selected.type === 'jira'">
+              <UFormField :label="t('editor.operation')">
+                <USelect v-model="selected.data.operation" :items="jiraOperations" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField :label="t('editor.jiraUrl')">
+                <UInput v-model="selected.data.base_url" class="w-full font-mono text-xs" placeholder="https://company.atlassian.net" />
+              </UFormField>
+              <div class="grid grid-cols-2 gap-2">
+                <UFormField label="Email">
+                  <UInput v-model="selected.data.email" class="w-full" placeholder="you@company.com" />
+                </UFormField>
+                <UFormField :label="t('editor.apiToken')">
+                  <UInput v-model="selected.data.api_token" type="password" autocomplete="new-password" class="w-full" />
+                </UFormField>
+              </div>
+              <template v-if="selected.data.operation === 'create_issue'">
+                <div class="grid grid-cols-2 gap-2">
+                  <UFormField :label="t('editor.jiraProject')">
+                    <UInput v-model="selected.data.project_key" class="w-full font-mono text-xs" placeholder="OPS" />
+                  </UFormField>
+                  <UFormField :label="t('editor.jiraIssueType')">
+                    <UInput v-model="selected.data.issue_type" class="w-full" placeholder="Task" />
+                  </UFormField>
+                </div>
+                <UFormField :label="t('editor.jiraSummary')">
+                  <UInput v-model="selected.data.summary" class="w-full" />
+                </UFormField>
+                <UFormField :label="t('editor.description')">
+                  <UTextarea v-model="selected.data.description" :rows="5" class="w-full font-mono text-xs" />
+                </UFormField>
+              </template>
+              <UFormField v-if="selected.data.operation === 'search'" label="JQL">
+                <UTextarea v-model="selected.data.jql" :rows="3" class="w-full font-mono text-xs" placeholder="project = OPS AND status != Done ORDER BY created DESC" />
+              </UFormField>
+              <template v-if="selected.data.operation === 'add_comment'">
+                <UFormField :label="t('editor.jiraIssueKey')">
+                  <UInput v-model="selected.data.issue_key" class="w-full font-mono text-xs" placeholder="OPS-123" />
+                </UFormField>
+                <UFormField :label="t('editor.comment')">
+                  <UTextarea v-model="selected.data.comment" :rows="5" class="w-full font-mono text-xs" />
+                </UFormField>
+              </template>
+              <p class="editor-hint">{{ t('editor.jiraHint') }}</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+            </template>
+            <template v-if="selected.type === 'excel'">
+              <UFormField :label="t('editor.action')">
+                <USelect v-model="selected.data.operation" :items="excelOperations" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField :label="t('editor.excelToken')">
+                <UInput v-model="selected.data.access_token" type="password" autocomplete="new-password" class="w-full" placeholder="eyJ0eXAi…" />
+              </UFormField>
+              <UFormField :label="t('editor.excelPath')">
+                <UInput v-model="selected.data.file_path" class="w-full font-mono text-xs" placeholder="/Отчёты/sales.xlsx" />
+              </UFormField>
+              <div class="grid grid-cols-2 gap-2">
+                <UFormField :label="t('editor.excelSheet')">
+                  <UInput v-model="selected.data.worksheet" class="w-full font-mono text-xs" placeholder="Sheet1" />
+                </UFormField>
+                <UFormField v-if="selected.data.operation === 'append'" :label="t('editor.excelTable')">
+                  <UInput v-model="selected.data.table" class="w-full font-mono text-xs" placeholder="Table1" />
+                </UFormField>
+                <UFormField v-else :label="t('editor.excelRange')">
+                  <UInput v-model="selected.data.cell_range" class="w-full font-mono text-xs" placeholder="A1:D50" />
+                </UFormField>
+              </div>
+              <UFormField v-if="selected.data.operation !== 'read'" :label="t('editor.rowValues')">
+                <UTextarea v-model="selected.data.values_json" :rows="6" class="w-full font-mono text-xs" placeholder='[["Ada", 3]] / [{"name":"Ada","score":3}]' />
+              </UFormField>
+              <p class="editor-hint">{{ t('editor.excelHint') }}</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+            </template>
+            <template v-if="selected.type === 'file'">
+              <UFormField :label="t('editor.fileLabel')">
+                <input type="file" class="block w-full" @change="readMediaFile">
+                <p v-if="selected.data.filename" class="editor-hint mt-1">{{ selected.data.filename }}</p>
+              </UFormField>
+              <p class="editor-hint">{{ t('editor.fileHint') }}</p>
+            </template>
+            <template v-if="selected.type === 'spreadsheet'">
+              <UFormField :label="t('editor.operation')">
+                <USelect v-model="selected.data.operation" :items="spreadsheetOperations" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField :label="t('editor.fileFormat')">
+                <USelect v-model="selected.data.file_format" :items="spreadsheetFormats" value-key="value" class="w-full" />
+              </UFormField>
+              <div class="grid grid-cols-2 gap-2">
+                <UFormField :label="t('editor.excelSheet')">
+                  <UInput v-model="selected.data.sheet" class="w-full font-mono text-xs" placeholder="Sheet1" />
+                </UFormField>
+                <UFormField :label="t('editor.delimiter')">
+                  <UInput v-model="selected.data.delimiter" class="w-full font-mono text-xs" :placeholder="t('editor.delimiterAuto')" maxlength="1" />
+                </UFormField>
+              </div>
+              <label class="flex items-center gap-2 text-[13px] font-semibold">
+                <UCheckbox v-model="selected.data.header_row" />
+                {{ t('editor.headerRow') }}
+              </label>
+              <template v-if="selected.data.operation === 'write'">
+                <UFormField :label="t('editor.dataPath')">
+                  <UInput v-model="selected.data.path" class="w-full font-mono text-xs" :placeholder="t('editor.dataPathPlaceholder')" />
+                </UFormField>
+                <UFormField :label="t('editor.fileName')">
+                  <UInput v-model="selected.data.filename" class="w-full font-mono text-xs" placeholder="report-{{date}}.xlsx" />
+                </UFormField>
+              </template>
+              <p class="editor-hint">{{ selected.data.operation === 'write' ? t('editor.spreadsheetWriteHint') : t('editor.spreadsheetReadHint') }}</p>
+              <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+            </template>
+            <template v-if="selected.type === 'linkedin'">
+              <UFormField :label="t('editor.linkedinToken')">
+                <UInput v-model="selected.data.access_token" type="password" autocomplete="new-password" class="w-full" />
+              </UFormField>
+              <UFormField :label="t('editor.linkedinAuthor')">
+                <UInput v-model="selected.data.author" class="w-full font-mono text-xs" placeholder="urn:li:person:AbC123 / urn:li:organization:12345" />
+              </UFormField>
+              <UFormField :label="t('editor.linkedinVisibility')">
+                <USelect v-model="selected.data.visibility" :items="linkedinVisibility" value-key="value" class="w-full" />
+              </UFormField>
+              <UFormField :label="t('editor.linkedinText')">
+                <UTextarea v-model="selected.data.text" :rows="7" class="w-full" :placeholder="t('editor.linkedinTextPlaceholder')" />
+              </UFormField>
+              <p class="editor-hint">{{ t('editor.linkedinHint') }}</p>
             </template>
             <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="editor-warn list-none space-y-1">
               <li v-for="hint in selectedVariableHints.filter(item => item.mark === 'undefined')" :key="hint.name">

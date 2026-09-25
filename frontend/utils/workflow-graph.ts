@@ -17,7 +17,14 @@ export const NODE_META: Record<NodeKind, { label: string; caption: string; icon:
   image_generation: { label: 'Генерация изображения', caption: 'Картинка по тексту', icon: 'i-lucide-image-plus', accent: '#ec4899' },
   image: { label: 'Изображение', caption: 'Файл или ссылка', icon: 'i-lucide-image', accent: '#fb7185' },
   image_recognition: { label: 'Распознавание изображения', caption: 'Текст по картинке', icon: 'i-lucide-scan-eye', accent: '#a78bfa' },
-  audio_transcription: { label: 'Расшифровка аудио', caption: 'Текст по записи', icon: 'i-lucide-audio-lines', accent: '#14b8a6' }
+  audio_transcription: { label: 'Расшифровка аудио', caption: 'Текст по записи', icon: 'i-lucide-audio-lines', accent: '#14b8a6' },
+  slack: { label: 'Slack', caption: 'Сообщение в канал', icon: 'i-simple-icons-slack', accent: '#611f69' },
+  trello: { label: 'Trello', caption: 'Карточки на доске', icon: 'i-simple-icons-trello', accent: '#0079bf' },
+  jira: { label: 'Jira', caption: 'Задачи проекта', icon: 'i-simple-icons-jira', accent: '#0052cc' },
+  excel: { label: 'Excel', caption: 'Книга в OneDrive', icon: 'i-simple-icons-microsoftexcel', accent: '#107c41' },
+  file: { label: 'Файл', caption: 'Загрузка с компьютера', icon: 'i-lucide-file-up', accent: '#64748b' },
+  spreadsheet: { label: 'Таблица', caption: 'CSV и XLSX', icon: 'i-lucide-table-2', accent: '#0f9d58' },
+  linkedin: { label: 'LinkedIn', caption: 'Публикация поста', icon: 'i-simple-icons-linkedin', accent: '#0a66c2' }
 }
 
 export type NodeGroup = 'triggers' | 'ai' | 'logic' | 'data' | 'files' | 'send'
@@ -26,9 +33,9 @@ export const NODE_GROUPS: Array<{ key: NodeGroup; types: NodeKind[] }> = [
   { key: 'triggers', types: ['webhook'] },
   { key: 'ai', types: ['prompt', 'web_search', 'image_generation', 'image_recognition', 'audio_transcription'] },
   { key: 'logic', types: ['if_else', 'loop', 'delay', 'data_transform'] },
-  { key: 'data', types: ['http_request', 'sql_query', 'google_sheets'] },
-  { key: 'files', types: ['image', 'yandex_disk'] },
-  { key: 'send', types: ['telegram_send', 'email'] }
+  { key: 'data', types: ['http_request', 'sql_query', 'google_sheets', 'excel'] },
+  { key: 'files', types: ['file', 'spreadsheet', 'image', 'yandex_disk'] },
+  { key: 'send', types: ['telegram_send', 'email', 'slack', 'linkedin', 'trello', 'jira'] }
 ]
 
 export const SINGLE_INCOMING_TYPES: NodeKind[] = [
@@ -45,7 +52,14 @@ export const SINGLE_INCOMING_TYPES: NodeKind[] = [
   'image_generation',
   'image',
   'image_recognition',
-  'audio_transcription'
+  'audio_transcription',
+  'slack',
+  'trello',
+  'jira',
+  'excel',
+  'file',
+  'spreadsheet',
+  'linkedin'
 ]
 
 export const DEFAULT_HTTP_REQUEST_JSON = `{
@@ -130,6 +144,11 @@ export function resolveNodeId(nodes: WorkflowNode[], raw?: string | null) {
   return raw
 }
 
+/** Merge собирает данные из нескольких веток, поэтому ему можно несколько входов. */
+export function allowsManyParents(node: WorkflowNode) {
+  return node.type === 'data_transform' && node.data.operation === 'merge'
+}
+
 export function canConnect(
   nodes: WorkflowNode[],
   links: GraphLink[],
@@ -147,7 +166,12 @@ export function canConnect(
   const branch = branchFromHandle(sourceHandle)
   if (sourceNode?.type === 'if_else' && !branch) return false
   if (targetNode?.type === 'webhook') return false
-  if (targetNode && SINGLE_INCOMING_TYPES.includes(targetNode.type) && links.some(link => link.target === target)) return false
+  if (
+    targetNode
+    && SINGLE_INCOMING_TYPES.includes(targetNode.type)
+    && !allowsManyParents(targetNode)
+    && links.some(link => link.target === target)
+  ) return false
 
   const children = new Map<string, string[]>()
   for (const link of links) {

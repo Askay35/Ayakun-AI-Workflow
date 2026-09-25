@@ -225,6 +225,83 @@ export const useApi = () => {
         prompt: node.data.prompt || ''
       }
     }
+    if (node.type === 'slack') {
+      return {
+        ...base,
+        webhook_url: node.data.webhook_url || '',
+        bot_token: node.data.bot_token || '',
+        channel: node.data.channel || '',
+        message: node.data.message || ''
+      }
+    }
+    if (node.type === 'trello') {
+      return {
+        ...base,
+        operation: node.data.operation || 'create_card',
+        api_key: node.data.api_key || '',
+        token: node.data.token || '',
+        list_id: node.data.list_id || '',
+        card_id: node.data.card_id || '',
+        name: node.data.name || '',
+        description: node.data.description || '',
+        assignments: assignmentsOf(node)
+      }
+    }
+    if (node.type === 'jira') {
+      return {
+        ...base,
+        operation: node.data.operation || 'create_issue',
+        base_url: node.data.base_url || '',
+        email: node.data.email || '',
+        api_token: node.data.api_token || '',
+        project_key: node.data.project_key || '',
+        issue_type: node.data.issue_type || 'Task',
+        summary: node.data.summary || '',
+        description: node.data.description || '',
+        jql: node.data.jql || '',
+        issue_key: node.data.issue_key || '',
+        comment: node.data.comment || '',
+        assignments: assignmentsOf(node)
+      }
+    }
+    if (node.type === 'excel') {
+      return {
+        ...base,
+        operation: node.data.operation || 'read',
+        access_token: node.data.access_token || '',
+        file_path: node.data.file_path || '',
+        worksheet: node.data.worksheet || 'Sheet1',
+        cell_range: node.data.cell_range || '',
+        table: node.data.table || '',
+        values_json: node.data.values_json || '',
+        assignments: assignmentsOf(node)
+      }
+    }
+    if (node.type === 'file') {
+      return { ...base, filename: node.data.filename || '', file_base64: node.data.file_base64 || '' }
+    }
+    if (node.type === 'spreadsheet') {
+      return {
+        ...base,
+        operation: node.data.operation || 'read',
+        file_format: node.data.file_format || 'auto',
+        sheet: node.data.sheet || '',
+        header_row: node.data.header_row ?? true,
+        delimiter: node.data.delimiter || '',
+        path: node.data.path || '',
+        filename: node.data.filename || '',
+        assignments: assignmentsOf(node)
+      }
+    }
+    if (node.type === 'linkedin') {
+      return {
+        ...base,
+        access_token: node.data.access_token || '',
+        author: node.data.author || '',
+        text: node.data.text || '',
+        visibility: node.data.visibility || 'PUBLIC'
+      }
+    }
     return {
       ...base,
       engine: node.data.engine || 'postgresql',
@@ -325,7 +402,33 @@ export const useApi = () => {
           content: node.content,
           url: node.url,
           filename: node.filename,
-          file_base64: node.file_base64
+          file_base64: node.file_base64,
+          webhook_url: node.webhook_url,
+          channel: node.channel,
+          list_id: node.list_id,
+          card_id: node.card_id,
+          name: node.name,
+          description: node.description,
+          base_url: node.base_url,
+          email: node.email,
+          api_token: node.api_token,
+          project_key: node.project_key,
+          issue_type: node.issue_type,
+          summary: node.summary,
+          jql: node.jql,
+          issue_key: node.issue_key,
+          comment: node.comment,
+          file_path: node.file_path,
+          worksheet: node.worksheet,
+          cell_range: node.cell_range,
+          table: node.table,
+          file_format: node.file_format,
+          sheet: node.sheet,
+          header_row: node.header_row,
+          delimiter: node.delimiter,
+          author: node.author,
+          text: node.text,
+          visibility: node.visibility
         }
       }
     })

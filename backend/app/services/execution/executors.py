@@ -8,17 +8,24 @@ from schemas.workflow import (
     DataTransformNode,
     DelayNode,
     EmailNode,
+    ExcelNode,
+    FileNode,
     GoogleSheetsNode,
     HttpRequestNode,
     IfElseNode,
     ImageGenerationNode,
     ImageNode,
     ImageRecognitionNode,
+    JiraNode,
+    LinkedInNode,
     LoopNode,
     NodeType,
     PromptNode,
+    SlackNode,
+    SpreadsheetNode,
     SqlQueryNode,
     TelegramSendNode,
+    TrelloNode,
     WebhookNode,
     WebSearchNode,
     YandexDiskNode,
@@ -28,16 +35,23 @@ from services.execution.actions import (
     DataTransformAction,
     DelayAction,
     EmailAction,
+    ExcelAction,
+    FileAction,
     GoogleSheetsAction,
     HttpRequestAction,
     IfElseAction,
     ImageAction,
     ImageGenerationAction,
     ImageRecognitionAction,
+    JiraAction,
+    LinkedInAction,
     LoopAction,
     PromptAction,
+    SlackAction,
+    SpreadsheetAction,
     SqlQueryAction,
     TelegramSendAction,
+    TrelloAction,
     WebSearchAction,
     WebhookAction,
     YandexDiskAction,
@@ -122,6 +136,27 @@ class DefaultExecutors:
     async def audio_transcription(self, node: AudioTranscriptionNode, context: dict) -> dict:
         return await AudioTranscriptionAction(self.media, self.client).execute(node, self.prepare(context))
 
+    async def slack(self, node: SlackNode, context: dict) -> dict:
+        return await SlackAction(self.client).execute(node, self.prepare(context))
+
+    async def trello(self, node: TrelloNode, context: dict) -> dict:
+        return await TrelloAction(self.client).execute(node, self.prepare(context))
+
+    async def jira(self, node: JiraNode, context: dict) -> dict:
+        return await JiraAction(self.client).execute(node, self.prepare(context))
+
+    async def excel(self, node: ExcelNode, context: dict) -> dict:
+        return await ExcelAction(self.client).execute(node, self.prepare(context))
+
+    async def file(self, node: FileNode, context: dict) -> dict:
+        return await FileAction().execute(node, self.prepare(context))
+
+    async def spreadsheet(self, node: SpreadsheetNode, context: dict) -> dict:
+        return await SpreadsheetAction(self.client).execute(node, self.prepare(context))
+
+    async def linkedin(self, node: LinkedInNode, context: dict) -> dict:
+        return await LinkedInAction(self.client).execute(node, self.prepare(context))
+
     def registry(self) -> NodeRegistry:
         registry = NodeRegistry()
         registry.register(NodeType.WEB_SEARCH, self.web_search)
@@ -141,4 +176,11 @@ class DefaultExecutors:
         registry.register(NodeType.IMAGE, self.image)
         registry.register(NodeType.IMAGE_RECOGNITION, self.image_recognition)
         registry.register(NodeType.AUDIO_TRANSCRIPTION, self.audio_transcription)
+        registry.register(NodeType.SLACK, self.slack)
+        registry.register(NodeType.TRELLO, self.trello)
+        registry.register(NodeType.JIRA, self.jira)
+        registry.register(NodeType.EXCEL, self.excel)
+        registry.register(NodeType.FILE, self.file)
+        registry.register(NodeType.SPREADSHEET, self.spreadsheet)
+        registry.register(NodeType.LINKEDIN, self.linkedin)
         return registry

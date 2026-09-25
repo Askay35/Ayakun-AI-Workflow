@@ -55,6 +55,13 @@ class NodeType(str, Enum):
     IMAGE = "image"
     IMAGE_RECOGNITION = "image_recognition"
     AUDIO_TRANSCRIPTION = "audio_transcription"
+    SLACK = "slack"
+    TRELLO = "trello"
+    JIRA = "jira"
+    EXCEL = "excel"
+    FILE = "file"
+    SPREADSHEET = "spreadsheet"
+    LINKEDIN = "linkedin"
 
     @staticmethod
     def with_output() -> frozenset["NodeType"]:
@@ -75,6 +82,13 @@ class NodeType(str, Enum):
             NodeType.IMAGE,
             NodeType.IMAGE_RECOGNITION,
             NodeType.AUDIO_TRANSCRIPTION,
+            NodeType.SLACK,
+            NodeType.TRELLO,
+            NodeType.JIRA,
+            NodeType.EXCEL,
+            NodeType.FILE,
+            NodeType.SPREADSHEET,
+            NodeType.LINKEDIN,
         })
 
     @staticmethod
@@ -94,6 +108,13 @@ class NodeType(str, Enum):
             NodeType.IMAGE,
             NodeType.IMAGE_RECOGNITION,
             NodeType.AUDIO_TRANSCRIPTION,
+            NodeType.SLACK,
+            NodeType.TRELLO,
+            NodeType.JIRA,
+            NodeType.EXCEL,
+            NodeType.FILE,
+            NodeType.SPREADSHEET,
+            NodeType.LINKEDIN,
         })
 
 
@@ -213,7 +234,7 @@ class EmailNode(Node):
 
 class DataTransformNode(Node):
     type: Literal[NodeType.DATA_TRANSFORM] = NodeType.DATA_TRANSFORM
-    operation: Literal["select", "rename", "set", "remove", "filter", "sort", "map"] = "select"
+    operation: Literal["select", "rename", "set", "remove", "filter", "sort", "map", "merge"] = "select"
     fields: str = Field(default="", max_length=4000)
     mapping_json: str = Field(default="", max_length=20000)
     condition: str = Field(default="", max_length=2000)
@@ -299,6 +320,98 @@ class AudioTranscriptionNode(Node):
     position: dict[str, float] | None = None
 
 
+class SlackNode(Node):
+    type: Literal[NodeType.SLACK] = NodeType.SLACK
+    webhook_url: str = Field(default="", max_length=2000)
+    bot_token: str = Field(default="", max_length=500)
+    channel: str = Field(default="", max_length=200)
+    message: str = Field(default="", max_length=8000)
+    position: dict[str, float] | None = None
+
+
+class TrelloNode(Node):
+    type: Literal[NodeType.TRELLO] = NodeType.TRELLO
+    operation: Literal["create_card", "list_cards", "move_card", "add_comment"] = "create_card"
+    api_key: str = Field(default="", max_length=500)
+    token: str = Field(default="", max_length=500)
+    list_id: str = Field(default="", max_length=200)
+    card_id: str = Field(default="", max_length=200)
+    name: str = Field(default="", max_length=2000)
+    description: str = Field(default="", max_length=16000)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+
+class JiraNode(Node):
+    type: Literal[NodeType.JIRA] = NodeType.JIRA
+    operation: Literal["create_issue", "search", "add_comment"] = "create_issue"
+    base_url: str = Field(default="", max_length=500)
+    email: str = Field(default="", max_length=320)
+    api_token: str = Field(default="", max_length=500)
+    project_key: str = Field(default="", max_length=50)
+    issue_type: str = Field(default="Task", max_length=100)
+    summary: str = Field(default="", max_length=1000)
+    description: str = Field(default="", max_length=16000)
+    jql: str = Field(default="", max_length=4000)
+    issue_key: str = Field(default="", max_length=100)
+    comment: str = Field(default="", max_length=16000)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+
+class ExcelNode(Node):
+    """Книга Excel в OneDrive / Microsoft 365 через Microsoft Graph."""
+
+    type: Literal[NodeType.EXCEL] = NodeType.EXCEL
+    operation: Literal["read", "append", "update"] = "read"
+    access_token: str = Field(default="", max_length=8000)
+    file_path: str = Field(default="", max_length=1000)
+    worksheet: str = Field(default="Sheet1", max_length=200)
+    cell_range: str = Field(default="", max_length=200)
+    table: str = Field(default="", max_length=200)
+    values_json: str = Field(default="", max_length=20000)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+    @field_validator("values_json", mode="before")
+    @classmethod
+    def coerce_excel_json(cls, value: object) -> str:
+        return _coerce_json_text(value)
+
+
+class FileNode(Node):
+    """Локальный файл, загруженный в цепочку."""
+
+    type: Literal[NodeType.FILE] = NodeType.FILE
+    filename: str = Field(default="", max_length=300)
+    file_base64: str = Field(default="", max_length=14_000_000)
+    position: dict[str, float] | None = None
+
+
+class SpreadsheetNode(Node):
+    """Таблица CSV/XLSX: читает файл предыдущего узла или собирает файл из данных."""
+
+    type: Literal[NodeType.SPREADSHEET] = NodeType.SPREADSHEET
+    operation: Literal["read", "write"] = "read"
+    file_format: Literal["auto", "csv", "xlsx"] = "auto"
+    sheet: str = Field(default="", max_length=200)
+    header_row: bool = True
+    delimiter: str = Field(default="", max_length=4)
+    path: str = Field(default="", max_length=500)
+    filename: str = Field(default="", max_length=300)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+
+class LinkedInNode(Node):
+    type: Literal[NodeType.LINKEDIN] = NodeType.LINKEDIN
+    access_token: str = Field(default="", max_length=4000)
+    author: str = Field(default="", max_length=200)
+    text: str = Field(default="", max_length=3000)
+    visibility: Literal["PUBLIC", "CONNECTIONS"] = "PUBLIC"
+    position: dict[str, float] | None = None
+
+
 WorkflowNode = Annotated[
     WebSearchNode
     | PromptNode
@@ -316,7 +429,14 @@ WorkflowNode = Annotated[
     | ImageGenerationNode
     | ImageNode
     | ImageRecognitionNode
-    | AudioTranscriptionNode,
+    | AudioTranscriptionNode
+    | SlackNode
+    | TrelloNode
+    | JiraNode
+    | ExcelNode
+    | FileNode
+    | SpreadsheetNode
+    | LinkedInNode,
     Field(discriminator="type"),
 ]
 
