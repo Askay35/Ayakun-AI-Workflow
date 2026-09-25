@@ -1021,6 +1021,7 @@ a { color: inherit; text-decoration: none; }
 .app-main { min-height: 100vh; margin-left: 256px; }
 
 .editor-shell {
+  color-scheme: dark;
   display: flex;
   flex-direction: column;
   height: 100dvh;

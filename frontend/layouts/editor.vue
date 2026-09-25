@@ -15,7 +15,7 @@ const { data: wallet } = await useAuthAsyncData(
 </script>
 
 <template>
-  <div class="editor-shell">
+  <div class="editor-shell dark">
     <header class="app-header">
       <NuxtLink to="/dashboard" class="brand app-header-logo">Ayakun</NuxtLink>
       <nav class="app-header-nav">
