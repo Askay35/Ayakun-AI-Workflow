@@ -27,11 +27,11 @@ const facts = computed(() => tm<Array<{ title: string; text: string }>>('pricing
 
 <template>
   <main>
-    <section class="section">
+    <section class="section page-hero">
       <div class="shell">
         <div class="mx-auto mb-14 max-w-3xl text-center reveal">
           <p class="eyebrow">{{ t('pricing.eyebrow') }}</p>
-          <h1 class="page-title !text-[clamp(42px,6vw,76px)]">{{ t('pricing.heading') }}</h1>
+          <h1 class="page-title !text-[clamp(38px,5.5vw,64px)] !tracking-[-0.04em]">{{ t('pricing.heading') }}</h1>
           <p class="mx-auto mt-5 max-w-2xl text-lg leading-8 muted">
             {{ t('pricing.lead') }}
           </p>
@@ -87,11 +87,11 @@ const facts = computed(() => tm<Array<{ title: string; text: string }>>('pricing
           <p>{{ t('pricing.howLead') }}</p>
         </div>
         <div class="grid gap-3">
-          <div v-for="item in facts" :key="item.title" class="flex items-start gap-3 rounded-2xl bg-white/5 p-4">
-            <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-[#c9f169] text-[#1b2408]"><UIcon :name="item.icon" /></span>
+          <div v-for="item in facts" :key="item.title" class="flex items-start gap-4 rounded-2xl border border-[var(--line)] bg-white p-5 shadow-[var(--shadow-sm)]">
+            <span class="tile shrink-0"><UIcon :name="item.icon" class="size-5" /></span>
             <div>
-              <strong class="block">{{ item.title }}</strong>
-              <p class="mb-0 mt-1 text-sm leading-5 text-white/55">{{ item.text }}</p>
+              <strong class="block text-[16px]">{{ item.title }}</strong>
+              <p class="mb-0 mt-1 text-sm leading-6 muted">{{ item.text }}</p>
             </div>
           </div>
         </div>
