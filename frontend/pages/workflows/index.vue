@@ -99,6 +99,7 @@ const commitRename = async (workflowId: string) => {
       <div class="flex flex-col gap-3 sm:flex-row">
         <UInput v-model="name" :placeholder="t('workflows.placeholder')" size="lg" icon="i-lucide-wand-sparkles" class="flex-1" @keyup.enter="create" />
         <UButton :label="t('workflows.create')" size="lg" icon="i-lucide-plus" :loading="creating" @click="create" />
+        <UButton to="/workflows/templates" :label="t('templates.fromTemplate')" size="lg" icon="i-lucide-layout-template" color="neutral" variant="outline" />
       </div>
     </div>
     <div v-if="pending" class="flex-cards"><div v-for="i in 3" :key="i" class="panel h-52 animate-pulse" /></div>

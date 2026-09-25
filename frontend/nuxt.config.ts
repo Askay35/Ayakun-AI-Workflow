@@ -22,6 +22,7 @@ export default defineNuxtConfig({
     '/runs/**': { ssr: false },
     '/billing': { ssr: false },
     '/referrals': { ssr: false },
+    '/templates/*': { ssr: false },
     '/profile': { ssr: false },
     '/admin': { ssr: false }
   },

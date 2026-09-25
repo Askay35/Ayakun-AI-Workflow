@@ -215,6 +215,18 @@ export interface SubscriptionInfo {
   storage: { files: number; max_files: number; bytes: number; max_bytes: number }
 }
 
+export interface WorkflowTemplate {
+  slug: string
+  category: string
+  name: string
+  description: string
+  name_en: string
+  description_en: string
+  node_types: NodeKind[]
+  steps: Array<{ type: NodeKind; label: string }>
+  variables: Record<string, string>
+}
+
 export interface ReferralSummary {
   code: string
   bonus: number

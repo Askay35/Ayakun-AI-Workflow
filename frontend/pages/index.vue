@@ -98,28 +98,16 @@
     <section id="examples" class="section">
       <div class="shell">
         <div class="section-heading">
-          <p class="eyebrow">{{ t('landing.examplesEyebrow') }}</p>
-          <h2>{{ t('landing.examplesTitle') }}</h2>
-          <p>{{ t('landing.examplesLead') }}</p>
+          <p class="eyebrow">{{ t('templates.landingEyebrow') }}</p>
+          <h2>{{ t('templates.landingTitle') }}</h2>
+          <p>{{ t('templates.landingLead') }}</p>
         </div>
-        <div class="examples-grid">
-          <article v-for="example in examples" :key="example.title" class="example-card">
-            <div class="example-top">
-              <span class="example-tag">{{ example.tag }}</span>
-              <span class="example-schedule"><UIcon name="i-lucide-clock-3" class="size-3.5" /> {{ example.schedule }}</span>
-            </div>
-            <h3>{{ example.title }}</h3>
-            <p>{{ example.text }}</p>
-            <div class="example-chain">
-              <template v-for="(step, index) in example.chain" :key="`${example.title}-${step}`">
-                <span class="example-step">
-                  <UIcon :name="example.icons[index]" class="size-3.5" :style="{ color: example.accents[index] }" />
-                  {{ step }}
-                </span>
-                <UIcon v-if="index < example.chain.length - 1" name="i-lucide-chevron-right" class="example-arrow" />
-              </template>
-            </div>
-          </article>
+        <TemplatesGallery :templates="featuredTemplates" />
+        <div class="blocks-more">
+          <NuxtLink to="/templates" class="site-button secondary">
+            {{ t('templates.landingAll', { n: templates?.length || 30 }) }}
+            <UIcon name="i-lucide-arrow-right" />
+          </NuxtLink>
         </div>
       </div>
     </section>
@@ -246,18 +234,19 @@ const visibleBlocks = computed(() => {
   return activeCat.value === 'all' && !expanded.value ? list.slice(0, PREVIEW_COUNT) : list
 })
 
-const exampleMeta = [
-  { icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'], accents: ['#12a67a', '#6d4aff', '#229ed9'] },
-  { icons: ['i-lucide-globe', 'i-lucide-git-branch', 'i-lucide-send'], accents: ['#e58a0b', '#c99a12', '#229ed9'] },
-  { icons: ['i-lucide-search', 'i-lucide-sparkles', 'i-lucide-send'], accents: ['#12a67a', '#6d4aff', '#229ed9'] },
-  { icons: ['i-lucide-webhook', 'i-lucide-table', 'i-lucide-send'], accents: ['#e0439b', '#1f9d55', '#229ed9'] },
-  { icons: ['i-lucide-webhook', 'i-lucide-sparkles', 'i-lucide-mail'], accents: ['#e0439b', '#6d4aff', '#e03c2e'] },
-  { icons: ['i-lucide-database', 'i-lucide-git-branch', 'i-lucide-mail'], accents: ['#4f56e0', '#c99a12', '#e03c2e'] }
+const api = useApi()
+const { data: templates } = await useAsyncData('landing-templates', () => api.templates.list().catch(() => []))
+const FEATURED_TEMPLATES = [
+  'news-digest-telegram',
+  'lead-scoring-reply',
+  'bug-report-to-jira',
+  'weekly-report-to-disk',
+  'receipt-to-excel',
+  'client-profile-merge'
 ]
-const examples = computed(() => tm<Array<{ tag: string; schedule: string; title: string; text: string; chain: string[] }>>('landing.examples').map((item, index) => ({
-  ...item,
-  ...exampleMeta[index]
-})))
+const featuredTemplates = computed(() => FEATURED_TEMPLATES
+  .map(slug => templates.value?.find(item => item.slug === slug))
+  .filter(item => item !== undefined))
 
 const steps = computed(() => tm<Array<{ number: string; title: string; text: string }>>('landing.steps'))
 

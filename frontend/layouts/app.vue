@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { APP_NAV_ITEMS } from '~/utils/app-nav'
+import { APP_NAV_ITEMS, activeNavPath } from '~/utils/app-nav'
 import { formatCredits } from '~/utils/credits'
 
 const route = useRoute()
@@ -13,7 +13,7 @@ const { data: wallet } = await useAuthAsyncData(
   () => api.billing.wallet().catch(() => null)
 )
 
-const isActive = (to: string) => route.path === to || route.path.startsWith(`${to}/`)
+const isActive = (to: string) => activeNavPath(route.path) === to
 const userName = computed(() => auth.user.value?.name || auth.user.value?.email || t('common.account'))
 </script>
 

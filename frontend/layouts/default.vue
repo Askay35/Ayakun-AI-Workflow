@@ -60,7 +60,7 @@ onUnmounted(() => {
         </button>
         <nav id="public-menu" class="public-nav" :class="{ 'is-open': menuOpen }">
           <NuxtLink to="/#features" class="nav-link" @click="closeMenu">{{ t('nav.features') }}</NuxtLink>
-          <NuxtLink to="/#examples" class="nav-link" @click="closeMenu">{{ t('nav.examples') }}</NuxtLink>
+          <NuxtLink to="/templates" class="nav-link" @click="closeMenu">{{ t('nav.templates') }}</NuxtLink>
           <NuxtLink to="/#how" class="nav-link" @click="closeMenu">{{ t('nav.how') }}</NuxtLink>
           <NuxtLink to="/pricing" class="nav-link" @click="closeMenu">{{ t('nav.pricing') }}</NuxtLink>
           <NuxtLink to="/docs" class="nav-link" @click="closeMenu">{{ t('nav.docs') }}</NuxtLink>
@@ -117,7 +117,7 @@ onUnmounted(() => {
           <nav class="public-footer-col">
             <h4>{{ t('footer.product') }}</h4>
             <NuxtLink to="/#features">{{ t('nav.features') }}</NuxtLink>
-            <NuxtLink to="/#examples">{{ t('nav.examples') }}</NuxtLink>
+            <NuxtLink to="/templates">{{ t('nav.templates') }}</NuxtLink>
             <NuxtLink to="/pricing">{{ t('nav.pricing') }}</NuxtLink>
             <NuxtLink to="/docs">{{ t('nav.docs') }}</NuxtLink>
           </nav>

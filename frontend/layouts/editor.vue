@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { APP_NAV_ITEMS } from '~/utils/app-nav'
+import { APP_NAV_ITEMS, activeNavPath } from '~/utils/app-nav'
 import { formatCredits } from '~/utils/credits'
 
 const route = useRoute()
@@ -27,10 +27,11 @@ const { data: wallet } = await useAuthAsyncData(
           :key="item.to"
           :to="item.to"
           class="app-header-link"
-          :class="{ 'is-active': route.path.startsWith(item.to) }"
+          :class="{ 'is-active': activeNavPath(route.path) === item.to }"
+          :title="t(`nav.${item.key}`)"
         >
           <UIcon :name="item.icon" class="size-4" />
-          {{ t(`nav.${item.key}`) }}
+          <span class="app-header-link-label">{{ t(`nav.${item.key}`) }}</span>
         </NuxtLink>
       </nav>
       <div class="app-header-user">

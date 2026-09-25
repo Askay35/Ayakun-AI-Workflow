@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { takeAfterLogin } from '~/utils/after-login'
 import { apiErrorMessage } from '~/composables/useApi'
 
 const route = useRoute()
@@ -30,7 +31,7 @@ onMounted(async () => {
       await navigateTo('/profile?tab=integrations')
       return
     }
-    await navigateTo('/dashboard')
+    await navigateTo(takeAfterLogin())
   } catch (reason: any) {
     const fallback = storedPurpose === 'link'
       ? t('google.linkFail')

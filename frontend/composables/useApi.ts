@@ -1,7 +1,7 @@
 import type {
   AdminConfig, AdminListQuery, AdminPage, AdminPaymentRecord, AdminRunRecord,
   AdminUserRecord, AdminWorkflowRecord, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
-  ReferralSummary, SubscriptionInfo, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
+  ReferralSummary, SubscriptionInfo, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun, WorkflowTemplate
 } from '~/types/api'
 import { visibleLedgerEntries } from '~/utils/ledger'
 import type { ScheduleSlot } from '~/utils/schedule'
@@ -566,6 +566,10 @@ export const useApi = () => {
           ...(customerEmail ? { customer_email: customerEmail } : {})
         }
       })
+    },
+    templates: {
+      list: () => request<WorkflowTemplate[]>('/templates'),
+      use: async (slug: string) => normalizeWorkflow(await request<Workflow>(`/templates/${slug}/use`, { method: 'POST' }))
     },
     referrals: {
       summary: () => request<ReferralSummary>('/referrals'),

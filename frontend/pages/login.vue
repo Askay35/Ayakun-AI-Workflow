@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { apiErrorMessage } from '~/composables/useApi'
 import { pendingReferral } from '~/utils/referral'
+import { takeAfterLogin } from '~/utils/after-login'
 
 const api = useApi()
 const auth = useAuth()
@@ -18,7 +19,7 @@ const finish = async (action: () => Promise<any>) => {
   loading.value = true
   try {
     await auth.accept(await action())
-    await navigateTo('/dashboard')
+    await navigateTo(takeAfterLogin())
   } catch (error: any) {
     toast.add({ title: t('login.loginError'), description: apiErrorMessage(error, t('login.loginErrorHint')), color: 'error' })
   } finally { loading.value = false }

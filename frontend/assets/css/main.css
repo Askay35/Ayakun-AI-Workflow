@@ -295,6 +295,35 @@ a { color: inherit; text-decoration: none; }
   background: var(--violet-soft);
 }
 
+.templates-toolbar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+.templates-tabs { margin-bottom: 0; }
+.templates-count { margin-left: 4px; font-size: 12px; opacity: .6; }
+.templates-search { width: min(280px, 100%); }
+.templates-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.template-card {
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: inherit;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.template-card:hover { border-color: rgba(109, 74, 255, .3); box-shadow: var(--shadow-md); transform: translateY(-3px); }
+.template-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.template-steps-count { color: #8a8fa8; font-size: 12px; font-weight: 700; }
+.template-card h3 { margin: 0 0 8px; font-size: 17px; font-weight: 800; line-height: 1.3; letter-spacing: -0.02em; }
+.template-card > p { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.template-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: auto; padding-top: 14px; border-top: 1px dashed var(--line); }
+.template-chain-icon { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; }
+.template-chain-arrow { width: 12px; height: 12px; color: #b3b7cf; }
+.template-card-cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; color: var(--violet-dark); font-size: 14px; font-weight: 800; }
+.template-card:hover .template-card-cta { gap: 9px; }
+@media (max-width: 1080px) { .templates-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .templates-grid { grid-template-columns: 1fr; } }
+
 .cost-pill {
   display: inline-flex;
   align-items: center;
@@ -1122,6 +1151,11 @@ a { color: inherit; text-decoration: none; }
 }
 .app-header-link:hover { color: var(--ink); background: var(--soft); }
 .app-header-link.is-active { color: var(--violet-dark); font-weight: 700; background: var(--violet-soft); }
+@media (max-width: 1440px) {
+  .app-header-link { padding: 8px; }
+  .app-header-link-label { display: none; }
+  .app-header-link.is-active .app-header-link-label { display: inline; }
+}
 .app-header-user {
   display: flex;
   align-items: center;
