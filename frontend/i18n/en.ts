@@ -46,6 +46,12 @@ export const en: typeof ru = {
     billing: 'Billing',
     profile: 'Profile'
   },
+  footer: {
+    tagline: 'Visual AI automation: build a chain on the canvas and get results in Telegram, email or a spreadsheet.',
+    product: 'Product',
+    legal: 'Information',
+    contact: 'Contact'
+  },
   titles: {
     index: 'Ayakun',
     login: 'Log in',

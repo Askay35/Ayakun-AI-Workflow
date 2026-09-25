@@ -2,11 +2,11 @@ export default defineAppConfig({
   ui: {
     colors: {
       primary: 'violet',
-      neutral: 'stone'
+      neutral: 'slate'
     },
     button: {
       slots: {
-        base: 'rounded-xl font-extrabold inline-flex items-center cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all duration-200'
+        base: 'rounded-xl font-bold inline-flex items-center cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 transition-all duration-200'
       },
       variants: {
         size: {
@@ -21,11 +21,11 @@ export default defineAppConfig({
     formField: {
       slots: {
         root: 'w-full',
-        label: 'block mb-2 text-[13px] font-extrabold tracking-[-0.01em] text-[#2f3038]',
+        label: 'block mb-2 text-[13px] font-bold tracking-[-0.01em] text-[#22284a]',
         container: 'mt-0',
-        description: 'mt-1.5 text-xs text-[#7a7b86]',
+        description: 'mt-1.5 text-xs text-[#6b7090]',
         error: 'mt-1.5 text-xs font-semibold text-error',
-        help: 'mt-1.5 text-xs text-[#7a7b86]'
+        help: 'mt-1.5 text-xs text-[#6b7090]'
       },
       defaultVariants: {
         size: 'lg'
@@ -36,14 +36,14 @@ export default defineAppConfig({
         root: 'relative inline-flex w-full items-center',
         base: [
           'w-full rounded-2xl border-0 appearance-none font-semibold tracking-[-0.01em]',
-          'placeholder:text-[#9a9ba8] placeholder:font-medium',
+          'placeholder:text-[#9a9fba] placeholder:font-medium',
           'disabled:cursor-not-allowed disabled:opacity-60',
           'transition-[box-shadow,background-color,color] duration-200'
         ],
         leading: 'absolute inset-y-0 start-0 flex items-center',
-        leadingIcon: 'shrink-0 text-[#8b8c98]',
+        leadingIcon: 'shrink-0 text-[#8a8fa8]',
         trailing: 'absolute inset-y-0 end-0 flex items-center',
-        trailingIcon: 'shrink-0 text-[#8b8c98]'
+        trailingIcon: 'shrink-0 text-[#8a8fa8]'
       },
       variants: {
         size: {
@@ -84,11 +84,11 @@ export default defineAppConfig({
           }
         },
         variant: {
-          outline: 'text-[#12131a] bg-[#f7f6f2] ring-1 ring-inset ring-[#e4e2da] hover:bg-white hover:ring-[#d5d3cb] focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6758ee]',
-          soft: 'text-[#12131a] bg-[#f3f2ef] hover:bg-[#ecebe6] focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6758ee]',
-          subtle: 'text-[#12131a] bg-[#f7f6f2] ring-1 ring-inset ring-[#e8e6df] hover:bg-white focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6758ee]',
-          ghost: 'text-[#12131a] bg-transparent hover:bg-[#f3f2ef] focus:bg-[#f7f6f2]',
-          none: 'text-[#12131a] bg-transparent focus:outline-none'
+          outline: 'text-[#0f1330] bg-[#f6f7fd] ring-1 ring-inset ring-[#e2e5f1] hover:bg-white hover:ring-[#c9cee3] focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6d4aff]',
+          soft: 'text-[#0f1330] bg-[#eff0f8] hover:bg-[#e6e8f5] focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6d4aff]',
+          subtle: 'text-[#0f1330] bg-[#f6f7fd] ring-1 ring-inset ring-[#e6e8f2] hover:bg-white focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6d4aff]',
+          ghost: 'text-[#0f1330] bg-transparent hover:bg-[#eff0f8] focus:bg-[#f6f7fd]',
+          none: 'text-[#0f1330] bg-transparent focus:outline-none'
         }
       },
       compoundVariants: [
@@ -134,7 +134,7 @@ export default defineAppConfig({
         root: 'relative inline-flex w-full items-center',
         base: [
           'w-full rounded-2xl border-0 appearance-none font-semibold tracking-[-0.01em] leading-6',
-          'placeholder:text-[#9a9ba8] placeholder:font-medium',
+          'placeholder:text-[#9a9fba] placeholder:font-medium',
           'disabled:cursor-not-allowed disabled:opacity-60',
           'transition-[box-shadow,background-color,color] duration-200'
         ]
@@ -146,11 +146,11 @@ export default defineAppConfig({
           xl: { base: 'px-5 py-4 text-base' }
         },
         variant: {
-          outline: 'text-[#12131a] bg-[#f7f6f2] ring-1 ring-inset ring-[#e4e2da] hover:bg-white hover:ring-[#d5d3cb] focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6758ee]',
-          soft: 'text-[#12131a] bg-[#f3f2ef] hover:bg-[#ecebe6] focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6758ee]',
-          subtle: 'text-[#12131a] bg-[#f7f6f2] ring-1 ring-inset ring-[#e8e6df] hover:bg-white focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6758ee]',
-          ghost: 'text-[#12131a] bg-transparent hover:bg-[#f3f2ef] focus:bg-[#f7f6f2]',
-          none: 'text-[#12131a] bg-transparent focus:outline-none'
+          outline: 'text-[#0f1330] bg-[#f6f7fd] ring-1 ring-inset ring-[#e2e5f1] hover:bg-white hover:ring-[#c9cee3] focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6d4aff]',
+          soft: 'text-[#0f1330] bg-[#eff0f8] hover:bg-[#e6e8f5] focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6d4aff]',
+          subtle: 'text-[#0f1330] bg-[#f6f7fd] ring-1 ring-inset ring-[#e6e8f2] hover:bg-white focus:bg-white focus-visible:ring-2 focus-visible:ring-[#6d4aff]',
+          ghost: 'text-[#0f1330] bg-transparent hover:bg-[#eff0f8] focus:bg-[#f6f7fd]',
+          none: 'text-[#0f1330] bg-transparent focus:outline-none'
         }
       },
       defaultVariants: {
@@ -166,7 +166,7 @@ export default defineAppConfig({
           'disabled:cursor-not-allowed disabled:opacity-60',
           'transition-[box-shadow,background-color,color] duration-200'
         ],
-        content: 'rounded-2xl ring ring-[#e8e6df] shadow-xl overflow-hidden',
+        content: 'rounded-2xl ring ring-[#e6e8f2] shadow-xl overflow-hidden',
         item: 'rounded-xl'
       },
       variants: {
@@ -176,11 +176,11 @@ export default defineAppConfig({
           xl: { base: 'px-5 py-4 text-base' }
         },
         variant: {
-          outline: 'text-[#12131a] bg-[#f7f6f2] ring-1 ring-inset ring-[#e4e2da] hover:bg-white hover:ring-[#d5d3cb] focus:bg-white data-[state=open]:bg-white data-[state=open]:ring-2 data-[state=open]:ring-[#6758ee]',
-          soft: 'text-[#12131a] bg-[#f3f2ef] hover:bg-[#ecebe6] focus:bg-white',
-          subtle: 'text-[#12131a] bg-[#f7f6f2] ring-1 ring-inset ring-[#e8e6df] hover:bg-white focus:bg-white',
-          ghost: 'text-[#12131a] bg-transparent hover:bg-[#f3f2ef] focus:bg-[#f7f6f2]',
-          none: 'text-[#12131a] bg-transparent focus:outline-none'
+          outline: 'text-[#0f1330] bg-[#f6f7fd] ring-1 ring-inset ring-[#e2e5f1] hover:bg-white hover:ring-[#c9cee3] focus:bg-white data-[state=open]:bg-white data-[state=open]:ring-2 data-[state=open]:ring-[#6d4aff]',
+          soft: 'text-[#0f1330] bg-[#eff0f8] hover:bg-[#e6e8f5] focus:bg-white',
+          subtle: 'text-[#0f1330] bg-[#f6f7fd] ring-1 ring-inset ring-[#e6e8f2] hover:bg-white focus:bg-white',
+          ghost: 'text-[#0f1330] bg-transparent hover:bg-[#eff0f8] focus:bg-[#f6f7fd]',
+          none: 'text-[#0f1330] bg-transparent focus:outline-none'
         }
       },
       defaultVariants: {

@@ -44,6 +44,12 @@ export const ru = {
     billing: 'Биллинг',
     profile: 'Профиль'
   },
+  footer: {
+    tagline: 'Визуальная автоматизация с ИИ: соберите цепочку на холсте и получайте результат в Telegram, на почту или в таблицу.',
+    product: 'Продукт',
+    legal: 'Информация',
+    contact: 'Связаться'
+  },
   titles: {
     index: 'Ayakun',
     login: 'Вход',

@@ -65,7 +65,7 @@ onUnmounted(() => {
           <NuxtLink to="/pricing" class="nav-link" @click="closeMenu">{{ t('nav.pricing') }}</NuxtLink>
           <NuxtLink to="/docs" class="nav-link" @click="closeMenu">{{ t('nav.docs') }}</NuxtLink>
           <div class="public-nav-meta">
-            <LanguageSwitcher tone="dark" />
+            <LanguageSwitcher />
             <a
               :href="LEGAL.telegramChannel"
               class="social-icon-link"
@@ -95,31 +95,49 @@ onUnmounted(() => {
     </header>
     <slot />
     <footer class="public-footer">
-      <div class="shell public-footer-inner">
-        <div>
-          <p class="brand public-footer-logo">Ayakun</p>
-          <p class="mb-0 text-sm leading-6 muted">{{ LEGAL.entity }}</p>
-          <p class="mb-0 mt-2 text-sm muted">{{ t('common.inn') }} {{ LEGAL.inn }} · {{ t('common.ogrnip') }} {{ LEGAL.ogrnip }}</p>
-          <a
-            :href="LEGAL.telegramChannel"
-            class="social-icon-link footer-social"
-            target="_blank"
-            rel="noopener noreferrer"
-            :aria-label="t('nav.telegramChannelAria')"
-            :title="t('nav.telegramChannel')"
-          >
-            <UIcon name="i-simple-icons-telegram" class="size-5" />
-          </a>
+      <div class="shell">
+        <div class="public-footer-inner">
+          <div>
+            <NuxtLink to="/" class="brand app-logo public-footer-logo">
+              <img src="~/assets/images/logo.png" alt="" class="app-logo-mark" width="32" height="32" />
+              Ayakun
+            </NuxtLink>
+            <p class="mb-0 max-w-64 text-sm leading-6 muted">{{ t('footer.tagline') }}</p>
+            <a
+              :href="LEGAL.telegramChannel"
+              class="social-icon-link footer-social"
+              target="_blank"
+              rel="noopener noreferrer"
+              :aria-label="t('nav.telegramChannelAria')"
+              :title="t('nav.telegramChannel')"
+            >
+              <UIcon name="i-simple-icons-telegram" class="size-5" />
+            </a>
+          </div>
+          <nav class="public-footer-col">
+            <h4>{{ t('footer.product') }}</h4>
+            <NuxtLink to="/#features">{{ t('nav.features') }}</NuxtLink>
+            <NuxtLink to="/#examples">{{ t('nav.examples') }}</NuxtLink>
+            <NuxtLink to="/pricing">{{ t('nav.pricing') }}</NuxtLink>
+            <NuxtLink to="/docs">{{ t('nav.docs') }}</NuxtLink>
+          </nav>
+          <nav class="public-footer-col">
+            <h4>{{ t('footer.legal') }}</h4>
+            <NuxtLink to="/delivery">{{ t('nav.delivery') }}</NuxtLink>
+            <NuxtLink to="/terms">{{ t('nav.terms') }}</NuxtLink>
+            <NuxtLink to="/privacy">{{ t('nav.privacy') }}</NuxtLink>
+            <NuxtLink to="/contacts">{{ t('nav.contacts') }}</NuxtLink>
+          </nav>
+          <div class="public-footer-col">
+            <h4>{{ t('footer.contact') }}</h4>
+            <a :href="`mailto:${LEGAL.email}`">{{ LEGAL.email }}</a>
+            <a :href="`tel:${LEGAL.phone}`">{{ LEGAL.phoneDisplay }}</a>
+          </div>
         </div>
-        <nav class="public-footer-links">
-          <NuxtLink to="/delivery">{{ t('nav.delivery') }}</NuxtLink>
-          <NuxtLink to="/docs">{{ t('nav.docs') }}</NuxtLink>
-          <NuxtLink to="/terms">{{ t('nav.terms') }}</NuxtLink>
-          <NuxtLink to="/privacy">{{ t('nav.privacy') }}</NuxtLink>
-          <NuxtLink to="/contacts">{{ t('nav.contacts') }}</NuxtLink>
-          <a :href="`mailto:${LEGAL.email}`">{{ LEGAL.email }}</a>
-          <a :href="`tel:${LEGAL.phone}`">{{ LEGAL.phoneDisplay }}</a>
-        </nav>
+        <div class="public-footer-bottom">
+          <span>{{ LEGAL.entity }}</span>
+          <span>{{ t('common.inn') }} {{ LEGAL.inn }} · {{ t('common.ogrnip') }} {{ LEGAL.ogrnip }}</span>
+        </div>
       </div>
     </footer>
   </div>
