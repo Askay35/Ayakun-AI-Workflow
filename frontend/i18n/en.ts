@@ -46,6 +46,10 @@ export const en: typeof ru = {
     billing: 'Billing',
     profile: 'Profile'
   },
+  app: {
+    balance: 'Balance',
+    topUp: 'Top up'
+  },
   footer: {
     tagline: 'Visual AI automation: build a chain on the canvas and get results in Telegram, email or a spreadsheet.',
     product: 'Product',
