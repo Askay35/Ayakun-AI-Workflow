@@ -34,11 +34,36 @@ def upgrade() -> None:
     )
     op.execute("CREATE INDEX IF NOT EXISTS ix_user_subscriptions_status ON user_subscriptions (status)")
     op.execute("CREATE INDEX IF NOT EXISTS ix_user_subscriptions_expires_at ON user_subscriptions (expires_at)")
+    # Прод: ревизия c8d9e0f1a2b3 хранила тариф в users.active_plan_id / credit_period_end.
+    # Переносим периоды как активные: истёкшие закроет задача expire_subscriptions и сожжёт остаток.
+    op.execute(
+        """
+        DO $$
+        BEGIN
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'credit_period_end'
+          ) THEN
+            INSERT INTO user_subscriptions (user_id, plan_id, status, started_at, expires_at, created_at, updated_at)
+            SELECT id, active_plan_id, 'active', credit_period_end - interval '30 days', credit_period_end, now(), now()
+            FROM users
+            WHERE active_plan_id IS NOT NULL AND credit_period_end IS NOT NULL
+            ON CONFLICT (user_id) DO NOTHING;
+          END IF;
+        END $$
+        """
+    )
+    op.execute(
+        """
+        UPDATE wallet_ledger SET kind = 'expire'
+        WHERE kind = 'settle' AND metadata->>'source' = 'period'
+        """
+    )
     op.execute(
         """
         UPDATE plans SET
           name = CASE code WHEN 'max' THEN 'Супер' ELSE name END,
-          limits = limits
+          limits = (limits - 'max_documents' - 'max_storage_bytes')
             || jsonb_build_object(
               'included_credits', CASE code WHEN 'free' THEN 100 ELSE COALESCE((limits->>'included_credits')::numeric, 0) END,
               'max_files', CASE code WHEN 'free' THEN 20 WHEN 'starter' THEN 50 WHEN 'pro' THEN 100 WHEN 'max' THEN 500 ELSE 20 END,

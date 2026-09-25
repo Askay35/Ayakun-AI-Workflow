@@ -67,6 +67,15 @@ async def reward_referral_payment(db: AsyncSession, payment: Payment) -> None:
     await _credit(db, referrer.id, f"referral:referrer:{payment.id}", {
         **base, "role": "referrer", "referee_id": payer.id, "referee_name": payer.name,
     })
+    already_rewarded = await db.scalar(
+        select(WalletLedger.id).where(
+            WalletLedger.user_id == payer.id,
+            WalletLedger.kind == LedgerKind.referral,
+            WalletLedger.metadata_["role"].astext == "referee",
+        ).limit(1)
+    )
+    if already_rewarded:
+        return
     await _credit(db, payer.id, f"referral:referee:{payer.id}", {
         **base, "role": "referee", "referrer_id": referrer.id,
     })
