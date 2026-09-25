@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     llm_max_retries: int = 3
     llm_max_output_tokens: int = 8192
     initial_token_balance: Decimal = Decimal("100")
+    referral_bonus_credits: Decimal = Decimal("200")
+    # Сколько часов после регистрации можно привязать приглашение.
+    referral_claim_window_hours: int = 72
     default_run_cap_credits: Decimal = Decimal("100")
     max_workflows_count: int = 300
     # Типы узлов, которые нельзя запускать отдельно от цепочки (через запятую).

@@ -13,6 +13,7 @@ class LedgerKind(str, Enum):
     release = "release"
     refund = "refund"
     expire = "expire"
+    referral = "referral"
 
 
 class PaymentStatus(str, Enum):

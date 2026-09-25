@@ -215,6 +215,17 @@ export interface SubscriptionInfo {
   storage: { files: number; max_files: number; bytes: number; max_bytes: number }
 }
 
+export interface ReferralSummary {
+  code: string
+  bonus: number
+  invited: number
+  paying: number
+  earned: number
+  referred: boolean
+  referrals: Array<{ name: string; joined_at: string; purchases: number; earned: number }>
+  rewards: Array<{ amount: number; role: 'referrer' | 'referee'; referee_name?: string | null; plan_name?: string | null; created_at: string }>
+}
+
 export interface BillingSummary {
   plan?: Plan
   balance: number

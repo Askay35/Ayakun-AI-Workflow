@@ -1,15 +1,28 @@
 import type { AuthTokens, User } from '~/types/api'
+import { forgetReferral, pendingReferral } from '~/utils/referral'
 
 export const useAuth = () => {
   const api = useApi()
   const user = useState<User | null>('auth-user', () => null)
   const pending = useState('auth-pending', () => false)
 
+  const claimReferral = async () => {
+    const code = pendingReferral()
+    if (!code) return
+    try {
+      await api.referrals.claim(code)
+    } catch {
+      // Код чужой, старый или аккаунт не новый — приглашение просто не привязывается.
+    }
+    forgetReferral()
+  }
+
   const accept = async (tokens: AuthTokens) => {
     api.accessToken.value = tokens.access_token
     api.refreshToken.value = tokens.refresh_token
     user.value = tokens.user
     await nextTick()
+    await claimReferral()
   }
 
   const clearSession = () => {

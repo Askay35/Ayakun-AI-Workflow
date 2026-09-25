@@ -1,5 +1,5 @@
 /** Операции, которые меняют баланс с точки зрения пользователя. */
-const VISIBLE_LEDGER_KINDS = new Set(['credit', 'purchase', 'charge', 'refund', 'expire'])
+const VISIBLE_LEDGER_KINDS = new Set(['credit', 'purchase', 'charge', 'refund', 'expire', 'referral'])
 
 type LedgerItem = {
   id: string
@@ -52,6 +52,9 @@ export function ledgerDescription(item: LedgerItem, t?: Translate) {
       if (t && plan && ['new', 'renewal', 'upgrade'].includes(kind)) return t(`ledger.plan_${kind}`, { plan })
       return t ? t('ledger.purchase') : 'Покупка credits'
     }
+    case 'referral':
+      if (String(meta.role || '') === 'referee') return t ? t('ledger.referralReferee') : 'Бонус за регистрацию по приглашению'
+      return t ? t('ledger.referralReferrer', { name: String(meta.referee_name || '—') }) : 'Бонус за приглашённого'
     case 'expire':
       return t ? t('ledger.expire') : 'Сгорание неиспользованных токенов'
     case 'refund':

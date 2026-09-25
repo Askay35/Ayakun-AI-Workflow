@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { apiErrorMessage } from '~/composables/useApi'
+import { pendingReferral } from '~/utils/referral'
 
 const api = useApi()
 const auth = useAuth()
@@ -10,6 +11,8 @@ const authStep = ref<'form' | 'telegram' | 'email'>('form')
 const form = reactive({ name: '', email: '', password: '', telegramCode: '', emailCode: '' })
 const loading = ref(false)
 const points = computed(() => tm<string[]>('login.points'))
+const invited = ref(false)
+onMounted(() => { invited.value = Boolean(pendingReferral()) })
 
 const finish = async (action: () => Promise<any>) => {
   loading.value = true
@@ -83,6 +86,10 @@ const googleAuth = async () => {
       <h1 class="auth-title">{{ mode === 'login' ? t('login.welcome') : t('login.create') }}</h1>
       <p class="auth-subtitle">
         {{ mode === 'login' ? t('login.loginLead') : t('login.registerLead') }}
+      </p>
+      <p v-if="invited" class="auth-invite">
+        <UIcon name="i-lucide-gift" class="size-4 shrink-0" />
+        {{ t('referrals.invitedBanner') }}
       </p>
 
       <template v-if="authStep === 'form'">

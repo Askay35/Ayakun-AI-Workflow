@@ -270,6 +270,31 @@ a { color: inherit; text-decoration: none; }
 .usage-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--grad); transition: width .4s ease; }
 .usage-bar.is-full > span { background: linear-gradient(90deg, #f59e0b, #ef4444); }
 
+.referral-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 92, 255, .12), transparent 45%),
+    #fff;
+}
+.referral-hero > div { flex: 1 1 320px; }
+.referral-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed #cfc5ff;
+  border-radius: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--violet-soft);
+}
+
 .cost-pill {
   display: inline-flex;
   align-items: center;
@@ -449,6 +474,7 @@ a { color: inherit; text-decoration: none; }
   background: white;
   box-shadow: 0 30px 80px rgba(60, 50, 160, .14), 0 2px 6px rgba(15, 19, 48, .04);
 }
+.auth-invite { display: flex; gap: 8px; align-items: flex-start; margin: -8px 0 20px; padding: 10px 12px; border-radius: 12px; color: var(--violet-dark); font-size: 13px; font-weight: 600; line-height: 1.45; background: var(--violet-soft); }
 .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 28px; padding: 4px; border-radius: 14px; background: #eff0f8; }
 .auth-tab { min-height: 40px; border: 0; border-radius: 11px; color: var(--muted); font-family: inherit; font-weight: 700; background: transparent; cursor: pointer; transition: all .2s ease; }
 .auth-tab.active { color: var(--ink); background: white; box-shadow: 0 2px 8px rgba(15, 19, 48, .1); }

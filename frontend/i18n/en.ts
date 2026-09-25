@@ -44,6 +44,7 @@ export const en: typeof ru = {
     workflows: 'Chains',
     runs: 'Runs',
     billing: 'Plan',
+    referrals: 'Referrals',
     profile: 'Profile'
   },
   app: {
@@ -65,6 +66,7 @@ export const en: typeof ru = {
     runs: 'Runs',
     run: 'Run',
     billing: 'Plan',
+    referrals: 'Referrals',
     profile: 'Profile',
     pricing: 'Pricing',
     terms: 'Offer',
@@ -173,7 +175,8 @@ export const en: typeof ru = {
       { q: 'How much does a run cost?', a: 'Before a run you see the estimated cost in tokens. After it finishes, the actual usage is charged and any unused reserve is returned.' },
       { q: 'How do chains start?', a: 'With a button, on a schedule, or on an event: a webhook starts the chain when a lead, a payment or a form arrives from your site.' },
       { q: 'Where does the result go?', a: 'To your workspace, Telegram, Slack, email, Google Sheets or Excel, Yandex Disk, Trello, Jira or a LinkedIn post — wherever you prefer to receive it.' },
-      { q: 'What do I get when I sign up?', a: 'You get 100 free tokens to build and test your first chains.' }
+      { q: 'What do I get when I sign up?', a: 'You get 100 free tokens to build and test your first chains.' },
+      { q: 'Is there a referral program?', a: 'Yes. Share the link from the “Referrals” section: when the invited person pays for any plan, you both get 200 tokens, and you get them again for every next payment.' }
     ],
     shots: {
       chainStep: '01 · Chain',
@@ -761,8 +764,41 @@ export const en: typeof ru = {
     plan_renewal: 'Plan “{plan}” renewed',
     plan_upgrade: 'Upgraded to “{plan}”',
     expire: 'Unused tokens expired',
+    referralReferrer: 'Referral bonus · {name}',
+    referralReferee: 'Invitation signup bonus',
     refund: 'Refund',
     refundRun: 'Refund · {run}'
+  },
+  referrals: {
+    eyebrow: 'Referral program',
+    title: 'Invite friends',
+    lead: 'When someone you invited pays for any plan, you both get {bonus} tokens. You get it for every payment they make.',
+    linkTitle: 'Your link',
+    codeLabel: 'Invitation code:',
+    copy: 'Copy',
+    copied: 'Link copied',
+    invited: 'Invited',
+    paying: 'paid for a plan: {n}',
+    earned: 'Credited to you',
+    stepN: 'Step {n}',
+    step1Title: 'Share the link',
+    step1Text: 'Send the link to a friend, a colleague or your followers.',
+    step2Title: 'They sign up',
+    step2Text: 'Signing up via the link connects their account to you.',
+    step3Title: 'You both get a bonus',
+    step3Text: 'When your friend pays for a plan, you both get {bonus} tokens, and you get it again on every next payment.',
+    listTitle: 'Your referrals',
+    listLead: 'Who signed up with your link and how much you earned from them.',
+    listEmpty: 'Nobody yet — share your link.',
+    joined: 'since {date}',
+    purchases: 'payments: {n}',
+    noPurchases: 'no payments yet',
+    rewardsTitle: 'Rewards',
+    rewardsLead: 'Bonuses land on your balance right after the invited user pays for a plan.',
+    rewardsEmpty: 'No rewards yet.',
+    rewardReferrer: '{name} paid for “{plan}”',
+    rewardReferee: 'Invitation signup bonus',
+    invitedBanner: 'You were invited to Ayakun: you will get bonus tokens after your first plan payment.'
   },
   runs: {
     eyebrow: 'Run control',

@@ -7,6 +7,7 @@ export const PAGE_TITLE_KEYS: Record<string, string> = {
   runs: 'titles.runs',
   'runs-id': 'titles.run',
   billing: 'titles.billing',
+  referrals: 'titles.referrals',
   profile: 'titles.profile',
   pricing: 'titles.pricing',
   terms: 'titles.terms',
@@ -23,5 +24,6 @@ export const APP_NAV_ITEMS = [
   { key: 'runs', icon: 'i-lucide-activity', to: '/runs' },
   { key: 'docs', icon: 'i-lucide-book-open', to: '/docs' },
   { key: 'billing', icon: 'i-lucide-wallet', to: '/billing' },
+  { key: 'referrals', icon: 'i-lucide-gift', to: '/referrals' },
   { key: 'profile', icon: 'i-lucide-user', to: '/profile' }
 ] as const

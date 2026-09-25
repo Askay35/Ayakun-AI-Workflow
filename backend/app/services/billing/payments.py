@@ -13,6 +13,7 @@ from core.config import settings
 from models.billing import LedgerKind, Payment, PaymentStatus, Plan, Wallet, WalletLedger
 from models.user import User
 from services.billing.subscriptions import SubscriptionService
+from services.referrals import reward_referral_payment
 from services.providers import PaymentProvider
 
 
@@ -171,3 +172,4 @@ class PaymentService:
                     "subscription": subscription_kind,
                 },
             ))
+            await reward_referral_payment(self.db, payment)
