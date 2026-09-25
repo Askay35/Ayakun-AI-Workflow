@@ -868,8 +868,10 @@ watch(credentials, (value) => {
                     <div class="grid gap-3 sm:grid-cols-2">
                       <UFormField label="Название"><UInput v-model="plan.name" class="w-full" /></UFormField>
                       <UFormField label="Цена"><UInput v-model="plan.price" type="number" step="1" class="w-full" /></UFormField>
-                      <UFormField label="Токенов в пакете"><UInput v-model="plan.limits.included_credits" type="number" class="w-full" /></UFormField>
+                      <UFormField label="Токенов в месяц"><UInput v-model="plan.limits.included_credits" type="number" class="w-full" /></UFormField>
                       <UFormField label="Лимит одного запуска"><UInput v-model="plan.limits.run_cap_credits" type="number" class="w-full" /></UFormField>
+                      <UFormField label="Файлов в хранилище"><UInput v-model="plan.limits.max_files" type="number" class="w-full" /></UFormField>
+                      <UFormField label="Объём хранилища, МБ"><UInput v-model="plan.limits.max_storage_mb" type="number" class="w-full" /></UFormField>
                       <UFormField label="Валюта"><UInput v-model="plan.currency" maxlength="3" class="w-full" /></UFormField>
                     </div>
                     <UButton class="mt-5" label="Сохранить тариф" variant="soft" @click="savePlan(plan)" />

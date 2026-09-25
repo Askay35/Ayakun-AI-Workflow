@@ -12,6 +12,7 @@ class LedgerKind(str, Enum):
     settle = "settle"
     release = "release"
     refund = "refund"
+    expire = "expire"
 
 
 class PaymentStatus(str, Enum):
@@ -43,6 +44,23 @@ class PlanResponse(BaseModel):
     currency: str
     limits: dict
     model_config = ConfigDict(from_attributes=True)
+
+class StorageUsage(BaseModel):
+    files: int
+    max_files: int
+    bytes: int
+    max_bytes: int
+
+
+class SubscriptionResponse(BaseModel):
+    """Текущий тариф: активный платный или бесплатный, если периода нет."""
+
+    plan: PlanResponse | None = None
+    status: str = "none"
+    started_at: datetime.datetime | None = None
+    expires_at: datetime.datetime | None = None
+    storage: StorageUsage
+
 
 class ApiPaymentResponse(BaseModel):
     confirmation_url: str
@@ -129,6 +147,8 @@ class AdminPlanUpdate(BaseModel):
     currency: str = Field(min_length=3, max_length=3)
     included_credits: Decimal = Field(ge=0)
     run_cap_credits: Decimal = Field(gt=0)
+    max_files: int | None = Field(default=None, gt=0)
+    max_storage_mb: int | None = Field(default=None, gt=0)
     request_id: str = Field(min_length=8, max_length=160)
 
 

@@ -88,10 +88,16 @@ async def update_plan(
     plan.name = data.name
     plan.price = data.price
     plan.currency = data.currency.upper()
-    plan.limits = {
+    limits = {
+        **(plan.limits or {}),
         "included_credits": float(data.included_credits),
         "run_cap_credits": float(data.run_cap_credits),
     }
+    if data.max_files is not None:
+        limits["max_files"] = data.max_files
+    if data.max_storage_mb is not None:
+        limits["max_storage_mb"] = data.max_storage_mb
+    plan.limits = limits
     after = PlanResponse.model_validate(plan).model_dump(mode="json")
     db.add(BillingAudit(
         actor=actor,

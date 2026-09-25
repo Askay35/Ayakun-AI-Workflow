@@ -2,16 +2,30 @@
 
 from __future__ import annotations
 
-MAX_USER_IMAGE_FILES = 50
-MAX_USER_IMAGE_BYTES = 250 * 1024 * 1024
+# Лимиты хранилища без платного тарифа; у тарифов свои лимиты в plans.limits.
+MAX_USER_IMAGE_FILES = 20
+MAX_USER_IMAGE_BYTES = 100 * 1024 * 1024
 STORED_FILE_NODE_TYPES = frozenset({"image", "file", "audio_transcription"})
 IMAGE_NODE_RATE_LIMIT = 60
 IMAGE_NODE_RATE_WINDOW_SECONDS = 60
 
-IMAGE_QUOTA_MESSAGE = (
-    "Слишком много загруженных изображений. "
-    f"На аккаунт не больше {MAX_USER_IMAGE_FILES} файлов и 100 МБ."
-)
+
+def _format_size(nbytes: int) -> str:
+    gigabytes = nbytes / (1024 ** 3)
+    if gigabytes >= 1:
+        return f"{gigabytes:g} ГБ"
+    return f"{nbytes // (1024 * 1024)} МБ"
+
+
+def storage_quota_message(max_files: int, max_bytes: int) -> str:
+    return (
+        "Превышен лимит хранилища тарифа: "
+        f"не больше {max_files} файлов и {_format_size(max_bytes)} на аккаунт. "
+        "Удалите лишние файлы или перейдите на тариф выше."
+    )
+
+
+IMAGE_QUOTA_MESSAGE = storage_quota_message(MAX_USER_IMAGE_FILES, MAX_USER_IMAGE_BYTES)
 IMAGE_RATE_MESSAGE = "Слишком много новых блоков «Изображение»: не больше 60 в минуту."
 
 

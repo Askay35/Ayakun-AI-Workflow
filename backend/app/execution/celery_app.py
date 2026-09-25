@@ -14,7 +14,7 @@ celery_app = Celery(
     "ayakun",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["execution.tasks"],
+    include=["execution.tasks", "execution.billing_tasks"],
 )
 celery_app.conf.update(
     task_serializer="json",
@@ -33,6 +33,14 @@ celery_app.conf.update(
         "poll-scheduled-workflows": {
             "task": "execution.tasks.poll_scheduled_workflows",
             "schedule": 60.0,
-        }
+        },
+        "expire-subscriptions": {
+            "task": "execution.billing_tasks.expire_subscriptions",
+            "schedule": 300.0,
+        },
+        "remind-expiring-subscriptions": {
+            "task": "execution.billing_tasks.remind_expiring_subscriptions",
+            "schedule": 3600.0,
+        },
     },
 )

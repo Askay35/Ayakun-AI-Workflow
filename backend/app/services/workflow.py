@@ -56,12 +56,11 @@ from schemas.workflow import (
 from helper import display_telegram_output
 from services.billing import BillingService
 from services.billing.access import PAID_MEDIA_REQUIRED, graph_uses_paid_media, user_has_paid_pack
+from services.billing.subscriptions import SubscriptionService
 from services.stored_images import (
-    IMAGE_QUOTA_MESSAGE,
-    MAX_USER_IMAGE_BYTES,
-    MAX_USER_IMAGE_FILES,
     consume_image_node_budget,
     image_node_ids,
+    storage_quota_message,
     strip_stored_images,
     uploaded_images,
 )
@@ -525,9 +524,21 @@ class WorkflowService:
         old_ids = image_node_ids(previous) if previous is not None else set()
         added = len(image_node_ids(graph) - old_ids)
         await consume_image_node_budget(self.redis, user.id, added)
+        if previous is not None and sorted(uploaded_images(graph)) == sorted(uploaded_images(previous)):
+            return
         files, nbytes = await self._image_usage(user.id, graph, replace_id)
-        if files > MAX_USER_IMAGE_FILES or nbytes > MAX_USER_IMAGE_BYTES:
-            raise HTTPException(422, IMAGE_QUOTA_MESSAGE)
+        limits = await SubscriptionService(self.db).storage_limits(user.id)
+        if files <= limits.max_files and nbytes <= limits.max_bytes:
+            return
+        if previous is not None:
+            # Лимит уже превышен (например, тариф закончился): убирать файлы можно, добавлять — нет.
+            old_files, old_bytes = await self._image_usage(user.id, previous, replace_id)
+            if files <= old_files and nbytes <= old_bytes:
+                return
+        raise HTTPException(422, storage_quota_message(limits.max_files, limits.max_bytes))
+
+    async def storage_usage(self, user: User) -> tuple[int, int]:
+        return await self._image_usage(user.id, WorkflowGraph(nodes=[]), None)
 
     async def _image_usage(self, user_id: int, incoming: WorkflowGraph, replace_id: uuid.UUID | None) -> tuple[int, int]:
         files = 0

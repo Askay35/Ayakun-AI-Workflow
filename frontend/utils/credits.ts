@@ -16,17 +16,13 @@ export function sortCreditPacks<T extends { price: number; limits?: { included_c
   return [...plans].sort((a, b) => Number(a.price) - Number(b.price) || packCredits(a) - packCredits(b))
 }
 
-export function bestValuePackCode(plans: Array<{ code: string; price: number; limits?: { included_credits?: number } | Record<string, number> }>) {
-  let code: string | undefined
-  let best = 0
-  for (const plan of plans) {
-    const price = Number(plan.price)
-    if (!price) continue
-    const rate = packCredits(plan) / price
-    if (rate > best) {
-      best = rate
-      code = plan.code
-    }
-  }
-  return code
+export function formatStorage(bytes: number, locale: 'ru' | 'en' = 'ru') {
+  const gb = bytes / 1024 ** 3
+  if (gb >= 1) return `${Number(gb.toFixed(gb >= 10 ? 0 : 1)).toLocaleString(locale)} ${locale === 'en' ? 'GB' : 'ГБ'}`
+  const mb = bytes / 1024 ** 2
+  return `${Number(mb.toFixed(mb >= 10 ? 0 : 1)).toLocaleString(locale)} ${locale === 'en' ? 'MB' : 'МБ'}`
+}
+
+export function planStorageBytes(plan: { limits?: Record<string, number> }) {
+  return Number(plan.limits?.max_storage_mb || 0) * 1024 ** 2
 }

@@ -1,5 +1,5 @@
 /** Операции, которые меняют баланс с точки зрения пользователя. */
-const VISIBLE_LEDGER_KINDS = new Set(['credit', 'purchase', 'charge', 'refund'])
+const VISIBLE_LEDGER_KINDS = new Set(['credit', 'purchase', 'charge', 'refund', 'expire'])
 
 type LedgerItem = {
   id: string
@@ -46,8 +46,14 @@ export function ledgerDescription(item: LedgerItem, t?: Translate) {
   switch (item.kind) {
     case 'credit':
       return t ? t('ledger.starter') : 'Стартовые credits'
-    case 'purchase':
+    case 'purchase': {
+      const plan = String(meta.plan_name || '')
+      const kind = String(meta.subscription || '')
+      if (t && plan && ['new', 'renewal', 'upgrade'].includes(kind)) return t(`ledger.plan_${kind}`, { plan })
       return t ? t('ledger.purchase') : 'Покупка credits'
+    }
+    case 'expire':
+      return t ? t('ledger.expire') : 'Сгорание неиспользованных токенов'
     case 'refund':
       if (shortRunId(item.reference)) {
         return t ? t('ledger.refundRun', { run: shortRunId(item.reference) }) : `Возврат · ${shortRunId(item.reference)}`

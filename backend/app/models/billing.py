@@ -138,3 +138,21 @@ class Payment(Base):
 
     user: Mapped["User"] = relationship(back_populates="payments", lazy="selectin")
     plan: Mapped["Plan"] = relationship(back_populates="payments", lazy="selectin")
+
+
+
+class Subscription(Base):
+    """Текущий тариф пользователя: один ряд на пользователя, период продлевается и меняется."""
+
+    __tablename__ = "user_subscriptions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"))
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), index=True)
+    reminded_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    plan: Mapped["Plan"] = relationship(lazy="selectin")

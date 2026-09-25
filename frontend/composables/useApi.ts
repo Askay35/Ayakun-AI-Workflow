@@ -1,7 +1,7 @@
 import type {
   AdminConfig, AdminListQuery, AdminPage, AdminPaymentRecord, AdminRunRecord,
   AdminUserRecord, AdminWorkflowRecord, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
-  User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
+  SubscriptionInfo, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun
 } from '~/types/api'
 import { visibleLedgerEntries } from '~/utils/ledger'
 import type { ScheduleSlot } from '~/utils/schedule'
@@ -534,6 +534,7 @@ export const useApi = () => {
     billing: {
       plans: () => request<Plan[]>('/billing/plans'),
       wallet: () => request<{ balance: number, media_unlocked?: boolean }>('/billing/wallet'),
+      subscription: () => request<SubscriptionInfo>('/billing/subscription'),
       summary: async (): Promise<BillingSummary> => {
         const [wallet, ledger, usage] = await Promise.all([
           request<{ balance: number }>('/billing/wallet'),
@@ -586,6 +587,8 @@ export const useApi = () => {
             currency: plan.currency,
             included_credits: Number(plan.limits.included_credits || 0),
             run_cap_credits: Number(plan.limits.run_cap_credits || 0),
+            ...(Number(plan.limits.max_files) > 0 ? { max_files: Number(plan.limits.max_files) } : {}),
+            ...(Number(plan.limits.max_storage_mb) > 0 ? { max_storage_mb: Number(plan.limits.max_storage_mb) } : {}),
             request_id: crypto.randomUUID()
           }
         }),

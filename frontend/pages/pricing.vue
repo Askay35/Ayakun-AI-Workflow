@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import type { Plan } from '~/types/api'
-import { bestValuePackCode, formatCredits, packCredits, sortCreditPacks } from '~/utils/credits'
+import { sortCreditPacks } from '~/utils/credits'
 
-const { t, tm, formatMoney } = useI18n()
+const { t, tm } = useI18n()
 useSeoMeta({
   title: () => t('pricing.title'),
   description: () => t('pricing.description')
 })
 
 const api = useApi()
+const auth = useAuth()
 const fallback: Plan[] = [
-  { id: 1, code: 'free', name: 'Старт', price: 0, currency: 'RUB', limits: { included_credits: 1000 } },
-  { id: 2, code: 'starter', name: 'Запас', price: 390, currency: 'RUB', limits: { included_credits: 2000 } },
-  { id: 3, code: 'pro', name: 'Запас', price: 990, currency: 'RUB', limits: { included_credits: 6500 } },
-  { id: 4, code: 'max', name: 'Запас', price: 1990, currency: 'RUB', limits: { included_credits: 15000 } }
+  { id: 1, code: 'free', name: 'Пробный', price: 0, currency: 'RUB', limits: { included_credits: 100, max_files: 20, max_storage_mb: 100 } },
+  { id: 2, code: 'starter', name: 'Старт', price: 390, currency: 'RUB', limits: { included_credits: 2000, max_files: 50, max_storage_mb: 500 } },
+  { id: 3, code: 'pro', name: 'Про', price: 990, currency: 'RUB', limits: { included_credits: 6500, max_files: 100, max_storage_mb: 1024 } },
+  { id: 4, code: 'max', name: 'Супер', price: 1990, currency: 'RUB', limits: { included_credits: 15000, max_files: 500, max_storage_mb: 5120 } }
 ]
 const { data: plans } = await useAsyncData('public-plans', () => api.billing.plans().catch(() => fallback))
 const ordered = computed(() => sortCreditPacks(plans.value || fallback))
-const featuredCode = computed(() => bestValuePackCode(ordered.value))
-const factIcons = ['i-lucide-wallet', 'i-lucide-gauge', 'i-lucide-eye', 'i-lucide-infinity']
+const featuredCode = 'pro'
+const ctaTarget = computed(() => (auth.user.value ? '/billing' : '/login'))
+const factIcons = ['i-lucide-calendar-clock', 'i-lucide-gauge', 'i-lucide-hard-drive', 'i-lucide-trending-up']
 const facts = computed(() => tm<Array<{ title: string; text: string }>>('pricing.facts').map((item, index) => ({
   ...item,
   icon: factIcons[index]
@@ -38,42 +40,24 @@ const facts = computed(() => tm<Array<{ title: string; text: string }>>('pricing
   
         </div>
         <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          <article
+          <PlanCard
             v-for="(plan, index) in ordered"
             :key="plan.id"
-            class="panel credit-pack reveal"
-            :class="{
-              'is-gift': !Number(plan.price),
-              'is-featured': plan.code === featuredCode
-            }"
+            :plan="plan"
+            :featured="plan.code === featuredCode"
+            class="reveal"
             :style="{ animationDelay: `${index * 90}ms` }"
           >
-            <span v-if="plan.code === featuredCode" class="credit-pack-badge">{{ t('pricing.better') }}</span>
-            <span class="credit-pack-icon">
-              <UIcon :name="Number(plan.price) ? 'i-lucide-coins' : 'i-lucide-gift'" class="size-5" />
-            </span>
-            <p class="credit-pack-credits">{{ formatCredits(packCredits(plan)) }}</p>
-            <p class="credit-pack-unit">{{ t('common.tokens') }}</p>
-            <span class="credit-pack-rule" aria-hidden="true" />
-            <p class="credit-pack-price">
-              <template v-if="Number(plan.price)">
-                <strong>{{ formatMoney(Number(plan.price)) }}</strong>
-                <span>₽</span>
-              </template>
-              <template v-else>
-                <strong>{{ t('pricing.free') }}</strong>
-              </template>
-            </p>
             <UButton
-              to="/login"
+              :to="ctaTarget"
               :label="Number(plan.price) ? t('pricing.buy') : t('nav.startFree')"
               block
               size="lg"
-              class="credit-pack-cta mt-auto"
-              :color="plan.code === featuredCode ? 'neutral' : Number(plan.price) ? 'primary' : 'neutral'"
+              class="credit-pack-cta"
+              :color="plan.code === featuredCode || !Number(plan.price) ? 'neutral' : 'primary'"
               :variant="Number(plan.price) ? 'solid' : 'outline'"
             />
-          </article>
+          </PlanCard>
         </div>
       </div>
     </section>

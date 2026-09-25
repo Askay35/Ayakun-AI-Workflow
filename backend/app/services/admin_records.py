@@ -26,6 +26,7 @@ from schemas.admin import (
 from schemas.auth import TokenPair
 from services.auth import AuthService
 from services.billing import BillingService
+from services.billing.subscriptions import SubscriptionService
 
 
 def _integrity_message(exc: IntegrityError, *, deleting: bool, entity: str) -> str:
@@ -303,6 +304,7 @@ class AdminRecordsService:
             idempotency_key=grant_key,
         ))
         await self.db.flush()
+        subscription_kind = await SubscriptionService(self.db).activate(user.id, plan)
         credits = _plan_credits(plan) or Decimal("0")
         if credits <= 0:
             return
@@ -317,7 +319,13 @@ class AdminRecordsService:
             amount=credits,
             idempotency_key=ledger_key,
             reference=grant_key,
-            metadata_={"source": "admin", "plan_id": plan.id, "plan_code": plan.code},
+            metadata_={
+                "source": "admin",
+                "plan_id": plan.id,
+                "plan_code": plan.code,
+                "plan_name": plan.name,
+                "subscription": subscription_kind,
+            },
         ))
 
     async def delete_user(self, user_id: int, actor: str, request_id: str) -> None:

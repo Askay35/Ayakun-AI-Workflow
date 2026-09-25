@@ -3,7 +3,7 @@ import type { ru } from './ru'
 export const en: typeof ru = {
   meta: {
     siteTitle: 'Ayakun — visual AI automation without code',
-    siteDescription: 'Build a chain on a canvas: find data → analyze with AI → take the action you need. The result goes wherever you choose. Simple, visual, fast. Try it free — 200 tokens on signup.'
+    siteDescription: 'Build a chain on a canvas: find data → analyze with AI → take the action you need. The result goes wherever you choose. Simple, visual, fast. Try it free — 100 tokens on signup.'
   },
   common: {
     account: 'Account',
@@ -43,12 +43,12 @@ export const en: typeof ru = {
     overview: 'Overview',
     workflows: 'Chains',
     runs: 'Runs',
-    billing: 'Billing',
+    billing: 'Plan',
     profile: 'Profile'
   },
   app: {
     balance: 'Balance',
-    topUp: 'Top up'
+    topUp: 'Plan'
   },
   footer: {
     tagline: 'Visual AI automation: build a chain on the canvas and get results in Telegram, email or a spreadsheet.',
@@ -64,7 +64,7 @@ export const en: typeof ru = {
     editor: 'Editor',
     runs: 'Runs',
     run: 'Run',
-    billing: 'Billing',
+    billing: 'Plan',
     profile: 'Profile',
     pricing: 'Pricing',
     terms: 'Offer',
@@ -83,7 +83,7 @@ export const en: typeof ru = {
     seeExamples: 'See examples',
     trustNoCode: 'No code, no servers',
     trustPrice: 'Price visible before a run',
-    trustTokens: '200 tokens on signup',
+    trustTokens: '100 tokens on signup',
     uniqueEyebrow: 'Why Ayakun',
     uniqueTitle: 'Automation you do not have to figure out',
     unique: [
@@ -95,7 +95,7 @@ export const en: typeof ru = {
     stats: [
       { value: '24', label: 'ready-made blocks' },
       { value: '3', label: 'ways to run' },
-      { value: '200', label: 'free tokens' },
+      { value: '100', label: 'free tokens' },
       { value: '0', label: 'lines of code' }
     ],
     railTitle: 'Connect everything you need',
@@ -163,7 +163,7 @@ export const en: typeof ru = {
     ],
     ctaEyebrow: 'Free start',
     ctaTitle: 'Build your first chain today',
-    ctaLead: 'Signing up takes a minute, and 200 free tokens are enough to launch your first chains.',
+    ctaLead: 'Signing up takes a minute, and 100 free tokens are enough to launch your first chains.',
     ctaButton: 'Create an account',
     faqEyebrow: 'Questions and answers',
     faqTitle: 'Frequently asked questions',
@@ -173,7 +173,7 @@ export const en: typeof ru = {
       { q: 'How much does a run cost?', a: 'Before a run you see the estimated cost in tokens. After it finishes, the actual usage is charged and any unused reserve is returned.' },
       { q: 'How do chains start?', a: 'With a button, on a schedule, or on an event: a webhook starts the chain when a lead, a payment or a form arrives from your site.' },
       { q: 'Where does the result go?', a: 'To your workspace, Telegram, Slack, email, Google Sheets or Excel, Yandex Disk, Trello, Jira or a LinkedIn post — wherever you prefer to receive it.' },
-      { q: 'What do I get when I sign up?', a: 'You get 200 free tokens to build and test your first chains.' }
+      { q: 'What do I get when I sign up?', a: 'You get 100 free tokens to build and test your first chains.' }
     ],
     shots: {
       chainStep: '01 · Chain',
@@ -533,11 +533,11 @@ export const en: typeof ru = {
     recognizePrompt: 'Prompt',
     recognizePlaceholder: 'What is in this image?',
     recognizeHint: 'Exactly one incoming link, and it must come from the Image node. The model key stays on the server.',
-    imageCredits: '50 tokens per generation. The node unlocks after you buy a pack.',
-    mediaLockedShort: 'After buying a pack',
-    mediaLocked: 'This node is available after you buy a pack',
-    mediaLockedHint: 'Image generation, image recognition and audio transcription stay locked until you buy a pack at least once. Signup credits do not unlock them.',
-    mediaLockedLink: 'Buy a pack',
+    imageCredits: '50 tokens per generation. The node unlocks on any paid plan.',
+    mediaLockedShort: 'On a paid plan',
+    mediaLocked: 'This node is available on a paid plan',
+    mediaLockedHint: 'Image generation, image recognition and audio transcription stay locked until you subscribe to a paid plan at least once. Signup credits do not unlock them.',
+    mediaLockedLink: 'Choose a plan',
     audioPrompt: 'Prompt',
     audioPromptPlaceholder: 'Transcribe the attached audio. Keep the transcript as close to the recording as possible. Do not shorten it and keep filler words. Mark anything you cannot make out as [unintelligible].',
     audioUrlLabel: 'Audio URL',
@@ -684,42 +684,68 @@ export const en: typeof ru = {
     finishing: 'Finishing sign-in…'
   },
   pricing: {
-    title: 'Pricing',
-    description: 'You buy tokens — only the actual run cost is charged. No subscription and no expiry.',
-    eyebrow: 'Tokens',
-    heading: 'Pay only for the volume you need',
-    lead: 'No subscriptions or hidden tiers — you buy a tokens pack and spend them as you go.',
-    better: 'Best value',
+    title: 'Plans',
+    description: 'Ayakun plans: monthly tokens, file storage and every block. Upgrade without losing tokens.',
+    eyebrow: 'Plans',
+    heading: 'A plan for your workload',
+    lead: 'Every plan gives you tokens for 30 days and storage for files in your workflows. Only actual run usage is charged.',
+    better: 'Popular',
     free: 'Free',
-    buy: 'Buy',
+    buy: 'Subscribe',
+    perMonth: '/ mo',
+    tokensMonth: '{n} tokens per month',
+    tokensOnce: '{n} tokens on signup',
+    storage: 'Up to {files} files · {size}',
+    featureMedia: 'Image generation and recognition, audio transcription',
+    featureNoMedia: 'All blocks except media blocks',
+    featureBlocks: 'All blocks, templates and scheduling',
+    featureTemplates: 'Templates and scheduling',
+    featureUpgrade: 'Upgrade anytime and keep your tokens',
     howEyebrow: 'How it works',
-    howTitle: 'One balance for every chain',
-    howLead: 'You do not compare pack features. Only the number of tokens you put on the account differs.',
+    howTitle: 'Monthly plan, fair charging',
+    howLead: 'Plans differ in tokens and storage. All blocks and templates are available on every paid plan.',
     facts: [
-      { title: 'Pack = tokens', text: 'Pay once — the stated amount lands on the balance immediately.' },
-      { title: 'Charged on usage', text: 'Only the run cost is spent, not the whole pack at once.' },
-      { title: 'Price before start', text: 'The editor shows the run maximum before the chain goes.' },
-      { title: 'They do not expire', text: 'The remainder stays on the balance until you spend it.' }
+      { title: 'Tokens per month', text: 'After payment the plan tokens land on your balance. Unused tokens expire after 30 days.' },
+      { title: 'Charged on usage', text: 'Only the run cost is spent. The maximum estimate is shown in the editor before you start.' },
+      { title: 'File storage', text: 'Pictures, spreadsheets and files in workflows: from 50 documents and 500 MB up to 500 documents and 5 GB.' },
+      { title: 'Upgrade without loss', text: 'Move to a more expensive plan anytime — unused tokens are kept.' }
     ]
   },
   billing: {
-    eyebrow: 'Balance',
-    title: 'Top up tokens',
-    lead: 'A tokens pack is a one-time purchase. Actual run usage is charged, the remainder does not expire.',
-    onBalance: 'On balance',
+    eyebrow: 'Plan and balance',
+    title: 'Plan',
+    lead: 'A plan gives tokens for 30 days and file storage. Unused tokens expire at the end of the period and are kept when you upgrade.',
+    onBalance: 'Balance',
     forRuns: 'tokens for runs',
     spentMonth: 'Spent this month',
-    topupTitle: 'Top up the balance',
-    topupLead: 'Pack price = number of tokens. The editor shows the charge cap before a run.',
-    alreadyStart: 'Already on the free start',
-    payError: 'Payment is unavailable',
+    currentPlan: 'Current plan',
+    freePlan: 'Free',
+    activeUntil: 'Active until {date}',
+    daysLeft: '{n} days left',
+    expiresNote: 'Unused tokens expire on {date}',
+    noPlanNote: 'Subscribe to get monthly tokens and more file storage.',
+    expiredNote: 'Your plan period has ended. Subscribe again to continue.',
+    storageTitle: 'File storage',
+    storageFiles: 'Files',
+    storageSize: 'Size',
+    storageHint: 'Pictures, spreadsheets and files uploaded to workflows.',
+    plansTitle: 'Plans',
+    plansLead: 'Renew your plan or upgrade to a more expensive one — your tokens are kept.',
+    connect: 'Subscribe',
+    renew: 'Renew for a month',
+    upgrade: 'Upgrade to “{name}”',
+    upgradeNote: 'Tokens are kept',
+    current: 'Your plan',
+    downgradeLocked: 'After the period ends',
+    freeCurrent: 'Already active',
+    payError: 'Payment unavailable',
     emailTitle: 'Email for the receipt',
-    emailDesc: 'Enter an email for the receipt — it will be saved in the profile.',
+    emailDesc: 'Enter an email for the receipt — it will be saved to your profile.',
     emailRequired: 'Enter an email',
     emailHint: 'We need an address to send the receipt to.',
-    payGo: 'Continue to payment',
+    payGo: 'Go to payment',
     history: 'Balance history',
-    historyLead: 'Top-ups and actual charges for nodes. A hold during a run does not appear in history.',
+    historyLead: 'Plan payments, block charges and expired tokens. Temporary run reserves are not shown.',
     empty: 'No operations yet'
   },
   ledger: {
@@ -727,10 +753,14 @@ export const en: typeof ru = {
     run: 'run',
     charge: 'Charge · {what}',
     chargeRun: 'Charge · {what} · {run}',
-    adminToken: 'Admin token',
-    adminAdjust: 'Admin adjustment',
-    starter: 'Starter tokens',
-    purchase: 'Tokens purchase',
+    adminToken: 'Credited by admin',
+    adminAdjust: 'Adjusted by admin',
+    starter: 'Signup tokens',
+    purchase: 'Token purchase',
+    plan_new: 'Plan “{plan}”',
+    plan_renewal: 'Plan “{plan}” renewed',
+    plan_upgrade: 'Upgraded to “{plan}”',
+    expire: 'Unused tokens expired',
     refund: 'Refund',
     refundRun: 'Refund · {run}'
   },
@@ -1111,7 +1141,7 @@ export const en: typeof ru = {
         ],
         output: '{ source: "generated", mime: "image/jpeg", filename, path }. The picture can go straight to Telegram or Yandex Disk. Connect an Image node if the next step is recognition.',
         notes: [
-          'One generation costs 50 tokens and is available after you buy any pack. Signup tokens do not unlock the node.',
+          'One generation costs 50 tokens and is available on any paid plan. Signup tokens do not unlock the node.',
           'The picture is downloaded in the same request. A new access token deletes files from the previous one immediately, so the token is not refreshed while a file is open.'
         ]
       },
@@ -1141,7 +1171,7 @@ export const en: typeof ru = {
         ],
         output: '{ text } — the model answer.',
         notes: [
-          'The node is available after you buy any pack.',
+          'The node is available on any paid plan.',
           'Refreshing the access token wipes files immediately, so a new token is not requested while a file is using.'
         ]
       },
@@ -1159,7 +1189,7 @@ export const en: typeof ru = {
         output: '{ text, duration_seconds, duration_minutes }. duration_seconds is null when the file length cannot be read; billing then uses 1 minute.',
         notes: [
           'Price is 0.5 RUB per billed minute, converted to credits. WAV duration is read from the file; other containers may fall back to 1 minute.',
-          'The node is available after you buy any pack. A new access token deletes the uploaded file immediately, so transcription stays on the same token without a refresh in the middle.'
+          'The node is available on any paid plan. A new access token deletes the uploaded file immediately, so transcription stays on the same token without a refresh in the middle.'
         ]
       },
       slack: {
@@ -1294,7 +1324,7 @@ export const en: typeof ru = {
     buyTitle: 'What you buy',
     buyText: 'You pay for access to the {brand} online service and a stock of tokens. Tokens are charged for actual chain runs: search, processing and delivering the result.',
     afterTitle: 'How you receive the service after payment',
-    after1: 'Pay for a pack by card or another available method on the payment page.',
+    after1: 'Pay for a plan by card or another available method on the payment page.',
     after2: 'After the payment is confirmed, tokens are added to the account balance immediately.',
     after3: 'Sign in to the workspace — access to the chain editor, schedule and run history opens automatically.',
     after4: 'The result of each run appears in the workspace and, if you set up delivery, in Telegram or by Email.',

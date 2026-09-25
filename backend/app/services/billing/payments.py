@@ -12,6 +12,7 @@ from yookassa.payment import PaymentResponse
 from core.config import settings
 from models.billing import LedgerKind, Payment, PaymentStatus, Plan, Wallet, WalletLedger
 from models.user import User
+from services.billing.subscriptions import SubscriptionService
 from services.providers import PaymentProvider
 
 
@@ -56,6 +57,10 @@ class PaymentService:
         if existing:
             if existing.user_id != user.id or existing.plan_id != plan_id:
                 raise HTTPException(409, "Idempotency key уже используется")
+
+        plan = await self.db.get(Plan, plan_id)
+        if plan is not None and plan.price > 0:
+            await SubscriptionService(self.db).ensure_can_buy(user.id, plan)
 
         receipt_email = (customer_email or getattr(user, "email", None) or "").strip().lower() or None
         email_attached = await self._attach_profile_email(user, receipt_email)
@@ -137,6 +142,9 @@ class PaymentService:
                 return
 
             payment.status = PaymentStatus.succeeded
+            subscription_kind = None
+            if payment.plan is not None and payment.plan.price > 0:
+                subscription_kind = await SubscriptionService(self.db).activate(payment.user_id, payment.plan)
             credits = self._plan_credits(payment.plan)
             wallet = await self.db.scalar(
                 select(Wallet).where(Wallet.user_id == payment.user_id).with_for_update()
@@ -156,4 +164,10 @@ class PaymentService:
                 amount=credits,
                 idempotency_key=f"purchase:{payment.provider_payment_id}",
                 reference=payment.provider_payment_id,
+                metadata_={
+                    "plan_id": payment.plan_id,
+                    "plan_code": payment.plan.code if payment.plan else None,
+                    "plan_name": payment.plan.name if payment.plan else None,
+                    "subscription": subscription_kind,
+                },
             ))

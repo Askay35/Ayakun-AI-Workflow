@@ -207,6 +207,14 @@ export interface Plan {
   limits: Record<string, number>
 }
 
+export interface SubscriptionInfo {
+  plan?: Plan | null
+  status: 'none' | 'active' | 'expired'
+  started_at?: string | null
+  expires_at?: string | null
+  storage: { files: number; max_files: number; bytes: number; max_bytes: number }
+}
+
 export interface BillingSummary {
   plan?: Plan
   balance: number

@@ -299,6 +299,9 @@ async def test_admin_grant_plan_credits_tokens() -> None:
                 return plan
             return None
 
+        async def scalar(self, _query):
+            return None
+
         def add(self, obj: object) -> None:
             self.added.append(obj)
 

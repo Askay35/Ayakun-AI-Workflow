@@ -1,18 +1,45 @@
 <script setup lang="ts">
-import { bestValuePackCode, formatCredits, packCredits, sortCreditPacks } from '~/utils/credits'
+import type { Plan } from '~/types/api'
+import { formatCredits, formatStorage, sortCreditPacks } from '~/utils/credits'
 import { apiErrorMessage } from '~/composables/useApi'
 
 definePageMeta({ layout: 'app' })
 const api = useApi()
 const auth = useAuth()
 const toast = useToast()
-const { t, formatDate, formatMoney } = useI18n()
-const [{ data: summary }, { data: plans }] = await Promise.all([
+const { t, locale, formatDate, formatDateOnly } = useI18n()
+const [{ data: summary }, { data: plans }, { data: subscription }] = await Promise.all([
   useAuthAsyncData('billing', () => api.billing.summary()),
-  useAuthAsyncData('billing-plans', () => api.billing.plans())
+  useAuthAsyncData('billing-plans', () => api.billing.plans()),
+  useAuthAsyncData('billing-subscription', () => api.billing.subscription().catch(() => null))
 ])
 const orderedPlans = computed(() => sortCreditPacks(plans.value || []))
-const featuredCode = computed(() => bestValuePackCode(orderedPlans.value))
+const featuredCode = 'pro'
+const active = computed(() => subscription.value?.status === 'active')
+const currentPlan = computed(() => (active.value ? subscription.value?.plan : null) || null)
+const currentPrice = computed(() => Number(currentPlan.value?.price || 0))
+const daysLeft = computed(() => {
+  const expires = subscription.value?.expires_at
+  if (!active.value || !expires) return 0
+  return Math.max(0, Math.ceil((new Date(expires).getTime() - Date.now()) / 86_400_000))
+})
+const storage = computed(() => subscription.value?.storage)
+const percent = (used = 0, max = 0) => (max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0)
+
+type PlanAction = { label: string; disabled: boolean; note?: string; variant: 'solid' | 'outline' | 'soft' }
+const planAction = (plan: Plan): PlanAction => {
+  const price = Number(plan.price)
+  if (!price) {
+    return { label: currentPlan.value ? t('billing.downgradeLocked') : t('billing.freeCurrent'), disabled: true, variant: 'outline' }
+  }
+  if (!currentPlan.value) return { label: t('billing.connect'), disabled: false, variant: 'solid' }
+  if (plan.id === currentPlan.value.id) return { label: t('billing.renew'), disabled: false, variant: 'soft' }
+  if (price > currentPrice.value) {
+    return { label: t('billing.upgrade', { name: plan.name }), disabled: false, note: t('billing.upgradeNote'), variant: 'solid' }
+  }
+  return { label: t('billing.downgradeLocked'), disabled: true, variant: 'outline' }
+}
+
 const checkoutKeys = new Map<number, string>()
 const checkoutBusy = ref<number | null>(null)
 const emailModalOpen = ref(false)
@@ -74,13 +101,27 @@ const onEmailModalOpen = (open: boolean) => {
         <p class="muted">{{ t('billing.lead') }}</p>
       </div>
     </div>
-    <div class="grid-cards">
+    <div class="grid gap-4 lg:grid-cols-3">
+      <div class="panel metric-card" style="--card-accent:#6d4aff">
+        <span class="metric-icon"><UIcon name="i-lucide-rocket" class="size-6" /></span>
+        <div class="min-w-0">
+          <p class="mb-0 text-sm font-semibold muted">{{ t('billing.currentPlan') }}</p>
+          <p class="metric-value">{{ currentPlan?.name || t('billing.freePlan') }}</p>
+          <p v-if="active && subscription?.expires_at" class="mb-0 mt-1 text-xs muted">
+            {{ t('billing.activeUntil', { date: formatDateOnly(subscription.expires_at) }) }} · {{ t('billing.daysLeft', { n: daysLeft }) }}
+          </p>
+          <p v-else-if="subscription?.status === 'expired'" class="mb-0 mt-1 text-xs text-[#c2410c]">{{ t('billing.expiredNote') }}</p>
+          <p v-else class="mb-0 mt-1 text-xs muted">{{ t('billing.noPlanNote') }}</p>
+        </div>
+      </div>
       <div class="panel metric-card" style="--card-accent:#12a67a">
         <span class="metric-icon"><UIcon name="i-lucide-wallet" class="size-6" /></span>
         <div>
           <p class="mb-0 text-sm font-semibold muted">{{ t('billing.onBalance') }}</p>
           <p class="metric-value">{{ formatCredits(summary?.balance) }}</p>
-          <p class="mb-0 mt-1 text-xs muted">{{ t('billing.forRuns') }}</p>
+          <p class="mb-0 mt-1 text-xs muted">
+            {{ active && subscription?.expires_at ? t('billing.expiresNote', { date: formatDateOnly(subscription.expires_at) }) : t('billing.forRuns') }}
+          </p>
         </div>
       </div>
       <div class="panel metric-card" style="--card-accent:#e58a0b">
@@ -92,45 +133,59 @@ const onEmailModalOpen = (open: boolean) => {
         </div>
       </div>
     </div>
-    <div class="mb-4 mt-10"><h2 class="mb-1 text-2xl font-extrabold tracking-tight">{{ t('billing.topupTitle') }}</h2><p class="mb-0 muted">{{ t('billing.topupLead') }}</p></div>
-    <div class="grid-cards">
-      <div
+
+    <div v-if="storage" class="panel mt-4 p-6">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="mb-0 text-lg font-extrabold tracking-tight">{{ t('billing.storageTitle') }}</h2>
+        <p class="mb-0 text-xs muted">{{ t('billing.storageHint') }}</p>
+      </div>
+      <div class="mt-4 grid gap-5 md:grid-cols-2">
+        <div>
+          <div class="mb-2 flex justify-between text-sm font-semibold">
+            <span>{{ t('billing.storageFiles') }}</span>
+            <span class="muted">{{ storage.files }} / {{ storage.max_files }}</span>
+          </div>
+          <div class="usage-bar" :class="{ 'is-full': percent(storage.files, storage.max_files) >= 90 }">
+            <span :style="{ width: `${percent(storage.files, storage.max_files)}%` }" />
+          </div>
+        </div>
+        <div>
+          <div class="mb-2 flex justify-between text-sm font-semibold">
+            <span>{{ t('billing.storageSize') }}</span>
+            <span class="muted">{{ formatStorage(storage.bytes, locale) }} / {{ formatStorage(storage.max_bytes, locale) }}</span>
+          </div>
+          <div class="usage-bar" :class="{ 'is-full': percent(storage.bytes, storage.max_bytes) >= 90 }">
+            <span :style="{ width: `${percent(storage.bytes, storage.max_bytes)}%` }" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-4 mt-10">
+      <h2 class="mb-1 text-2xl font-extrabold tracking-tight">{{ t('billing.plansTitle') }}</h2>
+      <p class="mb-0 muted">{{ t('billing.plansLead') }}</p>
+    </div>
+    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <PlanCard
         v-for="plan in orderedPlans"
         :key="plan.id"
-        class="panel credit-pack"
-        :class="{
-          'is-gift': !Number(plan.price),
-          'is-featured': plan.code === featuredCode
-        }"
+        :plan="plan"
+        :featured="plan.code === featuredCode"
+        :current="currentPlan ? plan.id === currentPlan.id : !Number(plan.price)"
       >
-        <span v-if="plan.code === featuredCode" class="credit-pack-badge">{{ t('pricing.better') }}</span>
-        <span class="credit-pack-icon">
-          <UIcon :name="Number(plan.price) ? 'i-lucide-coins' : 'i-lucide-gift'" class="size-5" />
-        </span>
-        <p class="credit-pack-credits">{{ formatCredits(packCredits(plan)) }}</p>
-        <p class="credit-pack-unit">{{ t('common.tokens') }}</p>
-        <span class="credit-pack-rule" aria-hidden="true" />
-        <p class="credit-pack-price">
-          <template v-if="Number(plan.price)">
-            <strong>{{ formatMoney(Number(plan.price)) }}</strong>
-            <span>₽</span>
-          </template>
-          <template v-else>
-            <strong>{{ t('pricing.free') }}</strong>
-          </template>
-        </p>
         <UButton
-          :label="Number(plan.price) ? t('pricing.buy') : t('billing.alreadyStart')"
+          :label="planAction(plan).label"
           block
           size="lg"
-          class="credit-pack-cta mt-auto"
-          :color="plan.code === featuredCode ? 'neutral' : 'primary'"
-          :variant="Number(plan.price) ? 'solid' : 'outline'"
+          class="credit-pack-cta"
+          :color="plan.code === featuredCode || planAction(plan).disabled ? 'neutral' : 'primary'"
+          :variant="planAction(plan).variant"
           :loading="checkoutBusy === plan.id"
-          :disabled="!Number(plan.price) || checkoutBusy === plan.id"
+          :disabled="planAction(plan).disabled || checkoutBusy === plan.id"
           @click="startCheckout(plan.id)"
         />
-      </div>
+        <p v-if="planAction(plan).note" class="plan-card-note">{{ planAction(plan).note }}</p>
+      </PlanCard>
     </div>
     <UModal
       :open="emailModalOpen"

@@ -241,6 +241,35 @@ a { color: inherit; text-decoration: none; }
   color: var(--violet-dark) !important;
 }
 
+.plan-card .credit-pack-icon { margin-bottom: 18px; }
+.plan-card .credit-pack-price { margin: 6px 0 0; }
+.plan-card.is-current:not(.is-featured) { border-color: rgba(109, 74, 255, .45); box-shadow: 0 0 0 3px rgba(109, 74, 255, .1); }
+.plan-card-name {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.plan-card-features {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.plan-card-features li { display: flex; gap: 8px; align-items: flex-start; }
+.plan-card-features .iconify { margin-top: 1px; color: var(--violet); }
+.credit-pack.is-featured .plan-card-features .iconify { color: #fff; }
+.plan-card-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; font-weight: 600; text-align: center; }
+.credit-pack.is-featured .plan-card-note { color: rgba(255, 255, 255, .75); }
+.usage-bar { height: 8px; overflow: hidden; border-radius: 999px; background: var(--violet-soft); }
+.usage-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--grad); transition: width .4s ease; }
+.usage-bar.is-full > span { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+
 .cost-pill {
   display: inline-flex;
   align-items: center;

@@ -1,18 +1,22 @@
 from fastapi import APIRouter, Depends, status
 
 from deps.auth import CurrentUser
-from deps.services import get_billing_service
+from deps.services import get_billing_service, get_workflow_service
 from schemas.billing import (
     LedgerResponse,
     ApiPaymentResponse,
     PlanCheckout,
     PlanResponse,
+    StorageUsage,
+    SubscriptionResponse,
     UsageResponse,
     WalletResponse,
     YooKassaWebhook,
 )
 from schemas.common import ApiResponse
 from services.billing import BillingService
+from services.billing.subscriptions import SubscriptionService, is_active, storage_limits
+from services.workflow import WorkflowService
 
 router = APIRouter()
 
@@ -26,6 +30,27 @@ async def wallet(user: CurrentUser, service: BillingService = Depends(get_billin
     result = await service.ensure_initial_credit(user)
     payload = WalletResponse.model_validate(result)
     payload.media_unlocked = await service.has_paid_pack(user)
+    return ApiResponse(success=True, data=payload)
+
+
+@router.get("/subscription", response_model=ApiResponse[SubscriptionResponse])
+async def subscription(
+    user: CurrentUser,
+    service: BillingService = Depends(get_billing_service),
+    workflows: WorkflowService = Depends(get_workflow_service),
+):
+    subscriptions = SubscriptionService(service.db)
+    current = await subscriptions.get(user.id)
+    plan = await subscriptions.current_plan(user.id)
+    limits = storage_limits(plan)
+    files, nbytes = await workflows.storage_usage(user)
+    payload = SubscriptionResponse(
+        plan=PlanResponse.model_validate(plan) if plan else None,
+        status="none" if current is None else "active" if is_active(current) else "expired",
+        started_at=current.started_at if current else None,
+        expires_at=current.expires_at if current else None,
+        storage=StorageUsage(files=files, max_files=limits.max_files, bytes=nbytes, max_bytes=limits.max_bytes),
+    )
     return ApiResponse(success=True, data=payload)
 
 
