@@ -33,8 +33,8 @@ const assignmentExample = '{{total}} = {{$data[0].field}}'
 
 <template>
   <div class="editor-assign">
-    <p class="mb-1 text-[13px] font-extrabold text-white">{{ t('vars.assignTitle') }}</p>
-    <p class="mb-3 text-[11px] leading-5 text-white/40">{{ t('vars.assignHint', { example: assignmentExample }) }}</p>
+    <p class="editor-panel-title">{{ t('vars.assignTitle') }}</p>
+    <p class="editor-hint mb-3">{{ t('vars.assignHint', { example: assignmentExample }) }}</p>
     <div v-for="(item, index) in items" :key="index" class="editor-assign-row">
       <UInput
         :model-value="item.key"
@@ -58,10 +58,10 @@ const assignmentExample = '{{total}} = {{$data[0].field}}'
     <UButton
       :label="t('vars.assignAdd')"
       icon="i-lucide-plus"
-      color="neutral"
+      color="primary"
       variant="ghost"
       size="sm"
-      class="px-0 text-white/70"
+      class="px-0"
       @click="addRow"
     />
   </div>

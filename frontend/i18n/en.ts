@@ -329,6 +329,28 @@ export const en: typeof ru = {
     costUpTo: 'up to {cost} tokens',
     nodes: 'Nodes',
     nodesHint: 'Drag onto the canvas or click',
+    nodesSearch: 'Find a block…',
+    nodesNotFound: 'Nothing found',
+    backAria: 'Back to workflows',
+    deleteNode: 'Delete block',
+    tabNodes: 'Blocks',
+    tabVars: 'Variables',
+    tabSchedule: 'Schedule',
+    groups: {
+      triggers: 'Triggers',
+      ai: 'AI',
+      logic: 'Logic',
+      data: 'Data & services',
+      files: 'Files',
+      send: 'Delivery & tasks'
+    },
+    tipsTitle: 'Tips',
+    tips: [
+      'Drag a block from the palette or click it — it appears on the canvas.',
+      'Connect the dot on the right of a block to the dot on the left of the next one.',
+      'Click a block to open its settings here.',
+      'Delete or Backspace removes selected blocks and links.'
+    ],
     loading: 'Loading the editor…',
     emptyTitle: 'Build a chain',
     emptyText: 'Drag nodes onto the canvas and connect the right-side output to the left-side input.',

@@ -15,6 +15,7 @@ import {
 } from '~/utils/workflow-variables'
 import { joinCondition, splitCondition } from '~/utils/condition'
 import {
+  NODE_GROUPS,
   NODE_META,
   DEFAULT_HTTP_REQUEST_JSON,
   IF_ELSE_CONDITION_PLACEHOLDER,
@@ -36,7 +37,7 @@ import {
 const props = defineProps<{ workflowId: string }>()
 const api = useApi()
 const toast = useToast()
-const { t } = useI18n()
+const { t, tm } = useI18n()
 const id = props.workflowId
 const flowId = `workflow-${id}`
 
@@ -92,12 +93,28 @@ const {
 const hasSelectedNodes = computed(() => getSelectedNodes.value.length > 0)
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 
-const palette = computed(() => (Object.keys(NODE_META) as NodeKind[]).map(type => ({
-  type,
-  ...NODE_META[type],
-  label: t(`nodes.${type}.label`),
-  caption: t(`nodes.${type}.caption`)
-})))
+const leftTab = ref<'nodes' | 'vars' | 'schedule'>('nodes')
+const leftTabs = computed(() => [
+  { key: 'nodes' as const, label: t('editor.tabNodes'), dot: false },
+  { key: 'vars' as const, label: t('editor.tabVars'), dot: workflowVariables.value.length > 0 },
+  { key: 'schedule' as const, label: t('editor.tabSchedule'), dot: scheduleActive.value }
+])
+const paletteQuery = ref('')
+const paletteGroups = computed(() => {
+  const query = paletteQuery.value.trim().toLowerCase()
+  return NODE_GROUPS.map(group => ({
+    key: group.key,
+    items: group.types
+      .map(type => ({
+        type,
+        ...NODE_META[type],
+        label: t(`nodes.${type}.label`),
+        caption: t(`nodes.${type}.caption`)
+      }))
+      .filter(item => !query || `${item.label} ${item.caption} ${item.type}`.toLowerCase().includes(query))
+  })).filter(group => group.items.length)
+})
+const editorTips = computed(() => tm<string[]>('editor.tips'))
 const qualityModes = computed(() => [
   { label: t('editor.qualityFast'), value: 'simple_text' },
   { label: t('editor.qualityExact'), value: 'complex_text' }
@@ -334,7 +351,7 @@ const hintsFor = (nodeId: string) => {
 const defaultEdgeOptions = {
   type: 'workflow',
   markerEnd: MarkerType.ArrowClosed,
-  style: { stroke: '#8b82e8', strokeWidth: 2 },
+  style: { stroke: '#a99cff', strokeWidth: 2 },
   interactionWidth: 28,
   animated: false
 }
@@ -625,81 +642,111 @@ const runSelectedNode = async () => {
 <template>
   <div class="workflow-editor">
     <header class="editor-topbar">
-      <div class="flex min-w-0 items-center gap-3">
-        <UButton to="/workflows" icon="i-lucide-arrow-left" color="neutral" variant="ghost" class="text-white/80 hover:text-white" />
+      <div class="flex min-w-0 items-center gap-2">
+        <UButton to="/workflows" icon="i-lucide-arrow-left" color="neutral" variant="ghost" :aria-label="t('editor.backAria')" />
         <div class="min-w-0">
           <div v-if="renaming" class="flex min-w-0 items-center gap-2">
             <UInput
               v-model="nameDraft"
               autofocus
-              size="sm"
-              class="editor-name-input min-w-0 w-[min(320px,46vw)]"
+              class="min-w-0 w-[min(320px,46vw)]"
               maxlength="160"
               @keyup.enter="commitRename"
               @keyup.escape="cancelRename"
             />
-            <UButton icon="i-lucide-check" size="xs" color="neutral" variant="soft" :aria-label="t('editor.saveNameAria')" @click="commitRename" />
-            <UButton icon="i-lucide-x" size="xs" color="neutral" variant="ghost" class="text-white/70" :aria-label="t('editor.cancelAria')" @click="cancelRename" />
+            <UButton icon="i-lucide-check" size="sm" color="primary" variant="soft" :aria-label="t('editor.saveNameAria')" @click="commitRename" />
+            <UButton icon="i-lucide-x" size="sm" color="neutral" variant="ghost" :aria-label="t('editor.cancelAria')" @click="cancelRename" />
           </div>
           <button
             v-else
             type="button"
-            class="group flex max-w-full items-center gap-1.5 text-left"
+            class="group flex max-w-full items-center gap-2 text-left"
             :title="t('editor.renameAria')"
             @click="startRename"
           >
-            <h1 class="mb-0 truncate text-[15px] font-extrabold tracking-tight text-white">{{ workflowName }}</h1>
-            <UIcon name="i-lucide-pencil" class="size-3.5 shrink-0 text-white/35 transition group-hover:text-white/80" />
+            <h1 class="editor-title">{{ workflowName }}</h1>
+            <span class="editor-status-badge" :class="{ 'is-published': workflow?.status === 'published' }">
+              {{ workflow?.status === 'published' ? t('workflows.published') : t('workflows.draft') }}
+            </span>
+            <UIcon name="i-lucide-pencil" class="size-3.5 shrink-0 text-[#9a9fba] transition group-hover:text-[#6d4aff]" />
           </button>
-          <p class="mb-0 text-[11px] text-white/45">
+          <p class="editor-save-state">
+            <span class="editor-save-dot" :class="{ 'is-dirty': saveState === 'dirty', 'is-saving': saveState === 'saving' }" />
             {{ saveState === 'saving' ? t('editor.saving') : saveState === 'saved' ? t('editor.saved') : t('editor.unsaved') }}
           </p>
         </div>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="editor-cost"><UIcon name="i-lucide-coins" />{{ t('editor.costUpTo', { cost: formatCredits(estimatedCost) }) }}</span>
-        <UButton :label="t('editor.check')" icon="i-lucide-circle-check" color="neutral" variant="ghost" class="text-white/80" @click="checkGraph" />
-        <UButton :label="t('editor.publish')" color="neutral" variant="outline" class="border-white/15 bg-white/5 text-white" @click="publish" />
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <span class="editor-cost" :title="t('editor.maxCostHint')"><UIcon name="i-lucide-coins" class="size-3.5" />{{ t('editor.costUpTo', { cost: formatCredits(estimatedCost) }) }}</span>
+        <UButton :label="t('editor.check')" icon="i-lucide-circle-check" color="neutral" variant="ghost" @click="checkGraph" />
+        <UButton :label="t('editor.publish')" icon="i-lucide-upload" color="neutral" variant="outline" @click="publish" />
         <UButton :label="t('editor.run')" icon="i-lucide-play" @click="run" />
       </div>
     </header>
     <div class="editor-body">
       <aside class="editor-pane editor-pane-left">
-        <div class="palette-block">
-          <p class="editor-kicker">{{ t('editor.nodes') }}</p>
-          <p class="mb-3 text-[11px] leading-4 text-white/40">{{ t('editor.nodesHint') }}</p>
-          <p v-if="!mediaUnlocked" class="mb-3 text-[11px] leading-4 text-amber-200/80">
+        <div class="editor-tabs" role="tablist">
+          <button
+            v-for="tab in leftTabs"
+            :key="tab.key"
+            type="button"
+            role="tab"
+            class="editor-tab"
+            :class="{ 'is-active': leftTab === tab.key }"
+            :aria-selected="leftTab === tab.key"
+            @click="leftTab = tab.key"
+          >
+            {{ tab.label }}
+            <span v-if="tab.dot" class="editor-tab-dot" />
+          </button>
+        </div>
+        <div v-show="leftTab === 'nodes'" class="editor-tab-panel">
+          <UInput
+            v-model="paletteQuery"
+            icon="i-lucide-search"
+            :placeholder="t('editor.nodesSearch')"
+            class="palette-search w-full"
+          />
+          <p v-if="!mediaUnlocked" class="editor-warn mb-2">
             {{ t('editor.mediaLockedHint') }}
-            <NuxtLink to="/billing" class="underline">{{ t('editor.mediaLockedLink') }}</NuxtLink>
+            <NuxtLink to="/billing" class="font-bold underline">{{ t('editor.mediaLockedLink') }}</NuxtLink>
           </p>
-          <div class="palette-list" role="list">
+          <div v-for="group in paletteGroups" :key="group.key" class="palette-group" role="list">
+            <p class="palette-group-title">{{ t(`editor.groups.${group.key}`) }}</p>
             <button
-              v-for="item in palette"
+              v-for="item in group.items"
               :key="item.type"
               type="button"
               :draggable="!mediaLocked(item.type)"
               class="palette-item"
               :class="{ 'is-locked': mediaLocked(item.type) }"
               role="listitem"
+              :title="t('editor.nodesHint')"
               @dragstart="onDragStart($event, item.type)"
               @click="addFromPalette(item.type)"
             >
-              <span class="palette-icon" :style="{ color: item.accent, background: `${item.accent}22` }">
+              <span class="palette-icon" :style="{ color: item.accent, background: `${item.accent}1f` }">
                 <UIcon :name="item.icon" class="size-4" />
               </span>
               <span class="min-w-0 text-left">
-                <strong class="block truncate text-[13px] font-extrabold text-white">{{ item.label }}</strong>
-                <span class="block truncate text-[10px] font-bold uppercase tracking-[0.14em] text-white/35">{{ mediaLocked(item.type) ? t('editor.mediaLockedShort') : item.caption }}</span>
+                <span class="palette-name">{{ item.label }}</span>
+                <span class="palette-caption">{{ mediaLocked(item.type) ? t('editor.mediaLockedShort') : item.caption }}</span>
               </span>
+              <UIcon name="i-lucide-plus" class="palette-add size-4" />
             </button>
           </div>
+          <p v-if="!paletteGroups.length" class="palette-empty">{{ t('editor.nodesNotFound') }}</p>
         </div>
-        <WorkflowVariablesPanel v-model:items="workflowVariables" />
-        <WorkflowSchedulePanel
-          v-model:enabled="scheduleEnabled"
-          v-model:slots="scheduleSlots"
-          :timezone="scheduleTimezone"
-        />
+        <div v-show="leftTab === 'vars'" class="editor-tab-panel">
+          <WorkflowVariablesPanel v-model:items="workflowVariables" />
+        </div>
+        <div v-show="leftTab === 'schedule'" class="editor-tab-panel">
+          <WorkflowSchedulePanel
+            v-model:enabled="scheduleEnabled"
+            v-model:slots="scheduleSlots"
+            :timezone="scheduleTimezone"
+          />
+        </div>
       </aside>
       <div class="editor-canvas" @dragover.prevent @drop="onDrop">
         <ClientOnly>
@@ -783,13 +830,13 @@ const runSelectedNode = async () => {
             </template>
           </VueFlow>
           <template #fallback>
-            <div class="grid h-full place-items-center text-sm text-white/40">{{ t('editor.loading') }}</div>
+            <div class="grid h-full place-items-center text-sm text-[#6b7090]">{{ t('editor.loading') }}</div>
           </template>
         </ClientOnly>
         <div v-if="!nodes.length" class="editor-empty">
           <span class="editor-empty-icon"><UIcon name="i-lucide-workflow" class="size-6" /></span>
-          <p class="mb-1 text-sm font-extrabold text-white">{{ t('editor.emptyTitle') }}</p>
-          <p class="mb-0 max-w-xs text-center text-xs leading-5 text-white/45">{{ t('editor.emptyText') }}</p>
+          <p class="mb-1 text-base font-extrabold text-[var(--ink)]">{{ t('editor.emptyTitle') }}</p>
+          <p class="mb-0 max-w-xs text-center text-sm leading-6 text-[#6b7090]">{{ t('editor.emptyText') }}</p>
         </div>
         <div class="editor-zoom">
           <button type="button" class="editor-zoom-btn" @click="zoomOut()">−</button>
@@ -802,15 +849,18 @@ const runSelectedNode = async () => {
       <aside class="editor-pane editor-pane-right">
         <template v-if="selectedEdgeId && !hasSelectedNodes">
           <p class="editor-kicker">{{ t('editor.edgeKicker') }}</p>
-          <h2 class="mb-2 text-lg font-extrabold text-white">{{ t('editor.edgeTitle') }}</h2>
-          <p class="text-sm leading-6 text-white/45">{{ t('editor.edgeHint') }}</p>
+          <h2 class="editor-node-name mb-2">{{ t('editor.edgeTitle') }}</h2>
+          <p class="editor-hint">{{ t('editor.edgeHint') }}</p>
           <UButton class="mt-4" :label="t('editor.deleteEdge')" icon="i-lucide-unlink" color="error" variant="soft" @click="unlinkSelectedEdge" />
         </template>
         <template v-else-if="selected">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <p class="editor-kicker">{{ t('editor.nodeKicker') }}</p>
-              <h2 class="mb-0 text-lg font-extrabold text-white">{{ t(`nodes.${selected.type}.label`) }}</h2>
+          <div class="editor-node-head">
+            <span class="editor-node-icon" :style="{ color: NODE_META[selected.type].accent, background: `${NODE_META[selected.type].accent}1f` }">
+              <UIcon :name="NODE_META[selected.type].icon" class="size-5" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <h2 class="editor-node-name">{{ t(`nodes.${selected.type}.label`) }}</h2>
+              <p class="editor-node-caption">{{ t(`nodes.${selected.type}.caption`) }}</p>
             </div>
             <div class="flex items-center gap-1">
               <UButton
@@ -818,13 +868,14 @@ const runSelectedNode = async () => {
                 icon="i-lucide-play"
                 :label="t('editor.runNode')"
                 size="sm"
+                variant="soft"
                 :loading="nodeRunLoading"
                 @click="runSelectedNode"
               />
-              <UButton icon="i-lucide-trash-2" color="error" variant="ghost" @click="deleteSelected" />
+              <UButton icon="i-lucide-trash-2" color="error" variant="ghost" size="sm" :aria-label="t('editor.deleteNode')" @click="deleteSelected" />
             </div>
           </div>
-          <div class="mt-5 space-y-4">
+          <div class="mt-4 space-y-4">
             <UFormField :label="t('editor.fieldName')">
               <UInput v-model="selected.data.label" class="w-full" />
             </UFormField>
@@ -852,18 +903,18 @@ const runSelectedNode = async () => {
                   :placeholder="OUTPUT_FORMAT_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.promptHint', { example: VARIABLE_NAME_EXAMPLE }) }}</p>
+              <p class="editor-hint">{{ t('editor.promptHint', { example: VARIABLE_NAME_EXAMPLE }) }}</p>
               <UFormField :label="t('editor.maxRunCost')">
                 <UInput v-model="selectedMaxRunCredits" type="number" min="1" step="1" class="w-full" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.maxRunCostHint') }}</p>
+              <p class="editor-hint">{{ t('editor.maxRunCostHint') }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'http_request'">
               <UFormField :label="t('editor.requestJson')">
                 <UTextarea v-model="selectedRequestJson" :rows="14" class="w-full font-mono text-xs" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.httpHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
+              <p class="editor-hint">{{ t('editor.httpHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'if_else'">
@@ -876,15 +927,15 @@ const runSelectedNode = async () => {
               <UFormField :label="t('editor.conditionRight')">
                 <UInput v-model="conditionRight" class="w-full font-mono text-xs" placeholder="0.8" />
               </UFormField>
-              <p v-if="conditionUnparsed" class="text-xs leading-5 text-amber-200/80">{{ t('editor.conditionRaw') }}</p>
-              <p class="mb-0 text-xs leading-5 text-white/40">{{ t('editor.ifHint', { compare: VARIABLE_COMPARE_EXAMPLE, placeholder: IF_ELSE_CONDITION_PLACEHOLDER }) }}</p>
-              <details class="editor-help mt-1! text-xs leading-5 text-white/40">
-                <summary class="text-[15px]">{{ t('editor.ifHelpTitle') }}</summary>
+              <p v-if="conditionUnparsed" class="editor-warn">{{ t('editor.conditionRaw') }}</p>
+              <p class="editor-hint">{{ t('editor.ifHint', { compare: VARIABLE_COMPARE_EXAMPLE, placeholder: IF_ELSE_CONDITION_PLACEHOLDER }) }}</p>
+              <details class="editor-help">
+                <summary>{{ t('editor.ifHelpTitle') }}</summary>
                 <div class="editor-help-body">
-                  <p class="mt-1! ml-1">{{ t('editor.ifHelpCompare', { example: JSON_EXPRESSION_EXAMPLE }) }}</p>
-                  <p class="mt-1! ml-1">{{ t('editor.ifHelpOps') }}</p>
-                  <p class="mt-1! ml-1">{{ t('editor.ifHelpLits') }}</p>
-                  <p class="mt-1! ml-1">{{ t('editor.ifHelpMissing') }}</p>
+                  <p class="mb-1">{{ t('editor.ifHelpCompare', { example: JSON_EXPRESSION_EXAMPLE }) }}</p>
+                  <p class="mb-1">{{ t('editor.ifHelpOps') }}</p>
+                  <p class="mb-1">{{ t('editor.ifHelpLits') }}</p>
+                  <p class="mb-1">{{ t('editor.ifHelpMissing') }}</p>
                   <ul>
                     <li v-for="item in IF_ELSE_HELP_EXAMPLES" :key="item.code">
                       <code>{{ item.code }}</code> — {{ item.note }}
@@ -915,10 +966,10 @@ const runSelectedNode = async () => {
                   :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.telegramHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
+              <p class="editor-hint">{{ t('editor.telegramHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
             </template>
             <template v-if="selected.type === 'webhook'">
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.webhookIntro', { body: WEBHOOK_BODY_EXAMPLE }) }}</p>
+              <p class="editor-hint">{{ t('editor.webhookIntro', { body: WEBHOOK_BODY_EXAMPLE }) }}</p>
               <UFormField :label="t('editor.webhookUrl')">
                 <UInput :model-value="webhookUrl" readonly class="w-full font-mono text-xs" :placeholder="t('editor.webhookUrlPlaceholder')" />
               </UFormField>
@@ -926,7 +977,7 @@ const runSelectedNode = async () => {
                 <UButton :label="t('editor.copy')" icon="i-lucide-copy" color="neutral" variant="outline" :disabled="!webhookUrl" @click="copyWebhookUrl" />
                 <UButton :label="t('editor.newKey')" icon="i-lucide-refresh-cw" color="neutral" variant="ghost" :disabled="!webhookUrl" @click="rotateWebhookToken" />
               </div>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.webhookAfter') }}</p>
+              <p class="editor-hint">{{ t('editor.webhookAfter') }}</p>
             </template>
             <template v-if="selected.type === 'google_sheets'">
               <UFormField :label="t('editor.action')">
@@ -950,7 +1001,7 @@ const runSelectedNode = async () => {
               <UFormField v-if="selected.data.operation !== 'read'" :label="t('editor.rowValues')">
                 <UTextarea v-model="selected.data.values_json" :rows="8" class="w-full font-mono text-xs" placeholder='[["Ada", 3]] / [{"name":"Ada","score":3}]' />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.sheetsHint', { json: JSON_EXPRESSION_EXAMPLE }) }}</p>
+              <p class="editor-hint">{{ t('editor.sheetsHint', { json: JSON_EXPRESSION_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'email'">
@@ -968,7 +1019,7 @@ const runSelectedNode = async () => {
                   :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
                 />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.emailHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
+              <p class="editor-hint">{{ t('editor.emailHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'data_transform'">
@@ -1000,7 +1051,7 @@ const runSelectedNode = async () => {
                   <USelect v-model="selected.data.sort_direction" :items="sortDirections" value-key="value" class="w-full" />
                 </UFormField>
               </template>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.transformHint') }}</p>
+              <p class="editor-hint">{{ t('editor.transformHint') }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'sql_query'">
@@ -1013,7 +1064,7 @@ const runSelectedNode = async () => {
               <UFormField :label="t('editor.sqlQuery')">
                 <UTextarea v-model="selected.data.query" :rows="8" class="w-full font-mono text-xs" placeholder="SELECT id, email FROM users LIMIT 50" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.sqlHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
+              <p class="editor-hint">{{ t('editor.sqlHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
               <WorkflowVariableAssignments v-model:items="selectedAssignments" />
             </template>
             <template v-if="selected.type === 'loop'">
@@ -1035,7 +1086,7 @@ const runSelectedNode = async () => {
                     value-key="value"
                     class="w-full"
                   />
-                  <p v-else class="text-xs text-white/45">{{ t('editor.loopNoVars') }}</p>
+                  <p v-else class="editor-hint">{{ t('editor.loopNoVars') }}</p>
                 </UFormField>
                 <UFormField :label="t('editor.conditionOp')">
                   <USelect v-model="selected.data.while_operator" :items="conditionOperators" value-key="value" class="w-full" />
@@ -1044,7 +1095,7 @@ const runSelectedNode = async () => {
                   <UInput v-model="selected.data.while_value" class="w-full font-mono text-xs" placeholder="0" />
                 </UFormField>
               </template>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.loopHint') }}</p>
+              <p class="editor-hint">{{ t('editor.loopHint') }}</p>
             </template>
             <template v-if="selected.type === 'delay'">
               <UFormField :label="t('editor.delayAmount')">
@@ -1053,7 +1104,7 @@ const runSelectedNode = async () => {
               <UFormField :label="t('editor.delayUnit')">
                 <USelect v-model="selected.data.unit" :items="delayUnits" value-key="value" class="w-full" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.delayHint') }}</p>
+              <p class="editor-hint">{{ t('editor.delayHint') }}</p>
             </template>
             <template v-if="selected.type === 'yandex_disk'">
               <UFormField :label="t('editor.action')">
@@ -1068,10 +1119,10 @@ const runSelectedNode = async () => {
               <UFormField v-if="selected.data.operation === 'upload'" :label="t('editor.yandexContent')">
                 <UTextarea v-model="selected.data.content" :rows="4" class="w-full font-mono text-xs" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.yandexHint') }}</p>
+              <p class="editor-hint">{{ t('editor.yandexHint') }}</p>
             </template>
             <template v-if="selected.type === 'image_generation'">
-              <p v-if="mediaLocked('image_generation')" class="text-xs leading-5 text-amber-200">{{ t('editor.mediaLockedHint') }}</p>
+              <p v-if="mediaLocked('image_generation')" class="editor-warn">{{ t('editor.mediaLockedHint') }}</p>
               <UFormField :label="t('editor.imagePrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="6" class="w-full" :placeholder="t('editor.imagePromptPlaceholder')" />
               </UFormField>
@@ -1084,20 +1135,20 @@ const runSelectedNode = async () => {
                 <UInput v-model="selected.data.url" class="w-full font-mono text-xs" :placeholder="t('editor.imageUrlPlaceholder')" />
               </UFormField>
               <UFormField v-if="selected.data.source === 'file'" :label="t('editor.imageFileLabel')">
-                <input type="file" accept="image/*" class="block w-full text-xs text-white/70" @change="readMediaFile">
-                <p v-if="selected.data.filename" class="mt-1 text-xs text-white/50">{{ selected.data.filename }}</p>
+                <input type="file" accept="image/*" class="block w-full" @change="readMediaFile">
+                <p v-if="selected.data.filename" class="editor-hint mt-1">{{ selected.data.filename }}</p>
               </UFormField>
-              <p v-if="selected.data.source === 'upstream'" class="text-xs leading-5 text-white/40">{{ t('editor.imageUpstreamHint') }}</p>
+              <p v-if="selected.data.source === 'upstream'" class="editor-hint">{{ t('editor.imageUpstreamHint') }}</p>
             </template>
             <template v-if="selected.type === 'image_recognition'">
-              <p v-if="mediaLocked('image_recognition')" class="text-xs leading-5 text-amber-200">{{ t('editor.mediaLockedHint') }}</p>
+              <p v-if="mediaLocked('image_recognition')" class="editor-warn">{{ t('editor.mediaLockedHint') }}</p>
               <UFormField :label="t('editor.recognizePrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="5" class="w-full" :placeholder="t('editor.recognizePlaceholder')" />
               </UFormField>
-              <p class="text-xs leading-5 text-white/40">{{ t('editor.recognizeHint') }}</p>
+              <p class="editor-hint">{{ t('editor.recognizeHint') }}</p>
             </template>
             <template v-if="selected.type === 'audio_transcription'">
-              <p v-if="mediaLocked('audio_transcription')" class="text-xs leading-5 text-amber-200">{{ t('editor.mediaLockedHint') }}</p>
+              <p v-if="mediaLocked('audio_transcription')" class="editor-warn">{{ t('editor.mediaLockedHint') }}</p>
               <UFormField :label="t('editor.imageSource')">
                 <USelect v-model="selected.data.source" :items="mediaSources" value-key="value" class="w-full" />
               </UFormField>
@@ -1105,14 +1156,14 @@ const runSelectedNode = async () => {
                 <UInput v-model="selected.data.url" class="w-full font-mono text-xs" :placeholder="t('editor.audioUrlPlaceholder')" />
               </UFormField>
               <UFormField v-if="selected.data.source === 'file'" :label="t('editor.audioFileLabel')">
-                <input type="file" accept="audio/*" class="block w-full text-xs text-white/70" @change="readMediaFile">
-                <p v-if="selected.data.filename" class="mt-1 text-xs text-white/50">{{ selected.data.filename }}</p>
+                <input type="file" accept="audio/*" class="block w-full" @change="readMediaFile">
+                <p v-if="selected.data.filename" class="editor-hint mt-1">{{ selected.data.filename }}</p>
               </UFormField>
               <UFormField :label="t('editor.audioPrompt')">
                 <UTextarea v-model="selected.data.prompt" :rows="4" class="w-full" :placeholder="t('editor.audioPromptPlaceholder')" />
               </UFormField>
             </template>
-            <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="mb-0 mt-3 space-y-1 text-xs text-amber-200">
+            <ul v-if="selectedVariableHints.some(hint => hint.mark === 'undefined')" class="editor-warn list-none space-y-1">
               <li v-for="hint in selectedVariableHints.filter(item => item.mark === 'undefined')" :key="hint.name">
                 {{ t('editor.varUndefinedLine', { token: formatVariableToken(hint.name) }) }}
               </li>
@@ -1121,17 +1172,24 @@ const runSelectedNode = async () => {
         </template>
         <div v-else>
           <p class="editor-kicker">{{ t('editor.propsKicker') }}</p>
-          <h2 class="mb-2 text-lg font-extrabold text-white">{{ t('editor.noneSelected') }}</h2>
-          <p class="text-sm leading-6 text-white/45">{{ t('editor.noneHint') }}</p>
+          <h2 class="editor-node-name mb-2">{{ t('editor.noneSelected') }}</h2>
+          <p class="editor-hint">{{ t('editor.noneHint') }}</p>
           <div class="editor-cost-card">
-            <p class="mb-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/35">{{ t('editor.maxCost') }}</p>
-            <p class="mb-0 text-3xl font-extrabold text-white">{{ t('editor.maxCostValue', { cost: formatCredits(estimatedCost) }) }}</p>
-            <p class="mb-0 mt-1 text-xs text-white/40">{{ t('editor.maxCostHint') }}</p>
+            <p class="editor-kicker">{{ t('editor.maxCost') }}</p>
+            <p class="mb-0 text-3xl font-extrabold tracking-tight text-[var(--ink)]">{{ t('editor.maxCostValue', { cost: formatCredits(estimatedCost) }) }}</p>
+            <p class="editor-hint mt-1">{{ t('editor.maxCostHint') }}</p>
+          </div>
+          <div class="mt-5 grid gap-2">
+            <p class="editor-kicker">{{ t('editor.tipsTitle') }}</p>
+            <p v-for="tip in editorTips" :key="tip" class="editor-hint flex gap-2">
+              <UIcon name="i-lucide-lightbulb" class="mt-0.5 size-3.5 shrink-0 text-[#6d4aff]" />
+              <span>{{ tip }}</span>
+            </p>
           </div>
         </div>
-        <div v-if="validationErrors.length" class="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">
-          <h3 class="mb-2 text-sm font-extrabold text-amber-200">{{ t('editor.errors') }}</h3>
-          <ul class="mb-0 list-disc space-y-1 pl-5 text-xs text-amber-100/80">
+        <div v-if="validationErrors.length" class="editor-errors">
+          <h3>{{ t('editor.errors') }}</h3>
+          <ul>
             <li v-for="err in validationErrors" :key="err">{{ err }}</li>
           </ul>
         </div>

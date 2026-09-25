@@ -166,8 +166,8 @@ export default defineAppConfig({
           'disabled:cursor-not-allowed disabled:opacity-60',
           'transition-[box-shadow,background-color,color] duration-200'
         ],
-        content: 'rounded-2xl ring ring-[#e6e8f2] shadow-xl overflow-hidden',
-        item: 'rounded-xl'
+        content: 'min-w-(--reka-select-trigger-width) w-max max-w-[min(28rem,calc(100vw-2rem))] rounded-xl ring ring-[#e6e8f2] shadow-xl',
+        item: 'rounded-lg'
       },
       variants: {
         size: {

@@ -26,9 +26,9 @@ const branch = computed(() => {
   return ''
 })
 const stroke = computed(() => {
-  if (branch.value === 'true') return '#7dffa6'
-  if (branch.value === 'false') return '#ff9b8a'
-  return '#b7b0ff'
+  if (branch.value === 'true') return '#4ade80'
+  if (branch.value === 'false') return '#f87171'
+  return '#a99cff'
 })
 
 const removeEdge = (event: Event) => {
@@ -45,7 +45,7 @@ const removeEdge = (event: Event) => {
       :path="path.d"
       :marker-end="markerEnd"
       :marker-start="markerStart"
-      :style="{ ...style, stroke, strokeWidth: 2.5 }"
+      :style="{ ...style, stroke, strokeWidth: 2 }"
       :interaction-width="interactionWidth ?? 32"
     />
     <text

@@ -81,10 +81,10 @@ const removeSlot = (id: string) => {
 <template>
   <div class="editor-schedule">
     <div class="flex items-center justify-between gap-2">
-      <p class="mb-0 text-sm font-extrabold text-white">{{ t('schedule.title') }}</p>
+      <p class="editor-panel-title">{{ t('schedule.title') }}</p>
       <USwitch :model-value="enabled" @update:model-value="emit('update:enabled', $event)" />
     </div>
-    <p class="mb-0 text-[11px] leading-5 text-white/40">{{ t('schedule.hint') }}</p>
+    <p class="editor-hint">{{ t('schedule.hint') }}</p>
 
     <div v-if="slots.length" class="schedule-slot-list">
       <div v-for="slot in slots" :key="slot.id" class="schedule-slot">
@@ -106,7 +106,7 @@ const removeSlot = (id: string) => {
           <UInput v-model="draftTime" type="time" class="w-full" />
         </UFormField>
         <div>
-          <p class="mb-2 text-[11px] font-bold text-white/60">{{ t('schedule.weekdays') }}</p>
+          <p class="mb-2 text-[12px] font-bold text-[#22284a]">{{ t('schedule.weekdays') }}</p>
           <div class="grid grid-cols-4 gap-1.5">
             <button
               v-for="day in weekdayOptions"
@@ -132,18 +132,18 @@ const removeSlot = (id: string) => {
         </div>
       </template>
 
-      <p v-if="formError" class="mb-0 text-[11px] text-red-300">{{ formError }}</p>
+      <p v-if="formError" class="mb-0 text-[11px] text-red-600">{{ formError }}</p>
       <UButton
         :label="t('schedule.add')"
         icon="i-lucide-plus"
-        color="neutral"
+        color="primary"
         variant="soft"
         block
         :disabled="!canAdd"
         class="schedule-add"
         @click="addSlot"
       />
-      <p class="mb-0 text-[10px] text-white/35">{{ t('schedule.timezone', { tz: timezone }) }}</p>
+      <p class="editor-hint text-[11px]!">{{ t('schedule.timezone', { tz: timezone }) }}</p>
     </template>
   </div>
 </template>

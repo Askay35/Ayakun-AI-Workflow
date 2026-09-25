@@ -20,6 +20,17 @@ export const NODE_META: Record<NodeKind, { label: string; caption: string; icon:
   audio_transcription: { label: 'Расшифровка аудио', caption: 'Текст по записи', icon: 'i-lucide-audio-lines', accent: '#14b8a6' }
 }
 
+export type NodeGroup = 'triggers' | 'ai' | 'logic' | 'data' | 'files' | 'send'
+
+export const NODE_GROUPS: Array<{ key: NodeGroup; types: NodeKind[] }> = [
+  { key: 'triggers', types: ['webhook'] },
+  { key: 'ai', types: ['prompt', 'web_search', 'image_generation', 'image_recognition', 'audio_transcription'] },
+  { key: 'logic', types: ['if_else', 'loop', 'delay', 'data_transform'] },
+  { key: 'data', types: ['http_request', 'sql_query', 'google_sheets'] },
+  { key: 'files', types: ['image', 'yandex_disk'] },
+  { key: 'send', types: ['telegram_send', 'email'] }
+]
+
 export const SINGLE_INCOMING_TYPES: NodeKind[] = [
   'telegram_send',
   'http_request',

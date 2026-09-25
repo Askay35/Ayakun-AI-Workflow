@@ -15,24 +15,26 @@ const { data: wallet } = await useAuthAsyncData(
 </script>
 
 <template>
-  <div class="editor-shell dark">
+  <div class="editor-shell">
     <header class="app-header">
-      <NuxtLink to="/dashboard" class="brand app-header-logo">Ayakun</NuxtLink>
+      <NuxtLink to="/dashboard" class="brand app-header-logo">
+        <img src="~/assets/images/logo.png" alt="" class="app-logo-mark" width="28" height="28" />
+        Ayakun
+      </NuxtLink>
       <nav class="app-header-nav">
-        <UButton
+        <NuxtLink
           v-for="item in APP_NAV_ITEMS"
           :key="item.to"
           :to="item.to"
-          :icon="item.icon"
-          :label="t(`nav.${item.key}`)"
-          size="sm"
-          class="text-white/80"
-          :variant="route.path.startsWith(item.to) ? 'soft' : 'ghost'"
-          color="neutral"
-        />
+          class="app-header-link"
+          :class="{ 'is-active': route.path.startsWith(item.to) }"
+        >
+          <UIcon :name="item.icon" class="size-4" />
+          {{ t(`nav.${item.key}`) }}
+        </NuxtLink>
       </nav>
       <div class="app-header-user">
-        <LanguageSwitcher tone="dark" />
+        <LanguageSwitcher />
         <NuxtLink
           v-if="wallet"
           to="/billing"
@@ -43,9 +45,10 @@ const { data: wallet } = await useAuthAsyncData(
           {{ formatCredits(wallet.balance) }}
           <span class="app-header-balance-unit">{{ t('common.tokens') }}</span>
         </NuxtLink>
-        <span class="status-dot online" />
-        <span class="max-w-40 truncate text-sm font-semibold text-white/80">{{ auth.user.value?.name || auth.user.value?.email || t('common.account') }}</span>
-        <UButton icon="i-lucide-log-out" color="neutral" variant="ghost" size="sm" class="text-white/50" :aria-label="t('common.logout')" @click="auth.logout" />
+        <span class="app-header-name">{{ auth.user.value?.name || auth.user.value?.email || t('common.account') }}</span>
+        <button type="button" class="app-icon-button" :aria-label="t('common.logout')" :title="t('common.logout')" @click="auth.logout">
+          <UIcon name="i-lucide-log-out" class="size-4" />
+        </button>
       </div>
     </header>
     <main class="editor-shell-main">

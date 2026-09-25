@@ -35,8 +35,8 @@ const variableNameExample = '{{name}}'
 
 <template>
   <div class="editor-vars">
-    <p class="mb-1 text-sm font-extrabold text-white">{{ t('vars.title') }}</p>
-    <p class="mb-3 text-[11px] leading-5 text-white/40">{{ t('vars.hint', { example: variableNameExample }) }}</p>
+    <p class="editor-panel-title">{{ t('vars.title') }}</p>
+    <p class="editor-hint mb-3">{{ t('vars.hint', { example: variableNameExample }) }}</p>
     <div v-if="items.length" class="editor-var-list">
       <div v-for="(item, index) in items" :key="index" class="editor-var-row">
         <UInput
@@ -63,7 +63,7 @@ const variableNameExample = '{{name}}'
     <UButton
       :label="t('vars.add')"
       icon="i-lucide-plus"
-      color="neutral"
+      color="primary"
       variant="soft"
       block
       size="sm"
