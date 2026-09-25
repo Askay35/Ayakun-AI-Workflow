@@ -70,7 +70,6 @@ const facts = computed(() => tm<Array<{ title: string; text: string }>>('pricing
               block
               size="lg"
               class="credit-pack-cta mt-auto"
-              :class="{ 'text-white!': plan.code === 'free' }"
               :color="plan.code === featuredCode ? 'neutral' : Number(plan.price) ? 'primary' : 'neutral'"
               :variant="Number(plan.price) ? 'solid' : 'outline'"
             />
