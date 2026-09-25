@@ -11,6 +11,7 @@ useSeoMeta({
 <template>
   <main class="shell legal-page">
     <div class="legal-card reveal">
+      <span class="legal-icon"><UIcon name="i-lucide-contact-round" class="size-6" /></span>
       <p class="eyebrow">{{ t('legal.contactsEyebrow') }}</p>
       <h1 class="page-title">{{ t('legal.contactsHeading') }}</h1>
       <p class="legal-meta muted">{{ t('legal.contactsLead') }}</p>

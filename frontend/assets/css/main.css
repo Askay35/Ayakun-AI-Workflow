@@ -593,16 +593,39 @@ a { color: inherit; text-decoration: none; }
 }
 
 .legal-page {
-  padding: 36px 0 80px;
+  position: relative;
+  padding: 48px 0 96px;
+}
+.legal-page::before {
+  position: absolute;
+  z-index: -1;
+  inset: -1px calc(50% - 50vw) auto;
+  height: 380px;
+  background:
+    radial-gradient(ellipse 50% 70% at 12% 0%, rgba(124, 92, 255, .13), transparent 70%),
+    radial-gradient(ellipse 45% 60% at 90% 0%, rgba(59, 130, 246, .12), transparent 70%);
+  content: '';
 }
 .legal-card {
   max-width: 820px;
   margin-inline: auto;
-  padding: 40px 44px;
+  padding: 44px 48px;
   border: 1px solid var(--line);
   border-radius: 28px;
-  background: rgba(255,255,255,.92);
-  box-shadow: 0 24px 60px rgba(18,19,26,.06);
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(60, 50, 160, .08), 0 2px 6px rgba(15, 19, 48, .03);
+}
+.legal-card .page-title { font-size: clamp(30px, 4vw, 42px); letter-spacing: -0.04em; }
+.legal-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 22px;
+  place-items: center;
+  border-radius: 16px;
+  color: #fff;
+  background: var(--grad);
+  box-shadow: 0 10px 24px rgba(109, 74, 255, .28);
 }
 .legal-meta { margin-bottom: 28px; font-size: 15px; line-height: 1.6; }
 .legal-body {
@@ -659,12 +682,17 @@ a { color: inherit; text-decoration: none; }
 }
 .requisites {
   display: grid;
-  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
   margin: 8px 0 28px;
-  padding: 22px;
+  border: 1px solid var(--line);
   border-radius: 18px;
-  background: #f6f5f1;
+  background: var(--line);
 }
+.requisites > div { padding: 18px 20px; background: #fff; }
+.requisites > div:first-child { grid-column: 1 / -1; background: var(--soft); }
+.requisites > div:last-child:nth-child(even) { grid-column: 1 / -1; }
 .public-footer {
   padding: 56px 0 40px;
   border-top: 1px solid var(--line);
@@ -1791,7 +1819,8 @@ body:has(.workflow-editor) [data-reka-popper-content-wrapper] [role="option"]:ho
   .auth-page { min-height: calc(100vh - 61px); padding-top: 24px; }
   .auth-card { padding: 24px 18px; border-radius: 20px; }
   .auth-providers { grid-template-columns: 1fr; }
-  .legal-card { padding: 24px 18px; border-radius: 20px; }
+  .legal-card { padding: 28px 20px; border-radius: 22px; }
+  .requisites { grid-template-columns: 1fr; }
   .page-head { align-items: flex-start; flex-direction: column; }
 }
 
