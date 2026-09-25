@@ -25,35 +25,43 @@ const [{ data: workflows }, { data: runs }, { data: billing }] = await Promise.a
       <UButton to="/workflows" :label="t('dashboard.build')" icon="i-lucide-plus" size="lg" />
     </div>
     <div class="grid-cards">
-      <div class="panel metric-card" style="--card-accent:#c9f169">
-        <p class="mb-0 text-sm font-bold muted">{{ t('dashboard.workflows') }}</p>
-        <p class="metric-value">{{ workflows?.length || 0 }}</p>
-        <p class="mb-0 mt-1 text-xs muted">{{ t('dashboard.unlimited') }}</p>
+      <div class="panel metric-card" style="--card-accent:#6d4aff">
+        <span class="metric-icon"><UIcon name="i-lucide-workflow" class="size-6" /></span>
+        <div>
+          <p class="mb-0 text-sm font-semibold muted">{{ t('dashboard.workflows') }}</p>
+          <p class="metric-value">{{ workflows?.length || 0 }}</p>
+          <p class="mb-0 mt-1 text-xs muted">{{ t('dashboard.unlimited') }}</p>
+        </div>
       </div>
-      <div class="panel metric-card" style="--card-accent:#ffb681">
-        <p class="mb-0 text-sm font-bold muted">{{ t('dashboard.totalRuns') }}</p>
-        <p class="metric-value">{{ runs?.length || 0 }}</p>
-        <p class="mb-0 mt-1 text-xs muted">{{ t('dashboard.allTime') }}</p>
+      <div class="panel metric-card" style="--card-accent:#e58a0b">
+        <span class="metric-icon"><UIcon name="i-lucide-activity" class="size-6" /></span>
+        <div>
+          <p class="mb-0 text-sm font-semibold muted">{{ t('dashboard.totalRuns') }}</p>
+          <p class="metric-value">{{ runs?.length || 0 }}</p>
+          <p class="mb-0 mt-1 text-xs muted">{{ t('dashboard.allTime') }}</p>
+        </div>
       </div>
-      <div class="panel metric-card" style="--card-accent:#bdb6ff">
-        <p class="mb-0 text-sm font-bold muted">{{ t('dashboard.available') }}</p>
-        <p class="metric-value">{{ formatCredits(billing?.balance) }}</p>
-        <p class="mb-0 mt-1 text-xs muted">{{ t('dashboard.creditsOnBalance') }}</p>
+      <div class="panel metric-card" style="--card-accent:#12a67a">
+        <span class="metric-icon"><UIcon name="i-lucide-coins" class="size-6" /></span>
+        <div>
+          <p class="mb-0 text-sm font-semibold muted">{{ t('dashboard.available') }}</p>
+          <p class="metric-value">{{ formatCredits(billing?.balance) }}</p>
+          <p class="mb-0 mt-1 text-xs muted">{{ t('dashboard.tokensOnBalance') }}</p>
+        </div>
       </div>
     </div>
     <div class="panel mt-6 p-6">
       <div class="mb-3 flex items-center justify-between">
         <div>
-          <h2 class="mb-1 text-xl font-extrabold">{{ t('dashboard.recent') }}</h2>
+          <h2 class="mb-1 text-xl font-extrabold tracking-tight">{{ t('dashboard.recent') }}</h2>
           <p class="mb-0 text-sm muted">{{ t('dashboard.recentLead') }}</p>
         </div>
         <UButton to="/runs" :label="t('dashboard.allHistory')" trailing-icon="i-lucide-arrow-right" color="neutral" variant="ghost" />
       </div>
-      <div v-if="runs?.length" class="divide-y divide-default">
+      <div v-if="runs?.length" class="row-list">
         <NuxtLink v-for="run in runs.slice(0, 5)" :key="run.id" :to="`/runs/${run.id}`"
-          class="flex items-center justify-between py-4">
-          <div class="flex items-center gap-3"><span
-              class="grid size-10 place-items-center rounded-xl bg-[#efedff] text-[#6758ee]">
+          class="flex items-center justify-between py-4 transition hover:opacity-80">
+          <div class="flex items-center gap-3"><span class="row-icon">
               <UIcon name="i-lucide-play" />
             </span>
             <div>
@@ -65,7 +73,7 @@ const [{ data: workflows }, { data: runs }, { data: billing }] = await Promise.a
         </NuxtLink>
       </div>
       <div v-else class="py-12 text-center"><span
-          class="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-[#efedff] text-[#6758ee]">
+          class="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-[var(--violet-soft)] text-[var(--violet)]">
           <UIcon name="i-lucide-zap" class="size-6" />
         </span>
         <h3 class="mb-2 font-bold">{{ t('dashboard.emptyTitle') }}</h3>

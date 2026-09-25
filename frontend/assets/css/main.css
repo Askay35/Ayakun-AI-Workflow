@@ -54,9 +54,9 @@ a { color: inherit; text-decoration: none; }
 }
 
 .page {
-  width: min(1180px, calc(100% - 40px));
+  width: min(1120px, calc(100% - 64px));
   margin-inline: auto;
-  padding: 44px 0 80px;
+  padding: 40px 0 80px;
 }
 
 .page-head {
@@ -66,6 +66,7 @@ a { color: inherit; text-decoration: none; }
   gap: 24px;
   margin-bottom: 28px;
 }
+.page-head .muted { margin-bottom: 0; font-size: 15px; }
 
 .eyebrow {
   margin-bottom: 10px;
@@ -78,9 +79,10 @@ a { color: inherit; text-decoration: none; }
 
 .page-title {
   margin-bottom: 8px;
-  font-size: clamp(34px, 4vw, 52px);
+  font-size: clamp(28px, 3.4vw, 38px);
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
 }
 
 .muted { color: var(--muted); }
@@ -116,22 +118,33 @@ a { color: inherit; text-decoration: none; }
 }
 
 .metric-card {
-  position: relative;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 16px;
   padding: 22px;
 }
-.metric-card::after {
-  position: absolute;
-  top: -30px;
-  right: -30px;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: var(--card-accent, var(--lime));
-  content: '';
-  opacity: 0.35;
+.metric-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--card-accent, var(--violet));
+  background: color-mix(in srgb, var(--card-accent, var(--violet)) 12%, white);
 }
-.metric-value { margin: 12px 0 0; font-size: 34px; font-weight: 800; }
+.metric-value { margin: 2px 0 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.row-list > * + * { border-top: 1px solid var(--line); }
+.row-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--violet);
+  background: var(--violet-soft);
+}
 
 .credit-pack {
   position: relative;
@@ -234,10 +247,10 @@ a { color: inherit; text-decoration: none; }
   gap: 6px;
   padding: 7px 11px;
   border-radius: 999px;
-  color: #40368f;
+  color: var(--violet-dark);
   font-size: 12px;
-  font-weight: 800;
-  background: #efedff;
+  font-weight: 700;
+  background: var(--violet-soft);
 }
 
 /* Public pages */
