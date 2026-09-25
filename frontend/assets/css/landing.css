@@ -339,7 +339,7 @@
 }
 .shot-bar { display: flex; gap: 6px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: #fbfbfe; }
 .shot-bar i { width: 10px; height: 10px; border-radius: 50%; background: #e0e2ee; }
-.shot-frame img { display: block; width: 100%; height: auto; }
+.shot-frame img { display: block; width: 100%; height: auto; object-position: 2px; }
 .shot-card.is-phone { align-items: center; }
 .shot-phone {
   overflow: hidden;
