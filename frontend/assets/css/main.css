@@ -385,6 +385,7 @@ a { color: inherit; text-decoration: none; }
   padding: 3px;
   border-radius: 10px;
   background: #eff0f8;
+  max-width: max-content;
 }
 .lang-switch button {
   min-width: 34px;
