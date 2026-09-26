@@ -298,6 +298,77 @@ def escape_telegram_markdown(value: Any) -> str:
     return _TELEGRAM_MARKDOWN_SPECIALS.sub(r"\\\1", _stringify_resolved(value))
 
 
+_MD_INLINE_RE = re.compile(
+    r"```[\s\S]*?```"
+    r"|`[^`\n]+`"
+    r"|\[(?P<label>[^\]\n]+)\]\((?P<url>https?://[^)\s]+)\)"
+    r"|\*\*(?P<bold>\S(?:.*?\S)?)\*\*"
+    r"|__(?P<bold2>\S(?:.*?\S)?)__"
+    r"|~~(?P<strike>\S(?:.*?\S)?)~~"
+    r"|(?<![\w*])\*(?P<ital>[^\s*](?:[^*\n]*?[^\s*])?)\*(?![\w*])"
+    r"|(?<![\w])_(?P<ital2>[^\s_](?:[^_\n]*?[^\s_])?)_(?![\w])"
+)
+_MD_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$")
+_MD_BULLET_RE = re.compile(r"^(\s*)[-*+]\s+(.+)$")
+
+
+def _md_inline_to_telegram(text: str) -> str:
+    parts: list[str] = []
+    last = 0
+    for match in _MD_INLINE_RE.finditer(text):
+        parts.append(escape_telegram_markdown(text[last:match.start()]))
+        last = match.end()
+        token = match.group(0)
+        if token.startswith("```"):
+            parts.append("```" + re.sub(r"([`\\])", r"\\\1", token[3:-3]) + "```")
+        elif token.startswith("`"):
+            parts.append("`" + re.sub(r"([`\\])", r"\\\1", token[1:-1]) + "`")
+        elif match.group("url"):
+            url = match.group("url").replace("\\", "\\\\").replace(")", "\\)")
+            parts.append(f"[{_md_inline_to_telegram(match.group('label'))}]({url})")
+        elif match.group("bold") or match.group("bold2"):
+            parts.append("*" + _md_inline_to_telegram(match.group("bold") or match.group("bold2")) + "*")
+        elif match.group("strike"):
+            parts.append("~" + _md_inline_to_telegram(match.group("strike")) + "~")
+        else:
+            parts.append("_" + _md_inline_to_telegram(match.group("ital") or match.group("ital2")) + "_")
+    parts.append(escape_telegram_markdown(text[last:]))
+    return "".join(parts)
+
+
+def markdown_to_telegram(value: Any) -> str:
+    """Обычный Markdown из ответа ИИ (**жирный**, *курсив*, заголовки, списки) → безопасный MarkdownV2.
+
+    Всё, что не является разметкой, экранируется, поэтому точки, скобки и прочие символы не ломают отправку.
+    """
+    text = _stringify_resolved(value)
+    lines: list[str] = []
+    in_code = False
+    code: list[str] = []
+    for line in text.split("\n"):
+        if line.strip().startswith("```"):
+            code.append(line)
+            in_code = not in_code
+            if not in_code:
+                lines.append(_md_inline_to_telegram("\n".join(code)))
+                code = []
+            continue
+        if in_code:
+            code.append(line)
+            continue
+        heading = _MD_HEADING_RE.match(line)
+        bullet = _MD_BULLET_RE.match(line)
+        if heading:
+            lines.append("*" + _md_inline_to_telegram(heading.group(1).replace("**", "")) + "*")
+        elif bullet:
+            lines.append(bullet.group(1) + "• " + _md_inline_to_telegram(bullet.group(2)))
+        else:
+            lines.append(_md_inline_to_telegram(line))
+    if code:
+        lines.append(escape_telegram_markdown("\n".join(code)))
+    return "\n".join(lines)
+
+
 _TELEGRAM_UNESCAPE_RE = re.compile(r"\\([_*\[\]()~`>#+\-=|{}.!\\])")
 
 
@@ -417,7 +488,7 @@ def _render_telegram_url(segment: str, data: Any, variables: dict | None) -> str
 
 def _render_telegram_token(token: str, data: Any, variables: dict | None) -> str:
     if token.startswith("{{"):
-        return escape_telegram_markdown(render_template(token, data, variables))
+        return markdown_to_telegram(render_template(token, data, variables))
     if token.startswith("```") and token.endswith("```"):
         return "```" + render_template(token[3:-3], data, variables) + "```"
     if token.startswith("`") and token.endswith("`"):

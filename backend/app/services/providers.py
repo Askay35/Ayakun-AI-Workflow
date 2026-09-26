@@ -14,6 +14,7 @@ import uuid
 
 import httpx
 from fastapi import HTTPException
+from helper import unescape_telegram_markdown
 from pydantic import BaseModel, Field
 
 from openai import OpenAI
@@ -376,6 +377,13 @@ class TelegramNotificationProvider:
                 json={"chat_id": destination, "text": text, "parse_mode": "MarkdownV2"},
                 timeout=self.config.provider_timeout_seconds,
             )
+            if response.status_code == 400:
+                # Разметка не прошла разбор Telegram — отправляем тот же текст без форматирования.
+                response = await self.client.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json={"chat_id": destination, "text": unescape_telegram_markdown(text)},
+                    timeout=self.config.provider_timeout_seconds,
+                )
         except httpx.RequestError:
             logger.warning("Telegram send failed", extra={"event": "telegram.send_failed"})
             raise ValueError(ERROR_TELEGRAM) from None
@@ -412,6 +420,14 @@ class TelegramNotificationProvider:
                 files={field: (filename or "file", data, mime or "application/octet-stream")},
                 timeout=self.config.provider_timeout_seconds,
             )
+            if response.status_code == 400 and caption:
+                plain = {"chat_id": destination, "caption": unescape_telegram_markdown(caption)}
+                response = await self.client.post(
+                    f"https://api.telegram.org/bot{token}/{method}",
+                    data=plain,
+                    files={field: (filename or "file", data, mime or "application/octet-stream")},
+                    timeout=self.config.provider_timeout_seconds,
+                )
         except httpx.RequestError:
             logger.warning("Telegram file send failed", extra={"event": "telegram.send_failed"})
             raise ValueError(ERROR_TELEGRAM) from None

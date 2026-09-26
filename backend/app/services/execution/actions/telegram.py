@@ -2,7 +2,7 @@ import os
 
 import httpx
 
-from helper import escape_telegram_markdown, expression_root, json_root_from_output, render_telegram_message, render_template
+from helper import markdown_to_telegram, expression_root, json_root_from_output, render_telegram_message, render_template
 from schemas.workflow import TelegramSendNode
 from services.execution.actions.base import NodeAction
 from services.execution.context import parent_output_texts, parent_records
@@ -41,7 +41,7 @@ class TelegramSendAction(NodeAction):
         else:
             texts = parent_output_texts(node, context)
             raw = texts[0] if texts else ""
-            message = escape_telegram_markdown(raw)
+            message = markdown_to_telegram(raw)
         if not message and incoming is None:
             return {"sent": False, "text": ""}
         if not chat_id:

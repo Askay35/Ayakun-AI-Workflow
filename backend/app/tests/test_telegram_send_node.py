@@ -281,8 +281,9 @@ async def test_telegram_provider_uses_markdown_and_hides_http_errors(monkeypatch
     captured: dict = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        captured["url"] = str(request.url)
-        captured["body"] = json.loads(request.content)
+        captured.setdefault("url", str(request.url))
+        captured.setdefault("body", json.loads(request.content))
+        captured["calls"] = captured.get("calls", 0) + 1
         return httpx.Response(400, json={"ok": False, "description": "Bad Request: can't parse entities"})
 
     monkeypatch.setattr(settings, "telegram_bot_token", "123456789:SECRET_BOT_TOKEN_VALUE")
@@ -293,6 +294,7 @@ async def test_telegram_provider_uses_markdown_and_hides_http_errors(monkeypatch
             await provider.send("42", "Цена: 12.5 — {{value}}")
     assert raised.value.__cause__ is None
     assert captured["body"]["parse_mode"] == "MarkdownV2"
+    assert captured["calls"] == 2  # повтор без форматирования
     assert captured["body"]["text"] == "Цена: 12.5 — {{value}}"
     assert "SECRET_BOT_TOKEN_VALUE" not in str(raised.value)
     assert "400" not in str(raised.value)
