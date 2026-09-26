@@ -463,6 +463,9 @@ class WorkflowService:
         return workflow
 
     async def create(self, data: WorkflowCreate, user: User) -> Workflow:
+        if self.billing:
+            # Стартовые токены и пробный период выдаются при первом обращении к кошельку.
+            await self.billing.ensure_initial_credit(user)
         await SubscriptionService(self.db).require_active(user.id)
         workflows_count = await self.db.scalar(select(func.count(Workflow.id)).where(Workflow.owner_id == user.id))
         if workflows_count >= settings.max_workflows_count:
