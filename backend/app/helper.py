@@ -308,6 +308,11 @@ _MD_INLINE_RE = re.compile(
     r"|(?<![\w*])\*(?P<ital>[^\s*](?:[^*\n]*?[^\s*])?)\*(?![\w*])"
     r"|(?<![\w])_(?P<ital2>[^\s_](?:[^_\n]*?[^\s_])?)_(?![\w])"
 )
+_MD_SPECIALS = "_*[]()~`>#+-=|{}.!\\"
+_MD_LITERALS = {char: chr(0xE000 + index) for index, char in enumerate(_MD_SPECIALS)}
+_MD_LITERALS_REVERSE = {value: key for key, value in _MD_LITERALS.items()}
+_MD_ESCAPED_RE = re.compile(r"\\([" + re.escape(_MD_SPECIALS) + r"])")
+_MD_LITERAL_BACK_RE = re.compile("[" + "".join(_MD_LITERALS.values()) + "]")
 _MD_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$")
 _MD_BULLET_RE = re.compile(r"^(\s*)[-*+]\s+(.+)$")
 
@@ -342,6 +347,8 @@ def markdown_to_telegram(value: Any) -> str:
     Всё, что не является разметкой, экранируется, поэтому точки, скобки и прочие символы не ломают отправку.
     """
     text = _stringify_resolved(value)
+    # ИИ нередко сам экранирует знаки для MarkdownV2 (\\. \\! \\*) — это обычные символы, экранируем один раз.
+    text = _MD_ESCAPED_RE.sub(lambda m: _MD_LITERALS[m.group(1)], text)
     lines: list[str] = []
     in_code = False
     code: list[str] = []
@@ -366,7 +373,7 @@ def markdown_to_telegram(value: Any) -> str:
             lines.append(_md_inline_to_telegram(line))
     if code:
         lines.append(escape_telegram_markdown("\n".join(code)))
-    return "\n".join(lines)
+    return _MD_LITERAL_BACK_RE.sub(lambda m: "\\" + _MD_LITERALS_REVERSE[m.group(0)], "\n".join(lines))
 
 
 _TELEGRAM_UNESCAPE_RE = re.compile(r"\\([_*\[\]()~`>#+\-=|{}.!\\])")
