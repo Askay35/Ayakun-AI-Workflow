@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from helper import utcnow
 from models.user import User
 from models.workflow import Workflow
 from schemas.common import SearchPeriod
@@ -817,4 +818,9 @@ async def use_template(
         schedule_slots=schedule_slots or None,
         schedule_timezone=schedule_timezone,
     )
-    return await WorkflowService(db, BillingService(db)).create(data, user)
+    workflow = await WorkflowService(db, BillingService(db)).create(data, user)
+    if user.onboarded_at is None:
+        # Пользователь сам выбрал шаблон до/вместо опроса — опрос больше не показываем.
+        user.onboarded_at = utcnow()
+        await db.commit()
+    return workflow

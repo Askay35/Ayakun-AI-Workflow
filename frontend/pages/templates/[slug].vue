@@ -4,6 +4,7 @@ import { apiErrorMessage } from '~/composables/useApi'
 definePageMeta({ layout: 'app', middleware: 'auth' })
 const route = useRoute()
 const api = useApi()
+const auth = useAuth()
 const { t } = useI18n()
 const isMobileEditor = useIsMobileEditor()
 const error = ref('')
@@ -15,6 +16,8 @@ const copy = async () => {
   error.value = ''
   try {
     const workflow = await api.templates.use(String(route.params.slug), isMobileEditor.value)
+    // Бэкенд засчитывает копирование шаблона вместо опроса — синхронизируем локально, чтобы не было редиректа.
+    if (auth.user.value && !auth.user.value.onboarded_at) auth.user.value = { ...auth.user.value, onboarded_at: new Date().toISOString() }
     await navigateTo(`/workflows/${workflow.id}`, { replace: true })
   } catch (reason) {
     started = false

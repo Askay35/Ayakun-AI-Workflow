@@ -22,5 +22,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   // Новый пользователь сначала проходит короткий опрос и попадает сразу в подходящую цепочку.
-  if (!auth.user.value.onboarded_at && to.path !== '/onboarding') return navigateTo('/onboarding')
+  // Кто пришёл по ссылке на шаблон, уже выбрал, с чего начать, — опрос ему не нужен.
+  const fromTemplate = to.path.startsWith('/templates/')
+  if (!auth.user.value.onboarded_at && !fromTemplate && to.path !== '/onboarding') return navigateTo('/onboarding')
 })
