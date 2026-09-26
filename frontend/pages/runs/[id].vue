@@ -129,7 +129,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
     </div>
 
     <div class="grid gap-5 lg:grid-cols-[1fr_300px]">
-      <div class="space-y-3">
+      <div class="min-w-0 space-y-3">
         <div v-if="steps.length" class="panel p-5">
           <div class="mb-3 flex items-end justify-between gap-4">
             <div>
@@ -147,7 +147,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
         <div
           v-for="(step, index) in steps"
           :key="step.node_id"
-          class="panel p-5"
+          class="panel min-w-0 p-5"
           :class="{ 'run-step-active': statusKey(step.status) === 'running' }"
         >
           <button
@@ -185,7 +185,7 @@ const cancel = async () => { await api.runs.cancel(id); await refresh() }
             </div>
           </button>
           <div v-if="isStepExpanded(step)" class="mt-4 space-y-4">
-            <pre v-if="formatOutput(step)" class="overflow-auto whitespace-pre-wrap rounded-xl border border-[var(--line)] bg-[var(--soft)] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step) }}</pre>
+            <pre v-if="formatOutput(step)" class="overflow-auto whitespace-pre-wrap break-words rounded-xl border border-[var(--line)] bg-[var(--soft)] p-4 font-[Manrope] text-sm leading-6">{{ formatOutput(step) }}</pre>
             <p v-if="step.error" class="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-error">{{ step.error }}</p>
             <div v-if="step.citations?.length" class="border-t border-[var(--line)] pt-3">
               <p class="text-xs font-semibold uppercase muted">{{ t('runs.sources') }}</p>
