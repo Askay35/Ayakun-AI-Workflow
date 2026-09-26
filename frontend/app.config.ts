@@ -133,7 +133,7 @@ export default defineAppConfig({
       slots: {
         root: 'relative inline-flex w-full items-center',
         base: [
-          'w-full rounded-2xl border-0 appearance-none font-semibold tracking-[-0.01em] leading-6',
+          'w-full rounded-[24px] border-0 appearance-none font-semibold tracking-[-0.01em] leading-6',
           'placeholder:text-[#9a9fba] placeholder:font-medium',
           'disabled:cursor-not-allowed disabled:opacity-60',
           'transition-[box-shadow,background-color,color] duration-200'
