@@ -2771,20 +2771,20 @@ button.app-nav-item {
 .app-header-burger { display: none; }
 .app-menu-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(15, 19, 48, .35); }
 .app-menu {
-  position: fixed;
-  top: 56px;
-  right: 8px;
-  left: 8px;
-  z-index: 41;
-  display: grid;
-  gap: 2px;
-  max-width: 360px;
-  margin-left: auto;
-  padding: 8px;
+  background: #fff;
   border: 1px solid var(--line);
   border-radius: 18px;
-  background: #fff;
   box-shadow: var(--shadow-md);
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  position: fixed;
+  right: calc(50% + 2px);
+  top: 56px;
+  z-index: 41;
+  width: 100%;
+  transform: translateX(50%);
+  max-width: calc(100% - 24px);
 }
 .app-menu-link {
   display: flex;
