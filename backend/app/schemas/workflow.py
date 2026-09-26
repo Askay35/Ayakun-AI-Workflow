@@ -572,6 +572,7 @@ class WorkflowCreate(BaseModel):
     schedule_cron: str | None = None
     schedule_timezone: str = "UTC"
     variables: dict[str, Any] | None = None
+    mobile: bool = False
 
     @field_validator("variables")
     @classmethod
@@ -616,6 +617,7 @@ class WorkflowResponse(BaseModel):
     next_run_at: datetime.datetime | None
     estimated_run_cost: Decimal = Decimal("0")
     webhook_token: str | None = None
+    mobile: bool = False
     solo_run_blocked_node_types: list[str] = Field(default_factory=list)
     created_at: datetime.datetime
     updated_at: datetime.datetime

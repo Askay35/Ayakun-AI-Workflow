@@ -50,6 +50,7 @@ export interface User {
   avatar_url?: string
   identities?: Array<{ provider: 'email' | 'google' | 'telegram'; label?: string }>
   gmail_accounts?: GmailAccount[]
+  onboarded_at?: string | null
 }
 
 export interface AuthTokens {
@@ -163,6 +164,7 @@ export interface Workflow {
   variables?: Record<string, string | number | boolean | null>
   webhook_token?: string | null
   solo_run_blocked_node_types?: string[]
+  mobile?: boolean
   draft_graph: { nodes: WorkflowNode[] }
 }
 
@@ -226,6 +228,7 @@ export interface WorkflowTemplate {
   node_types: NodeKind[]
   steps: Array<{ type: NodeKind; label: string }>
   variables: Record<string, string>
+  linear: boolean
 }
 
 export interface ReferralSummary {
@@ -440,4 +443,13 @@ export interface AdminListQuery {
   user_id?: number | string
   page?: number
   page_size?: number
+}
+
+export interface OnboardingPayload {
+  answers: Record<string, string>
+  template_slug: string | null
+  schedule_slots: ScheduleSlot[]
+  schedule_timezone: string
+  search_period: SearchPeriod | null
+  mobile: boolean
 }

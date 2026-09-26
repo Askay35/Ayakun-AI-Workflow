@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { apiErrorMessage } from '~/composables/useApi'
 
+import type { Workflow } from '~/types/api'
 import { formatCredits } from '~/utils/credits'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
@@ -15,29 +16,39 @@ const deletingId = ref<string>()
 const renamingId = ref<string>()
 const nameDraft = ref('')
 const renamingBusy = ref(false)
+const runningId = ref<string>()
 const { data: workflows, pending, refresh } = await useAuthAsyncData('workflows', () => api.workflows.list())
 
 const create = async () => {
   if (!name.value.trim()) return
-  if (isMobileEditor.value) {
-    showMobileGate.value = true
-    return
-  }
   creating.value = true
   try {
-    const workflow = await api.workflows.create({ name: name.value, description: '' })
+    // С телефона создаётся мобильная цепочка — она открывается списком шагов, а не холстом.
+    const workflow = await api.workflows.create({ name: name.value, description: '', mobile: isMobileEditor.value })
     await navigateTo(`/workflows/${workflow.id}`)
   } catch (error: any) {
     toast.add({ title: t('workflows.createError'), description: error?.data?.detail, color: 'error' })
   } finally { creating.value = false }
 }
 
-const openWorkflow = async (id: string) => {
-  if (isMobileEditor.value) {
+const openWorkflow = async (workflow: Workflow) => {
+  if (isMobileEditor.value && !workflow.mobile) {
     showMobileGate.value = true
     return
   }
-  await navigateTo(`/workflows/${id}`)
+  await navigateTo(`/workflows/${workflow.id}`)
+}
+
+const runWorkflow = async (workflow: Workflow) => {
+  runningId.value = workflow.id
+  try {
+    const run = await api.workflows.run(workflow.id)
+    await navigateTo(`/runs/${run.id}`)
+  } catch (error) {
+    toast.add({ title: t('workflows.runError'), description: apiErrorMessage(error, t('common.genericError')), color: 'error' })
+  } finally {
+    runningId.value = undefined
+  }
 }
 
 const remove = async (id: string, workflowName: string) => {
@@ -106,8 +117,8 @@ const commitRename = async (workflowId: string) => {
     <div v-else-if="workflows?.length" class="flex-cards">
       <div v-for="workflow in workflows" :key="workflow.id" class="panel workflow-card">
         <div class="flex items-start justify-between gap-3">
-          <button type="button" class="workflow-card-icon" @click="openWorkflow(workflow.id)">
-            <UIcon name="i-lucide-workflow" class="size-5" />
+          <button type="button" class="workflow-card-icon" :class="{ 'is-mobile': workflow.mobile }" @click="openWorkflow(workflow)">
+            <UIcon :name="workflow.mobile ? 'i-lucide-list-ordered' : 'i-lucide-workflow'" class="size-5" />
           </button>
           <div class="flex items-center gap-1">
             <span class="cost-pill"><UIcon name="i-lucide-coins" />{{ t('workflows.costUpTo', { cost: formatCredits(workflow.estimated_run_cost) }) }}</span>
@@ -145,14 +156,27 @@ const commitRename = async (workflowId: string) => {
             <UButton :label="t('common.cancel')" size="sm" variant="ghost" color="neutral" @click="cancelRename" />
           </div>
         </div>
-        <button v-else type="button" class="block w-full cursor-pointer text-left" @click="openWorkflow(workflow.id)">
-          <h2 class="mb-2 mt-5 text-xl font-extrabold tracking-tight">{{ workflow.name }}</h2>
+        <button v-else type="button" class="block w-full cursor-pointer text-left" @click="openWorkflow(workflow)">
+          <span class="workflow-kind mt-4" :class="workflow.mobile ? 'is-mobile' : 'is-canvas'" :title="workflow.mobile ? t('workflows.kindMobileHint') : t('workflows.kindCanvasHint')">
+            <UIcon :name="workflow.mobile ? 'i-lucide-smartphone' : 'i-lucide-monitor'" class="size-3.5" />
+            {{ workflow.mobile ? t('workflows.kindMobile') : t('workflows.kindCanvas') }}
+          </span>
+          <h2 class="mb-2 mt-3 text-xl font-extrabold tracking-tight">{{ workflow.name }}</h2>
           <p class="mb-6 text-sm muted">{{ workflow.next_run_at || workflow.schedule_cron ? t('workflows.auto') : t('workflows.manual') }}</p>
           <div class="workflow-card-footer">
             <div class="flex items-center gap-2"><span class="status-dot" :class="{ online: workflow.status === 'published' }" /><span class="text-xs font-bold">{{ workflow.status === 'published' ? t('workflows.published') : t('workflows.draft') }}</span></div>
             <span class="text-xs muted">{{ t('workflows.updated', { date: formatDateOnly(workflow.updated_at) }) }}</span>
           </div>
         </button>
+        <UButton
+          v-if="renamingId !== workflow.id && workflow.status === 'published'"
+          class="mt-3 w-full justify-center"
+          :label="t('workflows.runNow')"
+          icon="i-lucide-play"
+          variant="soft"
+          :loading="runningId === workflow.id"
+          @click="runWorkflow(workflow)"
+        />
       </div>
     </div>
     <div v-else class="panel py-16 text-center">

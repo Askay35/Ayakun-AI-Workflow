@@ -1,7 +1,7 @@
 import type {
   AdminConfig, AdminListQuery, AdminStats, AdminStatsGranularity, AdminPage, AdminPaymentRecord, AdminRunRecord,
   AdminUserRecord, AdminWorkflowRecord, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
-  ReferralSummary, SubscriptionInfo, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun, WorkflowTemplate
+  OnboardingPayload, ReferralSummary, SubscriptionInfo, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun, WorkflowTemplate
 } from '~/types/api'
 import { visibleLedgerEntries } from '~/utils/ledger'
 import type { ScheduleSlot } from '~/utils/schedule'
@@ -481,7 +481,7 @@ export const useApi = () => {
     workflows: {
       list: async () => (await request<Workflow[]>('/workflows')).map(normalizeWorkflow),
       get: async (id: string) => normalizeWorkflow(await request<Workflow>(`/workflows/${id}`)),
-      create: async (body: Pick<Workflow, 'name' | 'description'>) =>
+      create: async (body: Pick<Workflow, 'name' | 'description' | 'mobile'>) =>
         normalizeWorkflow(await request<Workflow>('/workflows', { method: 'POST', body })),
       save: (
         id: string,
@@ -567,9 +567,14 @@ export const useApi = () => {
         }
       })
     },
+    users: {
+      completeOnboarding: (body: OnboardingPayload) =>
+        request<{ workflow_id: string | null }>('/users/me/onboarding', { method: 'POST', body })
+    },
     templates: {
       list: () => request<WorkflowTemplate[]>('/templates'),
-      use: async (slug: string) => normalizeWorkflow(await request<Workflow>(`/templates/${slug}/use`, { method: 'POST' }))
+      use: async (slug: string, mobile = false) =>
+        normalizeWorkflow(await request<Workflow>(`/templates/${slug}/use`, { method: 'POST', body: { mobile } }))
     },
     referrals: {
       summary: () => request<ReferralSummary>('/referrals'),

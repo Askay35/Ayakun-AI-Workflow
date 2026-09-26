@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from deps.auth import CurrentUser
 from deps.database import get_db
 from schemas.common import ApiResponse
-from schemas.templates import TemplateStep, TemplateSummary
+from schemas.templates import TemplateStep, TemplateSummary, TemplateUse
 from schemas.workflow import WorkflowResponse
 from services.templates import TEMPLATES, use_template
 
@@ -24,11 +24,12 @@ async def list_templates():
             node_types=item.node_types(),
             steps=[TemplateStep(type=node["type"], label=node["label"]) for node in item.nodes],
             variables=item.variables,
+            linear=item.linear(),
         )
         for item in TEMPLATES
     ])
 
 
 @router.post("/{slug}/use", response_model=ApiResponse[WorkflowResponse], status_code=status.HTTP_201_CREATED)
-async def use(slug: str, user: CurrentUser, db: AsyncSession = Depends(get_db)):
-    return ApiResponse(success=True, data=await use_template(db, user, slug))
+async def use(slug: str, user: CurrentUser, data: TemplateUse = TemplateUse(), db: AsyncSession = Depends(get_db)):
+    return ApiResponse(success=True, data=await use_template(db, user, slug, mobile=data.mobile))

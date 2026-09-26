@@ -9,6 +9,7 @@ const props = defineProps<{
 }>()
 
 const { t, locale } = useI18n()
+const isMobile = useIsMobileEditor()
 const CATEGORIES = ['all', 'content', 'sales', 'ops', 'monitoring', 'dev', 'media'] as const
 const category = ref<(typeof CATEGORIES)[number]>('all')
 const query = ref('')
@@ -52,7 +53,10 @@ const counts = computed(() => Object.fromEntries(CATEGORIES.map(key => [
       <NuxtLink v-for="item in visible" :key="item.slug" :to="`/templates/${item.slug}`" class="template-card">
         <div class="template-card-top">
           <span class="example-tag">{{ t(`templates.categories.${item.category}`) }}</span>
-          <span class="template-steps-count">{{ t('templates.steps', { n: item.steps.length }) }}</span>
+          <span v-if="isMobile && !item.linear" class="template-steps-count">
+            <UIcon name="i-lucide-monitor" class="size-3.5 align-[-2px]" /> {{ t('templates.desktopOnly') }}
+          </span>
+          <span v-else class="template-steps-count">{{ t('templates.steps', { n: item.steps.length }) }}</span>
         </div>
         <h3>{{ title(item) }}</h3>
         <p>{{ text(item) }}</p>

@@ -16,3 +16,8 @@ class TemplateSummary(BaseModel):
     node_types: list[str]
     steps: list[TemplateStep]
     variables: dict[str, str]
+    linear: bool
+
+
+class TemplateUse(BaseModel):
+    mobile: bool = False

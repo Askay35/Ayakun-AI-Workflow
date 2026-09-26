@@ -363,6 +363,22 @@ def validate_graph(graph: WorkflowGraph, *, strict: bool = False) -> list[str]:
     return errors
 
 
+MOBILE_BLOCKED_TYPES = frozenset({NodeType.IF_ELSE, NodeType.LOOP})
+
+
+def validate_mobile_graph(graph: WorkflowGraph) -> list[str]:
+    """Мобильная цепочка — простой список шагов: один вход, один выход, без ветвлений."""
+    errors: list[str] = []
+    for node in graph.nodes:
+        if node.type in MOBILE_BLOCKED_TYPES:
+            errors.append(f"Узел {node.label}: условия и циклы доступны только в редакторе на компьютере")
+        if len(node.parents) > 1 or len(node.children) > 1:
+            errors.append(f"Узел {node.label}: в мобильной цепочке у шага один вход и один выход")
+    if len([node for node in graph.nodes if not node.parents]) > 1:
+        errors.append("Мобильная цепочка должна быть одним списком шагов")
+    return errors
+
+
 def incoming_slots(data: WorkflowCreate | WorkflowUpdate) -> tuple[list[ScheduleSlot] | None, bool | None]:
     if "schedule_slots" in data.model_fields_set:
         return list(data.schedule_slots or []), data.schedule_enabled
@@ -452,6 +468,8 @@ class WorkflowService:
         if workflows_count >= settings.max_workflows_count:
             raise HTTPException(400, "Вы достигли максимального количества workflows")
         errors = validate_graph(data.graph)
+        if data.mobile:
+            errors += validate_mobile_graph(data.graph)
         if errors:
             raise HTTPException(422, errors)
         await self._guard_image_uploads(user, data.graph, previous=None, replace_id=None)
@@ -463,6 +481,7 @@ class WorkflowService:
             schedule_timezone=data.schedule_timezone,
             estimated_run_cost=await PricingService(self.db).estimate_graph(data.graph),
             variables=dict(data.variables or data.graph.variables or {}),
+            mobile=data.mobile,
         )
         slots, enabled = incoming_slots(data)
         apply_workflow_schedule(
@@ -495,6 +514,8 @@ class WorkflowService:
             previous = graph
             graph = data.graph
             errors = validate_graph(graph)
+            if workflow.mobile:
+                errors += validate_mobile_graph(graph)
             if errors:
                 raise HTTPException(422, errors)
             await self._guard_image_uploads(user, graph, previous=previous, replace_id=workflow.id)
@@ -579,7 +600,9 @@ class WorkflowService:
 
     async def validate(self, workflow_id: uuid.UUID, user: User) -> list[str]:
         workflow = await self._owned(workflow_id, user)
-        return validate_graph(WorkflowGraph.model_validate(workflow.draft_graph), strict=True)
+        graph = WorkflowGraph.model_validate(workflow.draft_graph)
+        errors = validate_graph(graph, strict=True)
+        return errors + validate_mobile_graph(graph) if workflow.mobile else errors
 
     async def publish(self, workflow_id: uuid.UUID, user: User) -> Workflow:
         """Фиксирует снимок draft_graph в WorkflowVersion — дальше runs идут по этому снимку."""
@@ -587,6 +610,8 @@ class WorkflowService:
         graph = WorkflowGraph.model_validate(workflow.draft_graph)
         graph.variables = dict(workflow.variables or {})
         errors = validate_graph(graph, strict=True)
+        if workflow.mobile:
+            errors += validate_mobile_graph(graph)
         # chat_id в узле можно не указывать, если у пользователя привязан Telegram.
         if any(
             isinstance(node, TelegramSendNode)

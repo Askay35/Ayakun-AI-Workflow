@@ -14,8 +14,8 @@ const copy = async () => {
   started = true
   error.value = ''
   try {
-    const workflow = await api.templates.use(String(route.params.slug))
-    await navigateTo(isMobileEditor.value ? '/workflows' : `/workflows/${workflow.id}`, { replace: true })
+    const workflow = await api.templates.use(String(route.params.slug), isMobileEditor.value)
+    await navigateTo(`/workflows/${workflow.id}`, { replace: true })
   } catch (reason) {
     started = false
     error.value = apiErrorMessage(reason, t('templates.copyError'))

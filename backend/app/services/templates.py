@@ -9,7 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.user import User
 from models.workflow import Workflow
-from schemas.workflow import WorkflowCreate, WorkflowGraph
+from schemas.common import SearchPeriod
+from schemas.workflow import ScheduleSlot, WorkflowCreate, WorkflowGraph
 
 COLUMN_WIDTH = 320
 ROW_HEIGHT = 190
@@ -67,6 +68,14 @@ class Template:
             parents = nodes[node_id]["parents"]
             cache[node_id] = 0 if not parents else 1 + max(Template._depth(p, nodes, cache) for p in parents)
         return cache[node_id]
+
+    def linear(self) -> bool:
+        """Список шагов без ветвлений и циклов — такой шаблон можно открыть в мобильном редакторе."""
+        if any(item["type"] in {"if_else", "loop"} for item in self.nodes):
+            return False
+        sources = [link[0] for link in self.links]
+        targets = [link[1] for link in self.links]
+        return len(sources) == len(set(sources)) and len(targets) == len(set(targets))
 
     def node_types(self) -> list[str]:
         seen: list[str] = []
@@ -587,6 +596,176 @@ TEMPLATES: list[Template] = [
         ],
         links=[("photo", "read"), ("read", "send")],
     ),
+    # ── Подборки для опроса после регистрации: работают без внешних ключей ──
+    Template(
+        slug="telegram-channel-post",
+        category="content",
+        name="Готовый пост для канала",
+        description="Находит свежий повод в вашей теме, ИИ пишет пост для Telegram-канала и присылает его вам на проверку.",
+        name_en="Ready-made channel post",
+        description_en="Finds a fresh topic in your niche, AI writes a Telegram channel post and sends it to you for review.",
+        variables={"topic": "маркетинг для малого бизнеса", "tone": "дружелюбный и экспертный"},
+        nodes=[
+            node("search", "web_search", "Свежие поводы", query="{{topic}} новости", period="d"),
+            prompt("post", "Текст поста", "Выбери самую интересную новость по теме «{{topic}}» и напиши пост для Telegram-канала: цепляющий заголовок, суть в 3–4 абзацах, вывод для читателя. До 1000 символов.",
+                   instructions="Тон — {{tone}}. Уместные эмодзи, без хэштегов."),
+            node("send", "telegram_send", "Черновик в Telegram", message=""),
+        ],
+        links=[("search", "post"), ("post", "send")],
+    ),
+    Template(
+        slug="competitor-news-digest",
+        category="monitoring",
+        name="Что нового у конкурентов",
+        description="Ищет свежие упоминания конкурентов в сети, ИИ выделяет запуски, акции и изменения цен и присылает сводку.",
+        name_en="Competitor news digest",
+        description_en="Searches fresh mentions of competitors, AI highlights launches, promotions and price changes and sends a summary.",
+        variables={"competitors": "Конкурент 1, Конкурент 2"},
+        nodes=[
+            node("search", "web_search", "Упоминания конкурентов", query="{{competitors}} новости акции", period="w"),
+            prompt("digest", "Сводка по конкурентам", "Сделай сводку о конкурентах ({{competitors}}): новые продукты, акции, цены, заметные публикации. Для каждого пункта — вывод, что это значит для нас, и ссылка.",
+                   instructions="Коротко, списком, без воды."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("search", "digest"), ("digest", "send")],
+    ),
+    Template(
+        slug="tenders-digest",
+        category="sales",
+        name="Подборка тендеров и заказов",
+        description="Ищет новые тендеры и запросы на ваши услуги, ИИ отбирает подходящие и присылает список со ссылками.",
+        name_en="Tenders and orders digest",
+        description_en="Searches new tenders and requests for your services, AI picks the relevant ones and sends a list with links.",
+        variables={"service": "разработка сайтов", "region": "Москва"},
+        nodes=[
+            node("search", "web_search", "Тендеры и запросы", query="тендер закупка {{service}} {{region}}", period="d"),
+            prompt("pick", "Отбор ИИ", "Отбери до 7 тендеров или запросов, подходящих под услугу «{{service}}» в регионе {{region}}. Для каждого — заказчик, суть, бюджет (если есть), срок и ссылка."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("search", "pick"), ("pick", "send")],
+    ),
+    Template(
+        slug="client-research",
+        category="sales",
+        name="Досье на клиента перед встречей",
+        description="Собирает свежие новости о компании клиента, ИИ готовит короткое досье и идеи для разговора.",
+        name_en="Client brief before a meeting",
+        description_en="Collects fresh news about the client's company, AI prepares a short brief and talking points.",
+        variables={"company": "ООО «Ромашка»"},
+        nodes=[
+            node("search", "web_search", "Новости о компании", query="{{company}} новости", period="m"),
+            prompt("brief", "Досье", "Подготовь досье на компанию {{company}} перед встречей: чем занимается, последние новости, возможные боли и 3 идеи, с чего начать разговор."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("search", "brief"), ("brief", "send")],
+    ),
+    Template(
+        slug="competitor-prices-digest",
+        category="monitoring",
+        name="Цены конкурентов на товар",
+        description="Ищет предложения по вашему товару в интернет-магазинах и на маркетплейсах, ИИ сравнивает цены с вашей.",
+        name_en="Competitor prices for a product",
+        description_en="Searches offers for your product in online shops and marketplaces, AI compares prices with yours.",
+        variables={"product": "беспроводные наушники", "my_price": "4990"},
+        nodes=[
+            node("search", "web_search", "Предложения", query="{{product}} купить цена", period="w"),
+            prompt("compare", "Сравнение цен", "Найди в результатах цены на товар «{{product}}» и сравни с нашей ценой {{my_price}} ₽: кто дешевле, кто дороже, средняя цена рынка и рекомендация."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("search", "compare"), ("compare", "send")],
+    ),
+    Template(
+        slug="reviews-digest",
+        category="monitoring",
+        name="Разбор отзывов о товаре",
+        description="Собирает свежие отзывы о товаре или бренде, ИИ выделяет частые жалобы и похвалы и предлагает улучшения.",
+        name_en="Product reviews analysis",
+        description_en="Collects fresh reviews of a product or brand, AI highlights frequent complaints and praise and suggests improvements.",
+        variables={"product": "ваш товар или бренд"},
+        nodes=[
+            node("search", "web_search", "Свежие отзывы", query="{{product}} отзывы", period="w"),
+            prompt("analysis", "Анализ отзывов", "Проанализируй отзывы о «{{product}}»: 3 частые жалобы, 3 за что хвалят, общий тон и 3 конкретных улучшения."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("search", "analysis"), ("analysis", "send")],
+    ),
+    Template(
+        slug="tech-news-digest",
+        category="dev",
+        name="Новости вашего стека",
+        description="Ищет релизы, уязвимости и статьи по технологиям, с которыми вы работаете, и присылает короткую выжимку.",
+        name_en="Your tech stack news",
+        description_en="Searches releases, vulnerabilities and articles on the technologies you use and sends a short summary.",
+        variables={"stack": "Python, FastAPI, PostgreSQL"},
+        nodes=[
+            node("search", "web_search", "Релизы и статьи", query="{{stack}} release news", period="w"),
+            prompt("digest", "Выжимка", "Сделай выжимку новостей по стеку {{stack}}: новые версии, важные изменения, уязвимости, интересные статьи. Для каждого пункта — одна фраза и ссылка.",
+                   instructions="Пиши по-русски, коротко, для разработчиков."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("search", "digest"), ("digest", "send")],
+    ),
+    Template(
+        slug="business-law-digest",
+        category="monitoring",
+        name="Изменения в законах для бизнеса",
+        description="Следит за новыми законами, налогами и требованиями в вашей сфере, ИИ объясняет, что нужно сделать.",
+        name_en="Law changes for business",
+        description_en="Tracks new laws, taxes and requirements in your field, AI explains what you need to do.",
+        variables={"industry": "розничная торговля"},
+        nodes=[
+            node("search", "web_search", "Новые требования", query="изменения закон налог {{industry}} бизнес", period="w"),
+            prompt("explain", "Что это значит", "Выдели изменения в законах, налогах и требованиях для сферы «{{industry}}». Для каждого: что меняется, с какой даты, что нужно сделать бизнесу, ссылка на источник."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("search", "explain"), ("explain", "send")],
+    ),
+    Template(
+        slug="currency-rates-daily",
+        category="monitoring",
+        name="Курсы валют с комментарием",
+        description="Берёт официальные курсы ЦБ, ИИ коротко описывает изменения к прошлому дню и присылает сводку.",
+        name_en="Currency rates with commentary",
+        description_en="Takes the official Central Bank rates, AI briefly describes the change since yesterday and sends a summary.",
+        variables={"currencies": "USD, EUR, CNY"},
+        nodes=[
+            node("rates", "http_request", "Курсы ЦБ", request_json='{\n  "method": "GET",\n  "url": "https://www.cbr-xml-daily.ru/daily_json.js"\n}'),
+            prompt("summary", "Сводка", "По данным ЦБ дай курсы {{currencies}}: текущее значение (Value), изменение к предыдущему (Previous) в рублях и процентах. В конце — одна фраза общего вывода.",
+                   instructions="Коротко, списком, со стрелками ↑ ↓."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("rates", "summary"), ("summary", "send")],
+    ),
+    Template(
+        slug="daily-lesson",
+        category="content",
+        name="Урок дня",
+        description="ИИ каждый раз готовит короткий урок по выбранной теме: новое слово, правило или приём с примером и мини-заданием.",
+        name_en="Lesson of the day",
+        description_en="AI prepares a short lesson on your topic each time: a new word, rule or technique with an example and a mini task.",
+        variables={"subject": "английский язык", "level": "средний"},
+        nodes=[
+            prompt("lesson", "Урок", "Подготовь короткий урок по теме «{{subject}}» для уровня «{{level}}»: одно новое понятие или слово, объяснение простыми словами, 2 примера и мини-задание. Каждый раз выбирай новое.",
+                   instructions="Дружелюбно, не длиннее 800 символов."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("lesson", "send")],
+    ),
+    Template(
+        slug="city-events-digest",
+        category="content",
+        name="Афиша событий в городе",
+        description="Ищет концерты, выставки и мероприятия в вашем городе, ИИ отбирает интересные под ваши увлечения.",
+        name_en="City events digest",
+        description_en="Searches concerts, exhibitions and events in your city, AI picks those matching your interests.",
+        variables={"city": "Москва", "interests": "выставки, стендап, джаз"},
+        nodes=[
+            node("search", "web_search", "Афиша", query="афиша {{city}} мероприятия {{interests}}", period="w"),
+            prompt("pick", "Подборка", "Отбери до 7 событий в городе {{city}} под интересы: {{interests}}. Для каждого — название, дата, место и ссылка."),
+            node("send", "telegram_send", "В Telegram", message=""),
+        ],
+        links=[("search", "pick"), ("pick", "send")],
+    ),
 ]
 
 BY_SLUG = {item.slug: item for item in TEMPLATES}
@@ -599,17 +778,43 @@ def get_template(slug: str) -> Template:
     return template
 
 
-async def use_template(db: AsyncSession, user: User, slug: str) -> Workflow:
-    """Копирует шаблон в цепочки пользователя: все узлы, связи и переменные."""
+async def use_template(
+    db: AsyncSession,
+    user: User,
+    slug: str,
+    *,
+    mobile: bool = False,
+    schedule_slots: list[ScheduleSlot] | None = None,
+    schedule_timezone: str = "UTC",
+    search_period: SearchPeriod | None = None,
+) -> Workflow:
+    """Копирует шаблон в цепочки пользователя: все узлы, связи и переменные.
+
+    mobile — открыть в мобильном редакторе (только линейные шаблоны); search_period подстраивает
+    глубину поиска под частоту запуска, чтобы ежедневная цепочка не присылала недельные новости.
+    """
     from services.billing import BillingService
     from services.workflow import WorkflowService
 
     template = get_template(slug)
-    graph = WorkflowGraph.model_validate(template.graph())
+    if mobile and not template.linear():
+        raise HTTPException(422, "В шаблоне есть ветвления — откройте его с компьютера")
+    raw = template.graph()
+    if search_period is not None:
+        for item in raw["nodes"]:
+            if item["type"] == "web_search":
+                item["period"] = search_period.value
+    if mobile:
+        for index, item in enumerate(raw["nodes"]):
+            item["position"] = {"x": 0, "y": index * ROW_HEIGHT}
+    graph = WorkflowGraph.model_validate(raw)
     data = WorkflowCreate(
         name=template.name,
         description=template.description,
         graph=graph,
         variables=dict(template.variables),
+        mobile=mobile,
+        schedule_slots=schedule_slots or None,
+        schedule_timezone=schedule_timezone,
     )
     return await WorkflowService(db, BillingService(db)).create(data, user)

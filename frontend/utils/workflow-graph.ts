@@ -29,6 +29,9 @@ export const NODE_META: Record<NodeKind, { label: string; caption: string; icon:
 
 export type NodeGroup = 'triggers' | 'ai' | 'logic' | 'data' | 'files' | 'send'
 
+/** В мобильной цепочке шаги идут списком — ветвления и циклы доступны только на холсте. */
+export const MOBILE_BLOCKED_TYPES: NodeKind[] = ['if_else', 'loop']
+
 export const NODE_GROUPS: Array<{ key: NodeGroup; types: NodeKind[] }> = [
   { key: 'triggers', types: ['webhook'] },
   { key: 'ai', types: ['prompt', 'web_search', 'image_generation', 'image_recognition', 'audio_transcription'] },
@@ -66,6 +69,62 @@ export const DEFAULT_HTTP_REQUEST_JSON = `{
   "method": "GET",
   "url": "https://api.example.com/users/{{$userId}}"
 }`
+
+const ASSIGNABLE_TYPES = new Set<NodeKind>(['prompt', 'http_request', 'google_sheets', 'email', 'data_transform', 'sql_query', 'trello', 'jira', 'excel', 'spreadsheet'])
+const NEW_NODE_DEFAULTS: Partial<Record<NodeKind, Partial<WorkflowNode['data']>>> = {
+  slack: { webhook_url: '', bot_token: '', channel: '', message: '' },
+  trello: { operation: 'create_card', api_key: '', token: '', list_id: '', card_id: '', name: '', description: '' },
+  jira: { operation: 'create_issue', base_url: '', email: '', api_token: '', project_key: '', issue_type: 'Task', summary: '', description: '', jql: '', issue_key: '', comment: '' },
+  excel: { operation: 'read', access_token: '', file_path: '', worksheet: 'Sheet1', cell_range: '', table: '', values_json: '' },
+  file: { filename: '', file_base64: '' },
+  spreadsheet: { operation: 'read', file_format: 'auto', sheet: '', header_row: true, delimiter: '', path: '', filename: '' },
+  linkedin: { access_token: '', author: '', text: '', visibility: 'PUBLIC' }
+}
+
+/** Новый узел с настройками по умолчанию для своего типа. */
+export function createWorkflowNode(type: NodeKind, label: string, position: { x: number; y: number }): WorkflowNode {
+  return {
+    id: crypto.randomUUID(),
+    type,
+    position,
+    parents: [],
+    children: [],
+    data: {
+      label,
+      complexity: type === 'prompt' ? 'simple_text' : undefined,
+      max_output_tokens: type === 'prompt' ? 8000 : undefined,
+      instructions: type === 'prompt' ? '' : undefined,
+      output_format: type === 'prompt' ? '' : undefined,
+      request_json: type === 'http_request' ? DEFAULT_HTTP_REQUEST_JSON : undefined,
+      condition: type === 'if_else' ? '' : undefined,
+      message: type === 'telegram_send' ? '' : undefined,
+      chat_id: type === 'telegram_send' ? '' : undefined,
+      bot_token: type === 'telegram_send' ? '' : undefined,
+      sheet_range: type === 'google_sheets' ? 'Sheet1!A1:Z' : undefined,
+      values_json: type === 'google_sheets' ? '[]' : undefined,
+      mapping_json: type === 'data_transform' ? '' : undefined,
+      sort_direction: type === 'data_transform' ? 'asc' : undefined,
+      engine: type === 'sql_query' ? 'postgresql' : undefined,
+      query: type === 'sql_query' ? 'SELECT 1 AS ok' : undefined,
+      mode: type === 'loop' ? 'for_each' : undefined,
+      source: type === 'loop' ? '' : type === 'image' || type === 'audio_transcription' ? 'url' : undefined,
+      times: type === 'loop' ? '1' : undefined,
+      while_operator: type === 'loop' ? '==' : undefined,
+      while_value: type === 'loop' ? '' : undefined,
+      amount: type === 'delay' ? '1' : undefined,
+      unit: type === 'delay' ? 'seconds' : undefined,
+      operation: type === 'google_sheets' ? 'read' : type === 'data_transform' ? 'select' : type === 'yandex_disk' ? 'download' : undefined,
+      remote_path: type === 'yandex_disk' ? '' : undefined,
+      token: type === 'yandex_disk' ? '' : undefined,
+      prompt: type === 'image_generation' || type === 'image_recognition' || type === 'audio_transcription' ? '' : undefined,
+      to: type === 'email' ? '' : undefined,
+      subject: type === 'email' ? '' : undefined,
+      body: type === 'email' ? '' : undefined,
+      assignments: ASSIGNABLE_TYPES.has(type) ? [] : undefined,
+      ...NEW_NODE_DEFAULTS[type]
+    }
+  }
+}
 
 export const IF_ELSE_CONDITION_PLACEHOLDER = '{{$object.field}} == 12'
 export const TELEGRAM_MESSAGE_PLACEHOLDER = '{% for item in $data %}{{item.title}} — {{item.price}}\n{% endfor %}'
