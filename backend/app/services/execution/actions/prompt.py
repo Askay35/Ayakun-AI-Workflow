@@ -67,6 +67,12 @@ class PromptAction(NodeAction):
             model=model,
             max_tokens=max_tokens,
         )
+        if result.truncated and not (result.text or "").strip():
+            # Модель израсходовала весь лимит на размышления и не успела ответить.
+            raise ValueError(
+                "ИИ не уложился в лимит токенов и не выдал ответ. "
+                "Увеличьте «Макс. стоимость запуска» у блока или упростите запрос."
+            )
         payload = result.model_dump(mode="json")
         apply_variable_assignments(node.assignments, payload, context)
         return payload
