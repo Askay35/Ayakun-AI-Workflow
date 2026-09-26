@@ -2564,6 +2564,9 @@ button.app-nav-item {
   background: rgba(255, 255, 255, .92);
   backdrop-filter: blur(10px);
 }
+.max-h-60.bg-default.overflow-hidden{
+  border-radius: 16px!important;
+}
 
 /* ── Опрос после регистрации ─────────────────────────────────────── */
 .onboarding {
