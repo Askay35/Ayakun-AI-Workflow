@@ -2239,8 +2239,9 @@ button.app-nav-item {
     border-bottom: 1px solid var(--line);
   }
   .app-sidebar-logo { padding: 0; font-size: 20px; }
-  .app-user { margin-left: auto; padding: 0; border: 0; }
-  .app-user-name, .app-user .lang-switch, .app-balance-label, .app-balance-cta { display: none; }
+  .app-user { display: flex; flex-direction: row-reverse; align-items: center; gap: 8px; margin-left: auto; padding: 0; border: 0; }
+  .app-user .lang-switch button { min-width: 30px; height: 26px; padding: 0 6px; }
+  .app-user-name, .app-balance-label, .app-balance-cta { display: none; }
   .app-balance { margin: 0; padding: 6px 12px; border-radius: 999px; box-shadow: none; }
   .app-balance-value { font-size: 14px; }
   .app-nav { order: 5; display: flex; width: 100%; gap: 4px; overflow-x: auto; scrollbar-width: none; }
@@ -2764,4 +2765,55 @@ button.app-nav-item {
 }
 @media (prefers-reduced-motion: reduce) {
   .onboarding-blob, .onboarding-orbit, .onboarding-orbit-core, .onboarding-option { animation: none; }
+}
+
+/* ── Бургер-меню шапки редактора ─────────────────────────────────── */
+.app-header-burger { display: none; }
+.app-menu-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(15, 19, 48, .35); }
+.app-menu {
+  position: fixed;
+  top: 56px;
+  right: 8px;
+  left: 8px;
+  z-index: 41;
+  display: grid;
+  gap: 2px;
+  max-width: 360px;
+  margin-left: auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow-md);
+}
+.app-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  color: #454b6b;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  background: none;
+  cursor: pointer;
+}
+.app-menu-link.is-active { color: var(--violet-dark); background: var(--violet-soft); }
+.app-menu-link.is-logout { color: #b42318; }
+.app-menu-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0; padding: 10px 12px; border-block: 1px solid var(--line); }
+.app-menu-name { overflow: hidden; color: var(--muted); font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 980px) {
+  .app-header-burger { display: inline-grid; }
+  .app-header-desktop { display: none !important; }
+  .app-header { gap: 8px; padding: 0 10px; }
+}
+
+@media (max-width: 480px) {
+  .app-sidebar { gap: 8px; padding: 10px 12px; }
+  .app-sidebar-logo { flex: 0 0 auto; }
+  .app-balance-value small { display: none; }
+  .app-balance { padding: 6px 10px; }
+  .app-user { gap: 6px; }
 }
