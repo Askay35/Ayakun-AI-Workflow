@@ -116,6 +116,7 @@ let saveTimer: ReturnType<typeof setTimeout> | undefined
 const hydrated = ref(false)
 watch([steps, scheduleEnabled, scheduleSlots, workflowVariables], () => {
   if (!hydrated.value) return
+  changedSincePublish.value = true
   saveState.value = 'dirty'
   clearTimeout(saveTimer)
   saveTimer = setTimeout(save, 900)
@@ -179,14 +180,24 @@ const checkGraph = async () => {
   await validate()
 }
 
+const changedSincePublish = ref(false)
+const doPublish = async () => {
+  if (!(await validate())) return false
+  try {
+    workflow.value = await api.workflows.publish(id)
+    changedSincePublish.value = false
+    toast.add({ title: t('editor.published'), color: 'success' })
+    return true
+  } catch (error) {
+    toast.add({ title: t('editor.publishError'), description: apiErrorMessage(error), color: 'error' })
+    return false
+  }
+}
+
 const publish = async () => {
   busy.value = 'publish'
   try {
-    if (!(await validate())) return
-    workflow.value = await api.workflows.publish(id)
-    toast.add({ title: t('editor.published'), color: 'success' })
-  } catch (error) {
-    toast.add({ title: t('editor.publishError'), description: apiErrorMessage(error), color: 'error' })
+    await doPublish()
   } finally {
     busy.value = null
   }
@@ -196,6 +207,8 @@ const run = async () => {
   busy.value = 'run'
   try {
     if (!(await save())) return
+    // Запуск идёт по опубликованной версии, поэтому свежие правки публикуем автоматически.
+    if ((workflow.value?.status !== 'published' || changedSincePublish.value) && !(await doPublish())) return
     const result = await api.workflows.run(id)
     await navigateTo(`/runs/${result.id}`)
   } catch (error) {

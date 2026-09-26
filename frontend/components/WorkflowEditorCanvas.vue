@@ -200,6 +200,7 @@ const commitRename = async () => {
 const hydrated = ref(false)
 watch([nodes, links, scheduleEnabled, scheduleSlots, workflowVariables], () => {
   if (!hydrated.value) return
+  changedSincePublish.value = true
   saveState.value = 'dirty'
   clearTimeout(saveTimer)
   saveTimer = setTimeout(save, 900)
@@ -327,21 +328,30 @@ const validate = async () => {
 const checkGraph = async () => {
   await validate()
 }
-const publish = async () => {
-  if (!(await validate())) return
+const changedSincePublish = ref(false)
+const publishGraph = async () => {
+  if (!(await validate())) return false
   try {
     workflow.value = await api.workflows.publish(id)
+    changedSincePublish.value = false
     toast.add({ title: t('editor.published'), color: 'success' })
+    return true
   } catch (error) {
     toast.add({
       title: t('editor.publishError'),
       description: apiErrorMessage(error),
       color: 'error'
     })
+    return false
   }
+}
+const publish = async () => {
+  await publishGraph()
 }
 const run = async () => {
   if (!(await save())) return
+  // Запуск идёт по опубликованной версии, поэтому свежие правки публикуем автоматически.
+  if ((workflow.value?.status !== 'published' || changedSincePublish.value) && !(await publishGraph())) return
   const result = await api.workflows.run(id)
   await navigateTo(`/runs/${result.id}`)
 }
