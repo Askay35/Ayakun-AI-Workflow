@@ -2820,3 +2820,8 @@ button.app-nav-item {
   .app-balance { padding: 6px 10px; }
   .app-user { gap: 6px; }
 }
+@media (max-width: 400px) {
+  .app-avatar{
+    display: none!important;
+  }
+}
