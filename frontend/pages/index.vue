@@ -120,7 +120,7 @@
           <p>{{ t('landing.howLead') }}</p>
         </div>
         <div class="steps-grid">
-          <article v-for="step in steps" :key="step.title" class="step-card">
+          <article v-for="step in steps" :key="step.title" class="how-step-card">
             <span class="step-number">{{ step.number }}</span>
             <h3>{{ step.title }}</h3>
             <p>{{ step.text }}</p>
