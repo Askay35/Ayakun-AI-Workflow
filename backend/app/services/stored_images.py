@@ -140,6 +140,7 @@ def strip_stored_images(snapshot: dict, keep_keys: frozenset[str] = frozenset())
             node["file_base64"] = ""
             node["s3_key"] = None
             node["file_size"] = None
+            node["file_hash"] = None
             changed = True
     return changed, removed
 

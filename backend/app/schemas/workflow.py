@@ -305,6 +305,7 @@ class ImageNode(Node):
     file_base64: str = Field(default="", max_length=8_000_000)
     s3_key: str | None = Field(default=None, max_length=500)
     file_size: int | None = Field(default=None, ge=0)
+    file_hash: str | None = Field(default=None, max_length=64)
     position: dict[str, float] | None = None
 
 
@@ -322,6 +323,7 @@ class AudioTranscriptionNode(Node):
     file_base64: str = Field(default="", max_length=8_000_000)
     s3_key: str | None = Field(default=None, max_length=500)
     file_size: int | None = Field(default=None, ge=0)
+    file_hash: str | None = Field(default=None, max_length=64)
     prompt: str = Field(default="", max_length=8000)
     position: dict[str, float] | None = None
 
@@ -393,6 +395,7 @@ class FileNode(Node):
     file_base64: str = Field(default="", max_length=14_000_000)
     s3_key: str | None = Field(default=None, max_length=500)
     file_size: int | None = Field(default=None, ge=0)
+    file_hash: str | None = Field(default=None, max_length=64)
     position: dict[str, float] | None = None
 
 

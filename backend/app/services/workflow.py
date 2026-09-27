@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import logging
 import secrets
@@ -591,16 +592,21 @@ class WorkflowService:
         raise HTTPException(422, storage_quota_message(limits.max_files, limits.max_bytes))
 
     async def _persist_stored_files(self, user_id: int, graph: WorkflowGraph, *, previous: WorkflowGraph | None) -> None:
-        """Грузит новые/изменённые файлы узлов в S3 и заменяет file_base64 на ссылку перед сохранением графа."""
+        """Грузит новые/изменённые файлы узлов в S3 и заменяет file_base64 на ссылку перед сохранением графа.
+
+        Фронтенд не чистит file_base64 в своём состоянии после загрузки и присылает тот же файл повторно
+        при каждом сохранении черновика (в т.ч. перед publish). Сверяем sha256 с уже сохранённым файлом узла,
+        чтобы не перезаливать и не переименовывать в S3 файл, который на самом деле не менялся.
+        """
         stored_types = (ImageNode, FileNode, AudioTranscriptionNode)
-        prev_keys: dict[str, str] = {}
+        prev_files: dict[str, tuple[str, str | None, int | None]] = {}
         if previous is not None:
             for node in previous.nodes:
                 if not isinstance(node, stored_types):
                     continue
                 key = getattr(node, "s3_key", None)
                 if key:
-                    prev_keys[node.id] = key
+                    prev_files[node.id] = (key, getattr(node, "file_hash", None), getattr(node, "file_size", None))
         new_ids = {node.id for node in graph.nodes}
         to_delete: set[str] = set()
         for node in graph.nodes:
@@ -608,11 +614,12 @@ class WorkflowService:
                 continue
             source = getattr(node, "source", "file")
             if source != "file":
-                old = prev_keys.get(node.id)
+                old = prev_files.get(node.id)
                 if old:
-                    to_delete.add(old)
+                    to_delete.add(old[0])
                 node.s3_key = None
                 node.file_size = None
+                node.file_hash = None
                 continue
             encoded = (node.file_base64 or "").strip()
             if not encoded:
@@ -621,18 +628,27 @@ class WorkflowService:
                 data = base64.b64decode(encoded.split(",")[-1])
             except (ValueError, TypeError) as exc:
                 raise HTTPException(422, f"Узел {node.label or node.id}: некорректный файл") from exc
+            digest = hashlib.sha256(data).hexdigest()
+            old = prev_files.get(node.id)
+            if old is not None and old[1] == digest:
+                # Тот же файл, что уже загружен — просто перестаём хранить base64 в узле.
+                node.s3_key = old[0]
+                node.file_size = old[2]
+                node.file_hash = digest
+                node.file_base64 = ""
+                continue
             filename = (node.filename or node.id).strip() or node.id
             key = self.storage.build_key(user_id, filename)
             await self.storage.upload_bytes(key, data, content_type=guess_mime(filename, "application/octet-stream"))
-            old = prev_keys.get(node.id)
-            if old and old != key:
-                to_delete.add(old)
+            if old is not None and old[0] != key:
+                to_delete.add(old[0])
             node.s3_key = key
             node.file_size = len(data)
+            node.file_hash = digest
             node.file_base64 = ""
-        for node_id, old_key in prev_keys.items():
+        for node_id, old in prev_files.items():
             if node_id not in new_ids:
-                to_delete.add(old_key)
+                to_delete.add(old[0])
         if to_delete:
             await self.storage.delete_objects(list(to_delete))
 
