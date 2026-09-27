@@ -3,7 +3,7 @@ import type { SearchPeriod, WorkflowNode } from '~/types/api'
 import { maxOutputTokensFromCredits, promptMaxCredits } from '~/utils/prompt-max-cost'
 import { nodeVariableHints } from '~/utils/workflow-variables'
 import { joinCondition, splitCondition } from '~/utils/condition'
-import { IF_ELSE_CONDITION_PLACEHOLDER, TELEGRAM_MESSAGE_PLACEHOLDER } from '~/utils/workflow-graph'
+import { IF_ELSE_CONDITION_PLACEHOLDER } from '~/utils/workflow-graph'
 
 /** Поля настроек узла: общие для холста и мобильного списка шагов. Правит node.data напрямую. */
 const props = defineProps<{
@@ -187,12 +187,6 @@ const IF_ELSE_HELP_EXAMPLES = computed(() => [
   { code: '{{$score}} >= 0.8', note: t('editor.ifHelpNumber') },
   { code: '{{$flag}}', note: t('editor.ifHelpTruthy') }
 ] )
-const OUTPUT_FORMAT_PLACEHOLDER = [
-  '{',
-  '  "userId": "{{user_id}}",',
-  '  "email": "{{user_email}}"',
-  '}'
-].join('\n')
 const selectedInstructions = computed({
   get: () => selected.value?.data.instructions || '',
   set: (value: string) => {
@@ -270,12 +264,15 @@ const rotateWebhookToken = () => emit('rotate-webhook')
       <UFormField :label="t('editor.instructions')">
         <UTextarea v-model="selectedInstructions" :rows="4" class="w-full" :placeholder="t('editor.instructionsPlaceholder')" />
       </UFormField>
-      <UFormField :label="t('editor.outputFormat')">
+      <UFormField>
+        <template #label>
+          <WorkflowFieldLabel :text="t('editor.outputFormat')" :hint="t('editor.outputFormatHint')" />
+        </template>
         <UTextarea
           v-model="selectedOutputFormat"
           :rows="8"
           class="w-full font-mono text-xs"
-          :placeholder="OUTPUT_FORMAT_PLACEHOLDER"
+          :placeholder="t('editor.outputFormatPlaceholder')"
         />
       </UFormField>
       <p class="editor-hint">{{ t('editor.promptHint', { example: VARIABLE_NAME_EXAMPLE }) }}</p>
@@ -333,12 +330,15 @@ const rotateWebhookToken = () => emit('rotate-webhook')
           :placeholder="t('editor.botTokenPlaceholder')"
         />
       </UFormField>
-      <UFormField :label="t('editor.messageText')">
+      <UFormField>
+        <template #label>
+          <WorkflowFieldLabel :text="t('editor.messageText')" :hint="t('editor.loopSyntaxHint')" />
+        </template>
         <UTextarea
           v-model="selectedTelegramMessage"
           :rows="6"
           class="w-full font-mono text-xs"
-          :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
+          :placeholder="t('editor.messageTextPlaceholder')"
         />
       </UFormField>
       <p class="editor-hint">{{ t('editor.telegramHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
@@ -386,12 +386,15 @@ const rotateWebhookToken = () => emit('rotate-webhook')
       <UFormField :label="t('editor.emailSubject')">
         <UInput v-model="selected.data.subject" class="w-full" :placeholder="t('editor.emailSubjectPlaceholder')" />
       </UFormField>
-      <UFormField :label="t('editor.emailBody')">
+      <UFormField>
+        <template #label>
+          <WorkflowFieldLabel :text="t('editor.emailBody')" :hint="t('editor.loopSyntaxHint')" />
+        </template>
         <UTextarea
           v-model="selected.data.body"
           :rows="6"
           class="w-full font-mono text-xs"
-          :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER"
+          :placeholder="t('editor.emailBodyPlaceholder')"
         />
       </UFormField>
       <p class="editor-hint">{{ t('editor.emailHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
@@ -536,8 +539,11 @@ const rotateWebhookToken = () => emit('rotate-webhook')
         <input type="file" accept="audio/*" class="block w-full" @change="readMediaFile">
         <p v-if="selected.data.filename" class="editor-hint mt-1">{{ selected.data.filename }}</p>
       </UFormField>
-      <UFormField :label="t('editor.audioPrompt')">
-        <UTextarea v-model="selected.data.prompt" :rows="4" class="w-full" :placeholder="t('editor.audioPromptPlaceholder')" />
+      <UFormField>
+        <template #label>
+          <WorkflowFieldLabel :text="t('editor.audioPrompt')" :hint="t('editor.audioPromptHint')" />
+        </template>
+        <UTextarea v-model="selected.data.prompt" :rows="4" class="w-full" :placeholder="t('editor.audioPromptShort')" />
       </UFormField>
     </template>
     <template v-if="selected.type === 'slack'">
@@ -551,8 +557,11 @@ const rotateWebhookToken = () => emit('rotate-webhook')
       <UFormField :label="t('editor.slackChannel')">
         <UInput v-model="selected.data.channel" class="w-full font-mono text-xs" placeholder="#general" />
       </UFormField>
-      <UFormField :label="t('editor.messageText')">
-        <UTextarea v-model="selected.data.message" :rows="6" class="w-full font-mono text-xs" :placeholder="TELEGRAM_MESSAGE_PLACEHOLDER" />
+      <UFormField>
+        <template #label>
+          <WorkflowFieldLabel :text="t('editor.messageText')" :hint="t('editor.loopSyntaxHint')" />
+        </template>
+        <UTextarea v-model="selected.data.message" :rows="6" class="w-full font-mono text-xs" :placeholder="t('editor.messageTextPlaceholder')" />
       </UFormField>
       <p class="editor-hint">{{ t('editor.slackHint', { json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE }) }}</p>
     </template>

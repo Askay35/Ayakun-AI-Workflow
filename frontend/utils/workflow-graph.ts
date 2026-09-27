@@ -131,7 +131,6 @@ export function createWorkflowNode(type: NodeKind, label: string, position: { x:
 }
 
 export const IF_ELSE_CONDITION_PLACEHOLDER = '{{$object.field}} == 12'
-export const TELEGRAM_MESSAGE_PLACEHOLDER = '{% for item in $data %}{{item.title}} — {{item.price}}\n{% endfor %}'
 
 export type GraphLink = { source: string; target: string; sourceHandle?: 'true' | 'false' }
 
