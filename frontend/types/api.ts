@@ -118,6 +118,8 @@ export interface WorkflowNode {
     url?: string
     filename?: string
     file_base64?: string
+    s3_key?: string
+    file_size?: number
     webhook_url?: string
     channel?: string
     list_id?: string

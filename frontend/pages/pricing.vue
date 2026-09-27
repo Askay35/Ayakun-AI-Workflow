@@ -12,9 +12,9 @@ const api = useApi()
 const auth = useAuth()
 const fallback: Plan[] = [
   { id: 1, code: 'free', name: 'Пробный', price: 0, currency: 'RUB', limits: { included_credits: 100, max_files: 20, max_storage_mb: 100 } },
-  { id: 2, code: 'starter', name: 'Старт', price: 390, currency: 'RUB', limits: { included_credits: 2000, max_files: 50, max_storage_mb: 500 } },
-  { id: 3, code: 'pro', name: 'Про', price: 990, currency: 'RUB', limits: { included_credits: 6500, max_files: 100, max_storage_mb: 1024 } },
-  { id: 4, code: 'max', name: 'Супер', price: 1990, currency: 'RUB', limits: { included_credits: 15000, max_files: 500, max_storage_mb: 5120 } }
+  { id: 2, code: 'starter', name: 'Старт', price: 390, currency: 'RUB', limits: { included_credits: 2000, max_files: 200, max_storage_mb: 2048 } },
+  { id: 3, code: 'pro', name: 'Про', price: 990, currency: 'RUB', limits: { included_credits: 6500, max_files: 500, max_storage_mb: 4096 } },
+  { id: 4, code: 'max', name: 'Супер', price: 1990, currency: 'RUB', limits: { included_credits: 15000, max_files: 1000, max_storage_mb: 10240 } }
 ]
 const { data: plans } = await useAsyncData('public-plans', () => api.billing.plans().catch(() => fallback))
 const ordered = computed(() => sortCreditPacks(plans.value || fallback))

@@ -7,6 +7,7 @@ import os
 from schemas.workflow import FileNode
 from services.execution.actions.base import NodeAction
 from services.media_files import guess_mime, write_temp_bytes
+from services.s3_storage import S3StorageService
 
 TEXT_PREVIEW_BYTES = 200_000
 TEXT_EXTENSIONS = frozenset({".txt", ".csv", ".tsv", ".json", ".md", ".xml", ".html", ".htm", ".yaml", ".yml", ".log"})
@@ -28,14 +29,20 @@ def _decode_text(data: bytes) -> str | None:
 
 
 class FileAction(NodeAction):
+    def __init__(self, storage: S3StorageService | None = None):
+        self.storage = storage
+
     async def execute(self, node: FileNode, context: dict) -> dict:
-        encoded = (node.file_base64 or "").strip()
-        if not encoded:
-            raise ValueError("Файл: загрузите файл")
-        try:
-            data = base64.b64decode(encoded.split(",")[-1], validate=False)
-        except (binascii.Error, ValueError):
-            raise ValueError("Файл: некорректные данные файла") from None
+        if node.s3_key and self.storage is not None:
+            data = await self.storage.download_bytes(node.s3_key)
+        else:
+            encoded = (node.file_base64 or "").strip()
+            if not encoded:
+                raise ValueError("Файл: загрузите файл")
+            try:
+                data = base64.b64decode(encoded.split(",")[-1], validate=False)
+            except (binascii.Error, ValueError):
+                raise ValueError("Файл: некорректные данные файла") from None
         filename = os.path.basename((node.filename or "").strip()) or "file"
         mime = guess_mime(filename, "application/octet-stream")
         path = write_temp_bytes(data, os.path.splitext(filename)[1])

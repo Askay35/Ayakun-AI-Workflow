@@ -10,7 +10,7 @@ from services.billing import BillingService
 from services.providers import SMTPEmailProvider, YooKassaProvider
 from services.admin_records import AdminRecordsService
 from services.workflow import WorkflowService
-
+from services.s3_storage import S3StorageService
 
 def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
     return UserService(db=db)
@@ -33,11 +33,15 @@ def get_auth_service(
 def get_telegram_service(db: AsyncSession = Depends(get_db), redis: redis.Redis = Depends(get_redis), userService: UserService = Depends(get_user_service), authService: AuthService = Depends(get_auth_service), http_client: httpx.AsyncClient = Depends(get_http_client)) -> TelegramService:
     return TelegramService(db=db, redis=redis, userService=userService, authService=authService, http_client=http_client)
 
+def get_s3_storage() -> S3StorageService:
+    return S3StorageService()
+
 def get_workflow_service(
     db: AsyncSession = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis),
+    s3: S3StorageService = Depends(get_s3_storage),
 ) -> WorkflowService:
-    return WorkflowService(db, BillingService(db), redis_client)
+    return WorkflowService(db, BillingService(db), redis_client, s3)
 
 def get_billing_service(
     db: AsyncSession = Depends(get_db),

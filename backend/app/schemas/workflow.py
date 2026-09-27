@@ -231,7 +231,6 @@ class EmailNode(Node):
     assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
     position: dict[str, float] | None = None
 
-
 class DataTransformNode(Node):
     type: Literal[NodeType.DATA_TRANSFORM] = NodeType.DATA_TRANSFORM
     operation: Literal["select", "rename", "set", "remove", "filter", "sort", "map", "merge"] = "select"
@@ -301,6 +300,8 @@ class ImageNode(Node):
     url: str = Field(default="", max_length=4000)
     filename: str = Field(default="", max_length=300)
     file_base64: str = Field(default="", max_length=8_000_000)
+    s3_key: str | None = Field(default=None, max_length=500)
+    file_size: int | None = Field(default=None, ge=0)
     position: dict[str, float] | None = None
 
 
@@ -316,6 +317,8 @@ class AudioTranscriptionNode(Node):
     url: str = Field(default="", max_length=4000)
     filename: str = Field(default="", max_length=300)
     file_base64: str = Field(default="", max_length=8_000_000)
+    s3_key: str | None = Field(default=None, max_length=500)
+    file_size: int | None = Field(default=None, ge=0)
     prompt: str = Field(default="", max_length=8000)
     position: dict[str, float] | None = None
 
@@ -385,6 +388,8 @@ class FileNode(Node):
     type: Literal[NodeType.FILE] = NodeType.FILE
     filename: str = Field(default="", max_length=300)
     file_base64: str = Field(default="", max_length=14_000_000)
+    s3_key: str | None = Field(default=None, max_length=500)
+    file_size: int | None = Field(default=None, ge=0)
     position: dict[str, float] | None = None
 
 
