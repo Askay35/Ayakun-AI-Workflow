@@ -532,13 +532,19 @@ class WorkflowService:
         if "graph" in data.model_fields_set and data.graph is not None:
             previous = graph
             graph = data.graph
+            self._carry_forward_stored_files(graph, previous)
             errors = validate_graph(graph)
             if workflow.mobile:
                 errors += validate_mobile_graph(graph)
             if errors:
                 raise HTTPException(422, errors)
             await self._guard_image_uploads(user, graph, previous=previous, replace_id=workflow.id)
-            await self._persist_stored_files(user.id, graph, previous=previous)
+            protected_keys = frozenset()
+            if workflow.published_version_id:
+                published_version = await self.db.get(WorkflowVersion, workflow.published_version_id)
+                if published_version is not None:
+                    protected_keys = frozenset(stored_file_keys(published_version.graph_snapshot or {}))
+            await self._persist_stored_files(user.id, graph, previous=previous, protected_keys=protected_keys)
             workflow.draft_graph = graph.model_dump(mode="json")
             workflow.estimated_run_cost = await PricingService(self.db).estimate_graph(graph)
         for key, value in values.items():
@@ -591,12 +597,45 @@ class WorkflowService:
         await SubscriptionService(self.db).require_active(user.id)
         raise HTTPException(422, storage_quota_message(limits.max_files, limits.max_bytes))
 
-    async def _persist_stored_files(self, user_id: int, graph: WorkflowGraph, *, previous: WorkflowGraph | None) -> None:
+    @staticmethod
+    def _carry_forward_stored_files(graph: WorkflowGraph, previous: WorkflowGraph) -> None:
+        """Фронтенд не знает о s3_key и не присылает его обратно после перезагрузки страницы (там просто
+        нет UI, чтобы удалить уже загруженный файл, не заменив его новым) — если узел не получил ни новый
+        file_base64, ни s3_key, переносим ссылку на уже сохранённый файл из предыдущего черновика, а не
+        считаем файл удалённым.
+        """
+        stored_types = (ImageNode, FileNode, AudioTranscriptionNode)
+        prev_by_id = {node.id: node for node in previous.nodes if isinstance(node, stored_types)}
+        for node in graph.nodes:
+            if not isinstance(node, stored_types):
+                continue
+            if getattr(node, "source", "file") != "file":
+                continue
+            if (node.file_base64 or "").strip() or (node.s3_key or "").strip():
+                continue
+            prev_node = prev_by_id.get(node.id)
+            if prev_node is None or type(prev_node) is not type(node) or not prev_node.s3_key:
+                continue
+            node.s3_key = prev_node.s3_key
+            node.file_size = prev_node.file_size
+            node.file_hash = prev_node.file_hash
+
+    async def _persist_stored_files(
+        self,
+        user_id: int,
+        graph: WorkflowGraph,
+        *,
+        previous: WorkflowGraph | None,
+        protected_keys: frozenset[str] = frozenset(),
+    ) -> None:
         """Грузит новые/изменённые файлы узлов в S3 и заменяет file_base64 на ссылку перед сохранением графа.
 
         Фронтенд не чистит file_base64 в своём состоянии после загрузки и присылает тот же файл повторно
         при каждом сохранении черновика (в т.ч. перед publish). Сверяем sha256 с уже сохранённым файлом узла,
         чтобы не перезаливать и не переименовывать в S3 файл, который на самом деле не менялся.
+
+        protected_keys — файлы текущей опубликованной версии: их нельзя удалять из S3 при правке черновика
+        (черновик ещё не опубликован), иначе можно сломать уже работающую цепочку до повторной публикации.
         """
         stored_types = (ImageNode, FileNode, AudioTranscriptionNode)
         prev_files: dict[str, tuple[str, str | None, int | None]] = {}
@@ -649,6 +688,7 @@ class WorkflowService:
         for node_id, old in prev_files.items():
             if node_id not in new_ids:
                 to_delete.add(old[0])
+        to_delete -= protected_keys
         if to_delete:
             await self.storage.delete_objects(list(to_delete))
 
