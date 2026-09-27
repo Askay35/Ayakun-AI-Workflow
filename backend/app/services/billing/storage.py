@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import attributes
 
 from models.workflow import Workflow, WorkflowVersion
+from services.s3_storage import S3StorageService
 from services.stored_images import STORED_FILE_NODE_TYPES, strip_stored_images, uploaded_images
 
 
@@ -50,44 +51,62 @@ def _files(workflows: list[Workflow], versions: dict) -> list[_StoredFile]:
     return found
 
 
-def _blank_node(graph: object, node_id: str) -> bool:
+def _blank_node(graph: object, node_id: str) -> tuple[bool, str | None]:
+    """Стирает файл узла. Возвращает (было ли что стирать, s3_key для удаления из S3 или None)."""
     nodes = graph.get("nodes") if isinstance(graph, dict) else None
-    changed = False
     for node in nodes if isinstance(nodes, list) else []:
         if (
             isinstance(node, dict)
             and node.get("id") == node_id
             and node.get("type") in STORED_FILE_NODE_TYPES
-            and node.get("file_base64")
+            and (node.get("file_base64") or node.get("s3_key"))
         ):
+            key = node.get("s3_key")
             node["file_base64"] = ""
-            changed = True
-    return changed
+            node["s3_key"] = None
+            node["file_size"] = None
+            return True, key
+    return False, None
 
 
-def _delete(item: _StoredFile, versions: dict) -> None:
+def _delete(item: _StoredFile, versions: dict, removed_keys: set[str]) -> None:
     workflow = item.workflow
-    if _blank_node(workflow.draft_graph, item.node_id):
+    changed, key = _blank_node(workflow.draft_graph, item.node_id)
+    if changed:
         attributes.flag_modified(workflow, "draft_graph")
+    if key:
+        removed_keys.add(key)
     for version in versions[workflow.id]:
-        if _blank_node(version.graph_snapshot, item.node_id):
+        changed, key = _blank_node(version.graph_snapshot, item.node_id)
+        if changed:
             attributes.flag_modified(version, "graph_snapshot")
+        if key:
+            removed_keys.add(key)
 
 
 async def purge_user_files(db: AsyncSession, user_id: int) -> int:
     """Стирает все загруженные файлы пользователя из черновиков и снимков. Возвращает число цепочек с файлами."""
     workflows, versions = await _load(db, user_id)
     touched = 0
+    removed_keys: set[str] = set()
     for workflow in workflows:
         changed = False
-        if isinstance(workflow.draft_graph, dict) and strip_stored_images(workflow.draft_graph):
-            attributes.flag_modified(workflow, "draft_graph")
-            changed = True
-        for version in versions[workflow.id]:
-            if isinstance(version.graph_snapshot, dict) and strip_stored_images(version.graph_snapshot):
-                attributes.flag_modified(version, "graph_snapshot")
+        if isinstance(workflow.draft_graph, dict):
+            draft_changed, draft_removed = strip_stored_images(workflow.draft_graph)
+            if draft_changed:
+                attributes.flag_modified(workflow, "draft_graph")
                 changed = True
+            removed_keys.update(draft_removed)
+        for version in versions[workflow.id]:
+            if isinstance(version.graph_snapshot, dict):
+                version_changed, version_removed = strip_stored_images(version.graph_snapshot)
+                if version_changed:
+                    attributes.flag_modified(version, "graph_snapshot")
+                    changed = True
+                removed_keys.update(version_removed)
         touched += int(changed)
+    if removed_keys:
+        await S3StorageService().delete_objects(list(removed_keys))
     return touched
 
 
@@ -98,11 +117,14 @@ async def trim_user_files(db: AsyncSession, user_id: int, max_files: int, max_by
     count = len(files)
     total = sum(item.size for item in files)
     removed = 0
+    removed_keys: set[str] = set()
     for item in files:
         if count <= max_files and total <= max_bytes:
             break
-        _delete(item, versions)
+        _delete(item, versions, removed_keys)
         count -= 1
         total -= item.size
         removed += 1
+    if removed_keys:
+        await S3StorageService().delete_objects(list(removed_keys))
     return removed

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import secrets
@@ -61,9 +62,12 @@ from services.stored_images import (
     consume_image_node_budget,
     image_node_ids,
     storage_quota_message,
+    stored_file_keys,
     strip_stored_images,
     uploaded_images,
 )
+from services.media_files import guess_mime
+from services.s3_storage import S3StorageService
 from services.pricing import PricingService
 from services.schedule import (
     derived_cron,
@@ -203,7 +207,7 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
     elif isinstance(node, ImageNode):
         if node.source == "url" and not node.url.strip():
             errors.append(f"Узел {label}: укажите ссылку на изображение")
-        elif node.source == "file" and not node.file_base64.strip():
+        elif node.source == "file" and not node.file_base64.strip() and not (node.s3_key or "").strip():
             errors.append(f"Узел {label}: загрузите файл изображения")
         elif node.source == "upstream" and not node.parents:
             errors.append(f"Узел {label}: подключите предыдущий узел")
@@ -213,7 +217,7 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
     elif isinstance(node, AudioTranscriptionNode):
         if node.source == "url" and not node.url.strip():
             errors.append(f"Узел {label}: укажите ссылку на аудио")
-        elif node.source == "file" and not node.file_base64.strip():
+        elif node.source == "file" and not node.file_base64.strip() and not (node.s3_key or "").strip():
             errors.append(f"Узел {label}: загрузите аудиофайл")
         elif node.source == "upstream" and not node.parents:
             errors.append(f"Узел {label}: подключите предыдущий узел")
@@ -257,7 +261,7 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
         elif node.operation == "update" and not node.cell_range.strip():
             errors.append(f"Узел {label}: укажите диапазон для обновления")
     elif isinstance(node, FileNode):
-        if not node.file_base64.strip():
+        if not node.file_base64.strip() and not (node.s3_key or "").strip():
             errors.append(f"Узел {label}: загрузите файл")
     elif isinstance(node, SpreadsheetNode):
         if node.operation == "read" and not node.parents:
@@ -460,10 +464,11 @@ def validate_solo_node(node: WorkflowNode) -> list[str]:
 
 
 class WorkflowService:
-    def __init__(self, db: AsyncSession, billing: BillingService | None = None, redis_client=None):
+    def __init__(self, db: AsyncSession, billing: BillingService | None = None, redis_client=None, storage: S3StorageService | None = None):
         self.db = db
         self.billing = billing
         self.redis = redis_client
+        self.storage = storage or S3StorageService()
 
     async def _owned(self, workflow_id: uuid.UUID, user: User) -> Workflow:
         workflow = await self.db.scalar(select(Workflow).where(Workflow.id == workflow_id, Workflow.owner_id == user.id))
@@ -485,6 +490,7 @@ class WorkflowService:
         if errors:
             raise HTTPException(422, errors)
         await self._guard_image_uploads(user, data.graph, previous=None, replace_id=None)
+        await self._persist_stored_files(user.id, data.graph, previous=None)
         workflow = Workflow(
             owner_id=user.id,
             name=data.name,
@@ -531,6 +537,7 @@ class WorkflowService:
             if errors:
                 raise HTTPException(422, errors)
             await self._guard_image_uploads(user, graph, previous=previous, replace_id=workflow.id)
+            await self._persist_stored_files(user.id, graph, previous=previous)
             workflow.draft_graph = graph.model_dump(mode="json")
             workflow.estimated_run_cost = await PricingService(self.db).estimate_graph(graph)
         for key, value in values.items():
@@ -550,8 +557,20 @@ class WorkflowService:
     async def delete(self, workflow_id: uuid.UUID, user: User) -> None:
         """Удаление цепочки убирает черновик и снимки, а с ними и загруженные картинки."""
         workflow = await self._owned(workflow_id, user)
+        keys = set(stored_file_keys(workflow.draft_graph or {}))
+        versions = list(await self.db.scalars(select(WorkflowVersion).where(WorkflowVersion.workflow_id == workflow.id)))
+        for version in versions:
+            keys.update(stored_file_keys(version.graph_snapshot or {}))
         await self.db.delete(workflow)
         await self.db.commit()
+        if keys:
+            try:
+                await self.storage.delete_objects(list(keys))
+            except Exception:
+                logger.warning(
+                    "Не удалось удалить файлы из S3 при удалении цепочки",
+                    extra={"event": "workflow.delete.s3_cleanup_failed", "workflow_id": str(workflow_id)},
+                )
 
     async def _guard_image_uploads(self, user: User, graph: WorkflowGraph, *, previous: WorkflowGraph | None, replace_id: uuid.UUID | None) -> None:
         old_ids = image_node_ids(previous) if previous is not None else set()
@@ -570,6 +589,52 @@ class WorkflowService:
                 return
         await SubscriptionService(self.db).require_active(user.id)
         raise HTTPException(422, storage_quota_message(limits.max_files, limits.max_bytes))
+
+    async def _persist_stored_files(self, user_id: int, graph: WorkflowGraph, *, previous: WorkflowGraph | None) -> None:
+        """Грузит новые/изменённые файлы узлов в S3 и заменяет file_base64 на ссылку перед сохранением графа."""
+        stored_types = (ImageNode, FileNode, AudioTranscriptionNode)
+        prev_keys: dict[str, str] = {}
+        if previous is not None:
+            for node in previous.nodes:
+                if not isinstance(node, stored_types):
+                    continue
+                key = getattr(node, "s3_key", None)
+                if key:
+                    prev_keys[node.id] = key
+        new_ids = {node.id for node in graph.nodes}
+        to_delete: set[str] = set()
+        for node in graph.nodes:
+            if not isinstance(node, stored_types):
+                continue
+            source = getattr(node, "source", "file")
+            if source != "file":
+                old = prev_keys.get(node.id)
+                if old:
+                    to_delete.add(old)
+                node.s3_key = None
+                node.file_size = None
+                continue
+            encoded = (node.file_base64 or "").strip()
+            if not encoded:
+                continue
+            try:
+                data = base64.b64decode(encoded.split(",")[-1])
+            except (ValueError, TypeError) as exc:
+                raise HTTPException(422, f"Узел {node.label or node.id}: некорректный файл") from exc
+            filename = (node.filename or node.id).strip() or node.id
+            key = self.storage.build_key(user_id, filename)
+            await self.storage.upload_bytes(key, data, content_type=guess_mime(filename, "application/octet-stream"))
+            old = prev_keys.get(node.id)
+            if old and old != key:
+                to_delete.add(old)
+            node.s3_key = key
+            node.file_size = len(data)
+            node.file_base64 = ""
+        for node_id, old_key in prev_keys.items():
+            if node_id not in new_ids:
+                to_delete.add(old_key)
+        if to_delete:
+            await self.storage.delete_objects(list(to_delete))
 
     async def storage_usage(self, user: User) -> tuple[int, int]:
         return await self._image_usage(user.id, WorkflowGraph(nodes=[]), None)
@@ -601,14 +666,25 @@ class WorkflowService:
 
     async def _drop_replaced_image_bytes(self, workflow_id: uuid.UUID, keep_version_id: uuid.UUID) -> None:
         """После публикации байты картинок остаются только в новом снимке и черновике."""
+        workflow = await self.db.get(Workflow, workflow_id)
+        keep_keys = frozenset(stored_file_keys(workflow.draft_graph or {})) if workflow else frozenset()
+        keep_version = await self.db.get(WorkflowVersion, keep_version_id)
+        if keep_version is not None:
+            keep_keys = keep_keys | frozenset(stored_file_keys(keep_version.graph_snapshot or {}))
         versions = list(await self.db.scalars(select(WorkflowVersion).where(WorkflowVersion.workflow_id == workflow_id)))
+        to_delete: set[str] = set()
         for version in versions:
             if version.id == keep_version_id:
                 continue
             snapshot = version.graph_snapshot
-            if isinstance(snapshot, dict) and strip_stored_images(snapshot):
-                version.graph_snapshot = snapshot
-                flag_modified(version, "graph_snapshot")
+            if isinstance(snapshot, dict):
+                changed, removed = strip_stored_images(snapshot, keep_keys=keep_keys)
+                if changed:
+                    version.graph_snapshot = snapshot
+                    flag_modified(version, "graph_snapshot")
+                    to_delete.update(removed)
+        if to_delete:
+            await self.storage.delete_objects(list(to_delete))
 
     async def validate(self, workflow_id: uuid.UUID, user: User) -> list[str]:
         workflow = await self._owned(workflow_id, user)

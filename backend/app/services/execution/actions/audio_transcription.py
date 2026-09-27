@@ -9,12 +9,19 @@ from services.execution.actions.base import NodeAction
 from services.execution.context import incoming_payload, parent_records
 from services.gigachat import AUDIO_TRANSCRIPT_PROMPT, GigaChatMediaProvider, MediaModelProvider
 from services.media_files import audio_duration_seconds, billed_audio_minutes, guess_mime, load_binary
+from services.s3_storage import S3StorageService
 
 
 class AudioTranscriptionAction(NodeAction):
-    def __init__(self, media: MediaModelProvider | None = None, client: httpx.AsyncClient | None = None):
+    def __init__(
+        self,
+        media: MediaModelProvider | None = None,
+        client: httpx.AsyncClient | None = None,
+        storage: S3StorageService | None = None,
+    ):
         self.media = media or GigaChatMediaProvider()
         self.client = client
+        self.storage = storage
 
     async def execute(self, node: AudioTranscriptionNode, context: dict) -> dict:
         payload = incoming_payload(node, context)
@@ -38,13 +45,16 @@ class AudioTranscriptionAction(NodeAction):
                 raise ValueError("Расшифровка аудио: предыдущий узел не вернул файл")
             return await self._load(parent)
         if node.source == "file":
-            encoded = (node.file_base64 or "").strip()
-            if not encoded:
-                raise ValueError("Расшифровка аудио: загрузите файл")
-            try:
-                data = base64.b64decode(encoded)
-            except (ValueError, TypeError) as exc:
-                raise ValueError("Расшифровка аудио: некорректный файл") from exc
+            if node.s3_key and self.storage is not None:
+                data = await self.storage.download_bytes(node.s3_key)
+            else:
+                encoded = (node.file_base64 or "").strip()
+                if not encoded:
+                    raise ValueError("Расшифровка аудио: загрузите файл")
+                try:
+                    data = base64.b64decode(encoded)
+                except (ValueError, TypeError) as exc:
+                    raise ValueError("Расшифровка аудио: некорректный файл") from exc
             filename = (node.filename or "audio").strip() or "audio"
             return data, guess_mime(filename, "audio/wav"), filename
         url = render_template(node.url or "", payload, variables).strip()

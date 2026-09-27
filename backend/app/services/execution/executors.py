@@ -62,6 +62,7 @@ from services.gigachat import GigaChatMediaProvider
 from services.execution.registry import NodeRegistry
 from services.pricing import PricingService
 from services.providers import ModelRouter, TelegramNotificationProvider, WebSearchRouter
+from services.s3_storage import S3StorageService
 
 BudgetProvider = Callable[[], Awaitable[Decimal]]
 
@@ -78,6 +79,7 @@ class DefaultExecutors:
         self.search_router = WebSearchRouter(client)
         self.notifications = TelegramNotificationProvider(client)
         self.media = GigaChatMediaProvider()
+        self.storage = S3StorageService()
         self.pricing = pricing
         self.available_budget = available_budget
         self.client = client
@@ -130,13 +132,13 @@ class DefaultExecutors:
         return await ImageGenerationAction(self.media).execute(node, self.prepare(context))
 
     async def image(self, node: ImageNode, context: dict) -> dict:
-        return await ImageAction(self.client).execute(node, self.prepare(context))
+        return await ImageAction(self.client, self.storage).execute(node, self.prepare(context))
 
     async def image_recognition(self, node: ImageRecognitionNode, context: dict) -> dict:
         return await ImageRecognitionAction(client=self.client, pricing=self.pricing).execute(node, self.prepare(context))
 
     async def audio_transcription(self, node: AudioTranscriptionNode, context: dict) -> dict:
-        return await AudioTranscriptionAction(self.media, self.client).execute(node, self.prepare(context))
+        return await AudioTranscriptionAction(self.media, self.client, self.storage).execute(node, self.prepare(context))
 
     async def slack(self, node: SlackNode, context: dict) -> dict:
         return await SlackAction(self.client).execute(node, self.prepare(context))
@@ -151,7 +153,7 @@ class DefaultExecutors:
         return await ExcelAction(self.client).execute(node, self.prepare(context))
 
     async def file(self, node: FileNode, context: dict) -> dict:
-        return await FileAction().execute(node, self.prepare(context))
+        return await FileAction(self.storage).execute(node, self.prepare(context))
 
     async def spreadsheet(self, node: SpreadsheetNode, context: dict) -> dict:
         return await SpreadsheetAction(self.client).execute(node, self.prepare(context))

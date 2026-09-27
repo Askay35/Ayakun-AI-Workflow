@@ -31,11 +31,11 @@ def test_strip_stored_images_clears_only_uploaded_bytes() -> None:
             {"id": "search", "type": "web_search"},
         ]
     }
-    assert strip_stored_images(snapshot) is True
+    assert strip_stored_images(snapshot)[0] is True
     assert snapshot["nodes"][0]["file_base64"] == ""
     assert snapshot["nodes"][0]["filename"] == "a.png"
     assert snapshot["nodes"][1]["url"] == "https://example.com/a.png"
-    assert strip_stored_images(snapshot) is False
+    assert strip_stored_images(snapshot)[0] is False
 
 
 def test_uploaded_images_ignore_links() -> None:

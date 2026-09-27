@@ -90,7 +90,13 @@ class Settings(BaseSettings):
     yookassa_account_id: str | None = None
     yookassa_secret_key: str | None = None
     yookassa_return_url: str = "http://localhost:3000/billing"
-   
+
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
+    aws_default_region: str = "ru-central1"
+    aws_endpoint_url: str | None = None
+    aws_bucket_name: str | None = None
+
     credits_cost_multiplier: Decimal = Decimal("2")
     cost_prompt_simple: Decimal = Decimal("100")
     cost_prompt_complex: Decimal = Decimal("300")

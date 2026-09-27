@@ -57,6 +57,16 @@ def _file_base64(node: object) -> str:
     return str(raw).strip()
 
 
+def _stored_key_and_size(node: object) -> tuple[str, int] | None:
+    if isinstance(node, dict):
+        key, size = node.get("s3_key"), node.get("file_size")
+    else:
+        key, size = getattr(node, "s3_key", None), getattr(node, "file_size", None)
+    if key and isinstance(size, int) and size >= 0:
+        return str(key), size
+    return None
+
+
 def decoded_base64_size(encoded: str) -> int:
     payload = encoded.split(",")[-1].strip()
     if not payload:
@@ -86,6 +96,10 @@ def uploaded_images(nodes: object) -> list[tuple[str, int]]:
     for node in items:
         if _type_name(node) not in STORED_FILE_NODE_TYPES:
             continue
+        stored = _stored_key_and_size(node)
+        if stored is not None:
+            found.append((_node_id(node), stored[1]))
+            continue
         encoded = _file_base64(node)
         if not encoded:
             continue
@@ -93,19 +107,41 @@ def uploaded_images(nodes: object) -> list[tuple[str, int]]:
     return found
 
 
-def strip_stored_images(snapshot: dict) -> bool:
-    """Убирает байты загруженных картинок из снимка. True, если что-то стёрли."""
+def stored_file_keys(nodes: object) -> set[str]:
+    items = _node_items(nodes)
+    if not isinstance(items, (list, tuple)):
+        return set()
+    keys: set[str] = set()
+    for node in items:
+        if _type_name(node) not in STORED_FILE_NODE_TYPES:
+            continue
+        stored = _stored_key_and_size(node)
+        if stored is not None:
+            keys.add(stored[0])
+    return keys
+
+
+def strip_stored_images(snapshot: dict, keep_keys: frozenset[str] = frozenset()) -> tuple[bool, list[str]]:
+    """Убирает байты и ссылку на S3 у загруженных файлов снимка, кроме тех, что ещё используются (keep_keys)."""
     nodes = snapshot.get("nodes") if isinstance(snapshot, dict) else None
     if not isinstance(nodes, list):
-        return False
+        return False, []
     changed = False
+    removed: list[str] = []
     for node in nodes:
         if not isinstance(node, dict) or node.get("type") not in STORED_FILE_NODE_TYPES:
             continue
-        if node.get("file_base64"):
+        key = node.get("s3_key")
+        if key and key in keep_keys:
+            continue
+        if node.get("file_base64") or key:
+            if key:
+                removed.append(str(key))
             node["file_base64"] = ""
+            node["s3_key"] = None
+            node["file_size"] = None
             changed = True
-    return changed
+    return changed, removed
 
 
 async def consume_image_node_budget(redis, user_id: int, added: int) -> None:
