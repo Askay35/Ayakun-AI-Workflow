@@ -302,6 +302,18 @@ export const useApi = () => {
         visibility: node.data.visibility || 'PUBLIC'
       }
     }
+    if (node.type === 'bitrix24') {
+      return {
+        ...base,
+        entity: node.data.entity || 'lead',
+        operation: node.data.operation || 'create',
+        webhook_url: node.data.webhook_url || '',
+        item_id: node.data.item_id || '',
+        fields_json: node.data.fields_json || '',
+        filter_json: node.data.filter_json || '',
+        assignments: assignmentsOf(node)
+      }
+    }
     return {
       ...base,
       engine: node.data.engine || 'postgresql',

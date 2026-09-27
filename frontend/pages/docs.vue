@@ -32,7 +32,8 @@ const NODE_ORDER: NodeKind[] = [
   'slack',
   'trello',
   'jira',
-  'linkedin'
+  'linkedin',
+  'bitrix24'
 ]
 
 type NodeGuide = {

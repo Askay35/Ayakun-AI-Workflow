@@ -133,6 +133,8 @@ const transformOperations = computed(() => [
 const trelloOperations = computed(() => ['create_card', 'list_cards', 'move_card', 'add_comment'].map(value => ({ label: t(`trelloOps.${value}`), value })))
 const jiraOperations = computed(() => ['create_issue', 'search', 'add_comment'].map(value => ({ label: t(`jiraOps.${value}`), value })))
 const excelOperations = computed(() => ['read', 'append', 'update'].map(value => ({ label: t(`excelOps.${value}`), value })))
+const bitrix24Entities = computed(() => ['lead', 'deal', 'contact', 'company'].map(value => ({ label: t(`bitrix24Entities.${value}`), value })))
+const bitrix24Operations = computed(() => ['create', 'update', 'get', 'list', 'delete'].map(value => ({ label: t(`bitrix24Ops.${value}`), value })))
 const spreadsheetOperations = computed(() => [
   { label: t('editor.spreadsheetRead'), value: 'read' },
   { label: t('editor.spreadsheetWrite'), value: 'write' }
@@ -619,6 +621,30 @@ const rotateWebhookToken = () => emit('rotate-webhook')
         </UFormField>
       </template>
       <p class="editor-hint">{{ t('editor.jiraHint') }}</p>
+      <WorkflowVariableAssignments v-model:items="selectedAssignments" />
+    </template>
+    <template v-if="selected.type === 'bitrix24'">
+      <div class="grid grid-cols-2 gap-2">
+        <UFormField :label="t('editor.bitrix24Entity')">
+          <USelect v-model="selected.data.entity" :items="bitrix24Entities" value-key="value" class="w-full" />
+        </UFormField>
+        <UFormField :label="t('editor.operation')">
+          <USelect v-model="selected.data.operation" :items="bitrix24Operations" value-key="value" class="w-full" />
+        </UFormField>
+      </div>
+      <UFormField :label="t('editor.bitrix24Webhook')">
+        <UInput v-model="selected.data.webhook_url" type="password" autocomplete="new-password" class="w-full font-mono text-xs" placeholder="https://портал.bitrix24.ru/rest/1/xxxxxxxxxxxxxxxx/" />
+      </UFormField>
+      <UFormField v-if="selected.data.operation !== 'create' && selected.data.operation !== 'list'" :label="t('editor.bitrix24ItemId')">
+        <UInput v-model="selected.data.item_id" class="w-full font-mono text-xs" :placeholder="JSON_EXPRESSION_EXAMPLE" />
+      </UFormField>
+      <UFormField v-if="selected.data.operation === 'create' || selected.data.operation === 'update'" :label="t('editor.bitrix24Fields')">
+        <UTextarea v-model="selected.data.fields_json" :rows="6" class="w-full font-mono text-xs" placeholder='{ "TITLE": "{{$body.name}}" }' />
+      </UFormField>
+      <UFormField v-if="selected.data.operation === 'list'" :label="t('editor.bitrix24Filter')">
+        <UTextarea v-model="selected.data.filter_json" :rows="4" class="w-full font-mono text-xs" placeholder='{ "STAGE_ID": "NEW" }' />
+      </UFormField>
+      <p class="editor-hint">{{ t('editor.bitrix24Hint') }}</p>
       <WorkflowVariableAssignments v-model:items="selectedAssignments" />
     </template>
     <template v-if="selected.type === 'excel'">

@@ -66,6 +66,11 @@ const preview = computed(() => {
     const op = t(`excelOps.${props.data.operation || 'read'}`)
     return props.data.file_path?.trim() ? `${op} · ${props.data.file_path}` : op
   }
+  if (props.kind === 'bitrix24') {
+    const op = t(`bitrix24Ops.${props.data.operation || 'create'}`)
+    const entity = t(`bitrix24Entities.${props.data.entity || 'lead'}`)
+    return `${op} · ${entity}`
+  }
   if (props.kind === 'file') return props.data.filename?.trim() || t('nodePreview.fileEmpty')
   if (props.kind === 'spreadsheet') {
     return props.data.operation === 'write' ? t('nodePreview.spreadsheetWrite') : t('nodePreview.spreadsheetRead')

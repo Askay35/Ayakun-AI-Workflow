@@ -26,6 +26,7 @@ from models.workflow import (
 from models.user import AuthIdentity, IdentityProvider, User
 from schemas.workflow import (
     AudioTranscriptionNode,
+    Bitrix24Node,
     DataTransformNode,
     DelayNode,
     EmailNode,
@@ -128,6 +129,7 @@ def _single_incoming_label(node_type: NodeType) -> str:
         NodeType.FILE: "Файл",
         NodeType.SPREADSHEET: "Таблица",
         NodeType.LINKEDIN: "LinkedIn",
+        NodeType.BITRIX24: "Битрикс24",
     }.get(node_type, node_type.value)
 
 
@@ -238,6 +240,13 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
             errors.append(f"Узел {label}: укажите JQL-запрос")
         elif node.operation == "add_comment" and (not node.issue_key.strip() or not node.comment.strip()):
             errors.append(f"Узел {label}: укажите ключ задачи и комментарий")
+    elif isinstance(node, Bitrix24Node):
+        if not node.webhook_url.strip():
+            errors.append(f"Узел {label}: укажите адрес вебхука Битрикс24")
+        if node.operation in {"update", "get", "delete"} and not node.item_id.strip():
+            errors.append(f"Узел {label}: укажите ID элемента Битрикс24")
+        if node.operation in {"create", "update"} and not node.fields_json.strip():
+            errors.append(f"Узел {label}: укажите поля элемента (JSON)")
     elif isinstance(node, ExcelNode):
         if not node.access_token.strip():
             errors.append(f"Узел {label}: укажите токен Microsoft")
