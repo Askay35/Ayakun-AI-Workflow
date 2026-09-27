@@ -79,6 +79,7 @@ _ZERO_COST_TYPES = {
     NodeType.FILE,
     NodeType.SPREADSHEET,
     NodeType.LINKEDIN,
+    NodeType.BITRIX24,
 }
 _SECRET_NODE_FIELDS = frozenset({
     "access_token",

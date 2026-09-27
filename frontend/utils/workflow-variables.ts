@@ -71,6 +71,8 @@ export function nodeUsedKeys(node: WorkflowNode): string[] {
     chunks.push(node.data.path, node.data.filename)
   } else if (node.type === 'linkedin') {
     chunks.push(node.data.author, node.data.text)
+  } else if (node.type === 'bitrix24') {
+    chunks.push(node.data.webhook_url, node.data.item_id, node.data.fields_json, node.data.filter_json)
   }
   for (const item of node.data.assignments || []) chunks.push(item.value)
   const names: string[] = []

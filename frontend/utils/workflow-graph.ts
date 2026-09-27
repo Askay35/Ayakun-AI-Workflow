@@ -24,7 +24,8 @@ export const NODE_META: Record<NodeKind, { label: string; caption: string; icon:
   excel: { label: 'Excel', caption: 'Книга в OneDrive', icon: 'i-simple-icons-microsoftexcel', accent: '#107c41' },
   file: { label: 'Файл', caption: 'Загрузка с компьютера', icon: 'i-lucide-file-up', accent: '#64748b' },
   spreadsheet: { label: 'Таблица', caption: 'CSV и XLSX', icon: 'i-lucide-table-2', accent: '#0f9d58' },
-  linkedin: { label: 'LinkedIn', caption: 'Публикация поста', icon: 'i-simple-icons-linkedin', accent: '#0a66c2' }
+  linkedin: { label: 'LinkedIn', caption: 'Публикация поста', icon: 'i-simple-icons-linkedin', accent: '#0a66c2' },
+  bitrix24: { label: 'Битрикс24', caption: 'CRM: лиды, сделки, контакты', icon: 'i-lucide-building-2', accent: '#0067ff' }
 }
 
 export type NodeGroup = 'triggers' | 'ai' | 'logic' | 'data' | 'files' | 'send'
@@ -38,7 +39,7 @@ export const NODE_GROUPS: Array<{ key: NodeGroup; types: NodeKind[] }> = [
   { key: 'logic', types: ['if_else', 'loop', 'delay', 'data_transform'] },
   { key: 'data', types: ['http_request', 'sql_query', 'google_sheets', 'excel'] },
   { key: 'files', types: ['file', 'spreadsheet', 'image', 'yandex_disk'] },
-  { key: 'send', types: ['telegram_send', 'email', 'slack', 'linkedin', 'trello', 'jira'] }
+  { key: 'send', types: ['telegram_send', 'email', 'slack', 'linkedin', 'trello', 'jira', 'bitrix24'] }
 ]
 
 export const SINGLE_INCOMING_TYPES: NodeKind[] = [
@@ -62,7 +63,8 @@ export const SINGLE_INCOMING_TYPES: NodeKind[] = [
   'excel',
   'file',
   'spreadsheet',
-  'linkedin'
+  'linkedin',
+  'bitrix24'
 ]
 
 export const DEFAULT_HTTP_REQUEST_JSON = `{
@@ -70,7 +72,7 @@ export const DEFAULT_HTTP_REQUEST_JSON = `{
   "url": "https://api.example.com/users/{{$userId}}"
 }`
 
-const ASSIGNABLE_TYPES = new Set<NodeKind>(['prompt', 'http_request', 'google_sheets', 'email', 'data_transform', 'sql_query', 'trello', 'jira', 'excel', 'spreadsheet'])
+const ASSIGNABLE_TYPES = new Set<NodeKind>(['prompt', 'http_request', 'google_sheets', 'email', 'data_transform', 'sql_query', 'trello', 'jira', 'excel', 'spreadsheet', 'bitrix24'])
 const NEW_NODE_DEFAULTS: Partial<Record<NodeKind, Partial<WorkflowNode['data']>>> = {
   slack: { webhook_url: '', bot_token: '', channel: '', message: '' },
   trello: { operation: 'create_card', api_key: '', token: '', list_id: '', card_id: '', name: '', description: '' },
@@ -78,7 +80,8 @@ const NEW_NODE_DEFAULTS: Partial<Record<NodeKind, Partial<WorkflowNode['data']>>
   excel: { operation: 'read', access_token: '', file_path: '', worksheet: 'Sheet1', cell_range: '', table: '', values_json: '' },
   file: { filename: '', file_base64: '' },
   spreadsheet: { operation: 'read', file_format: 'auto', sheet: '', header_row: true, delimiter: '', path: '', filename: '' },
-  linkedin: { access_token: '', author: '', text: '', visibility: 'PUBLIC' }
+  linkedin: { access_token: '', author: '', text: '', visibility: 'PUBLIC' },
+  bitrix24: { entity: 'lead', operation: 'create', webhook_url: '', item_id: '', fields_json: '', filter_json: '' }
 }
 
 /** Новый узел с настройками по умолчанию для своего типа. */

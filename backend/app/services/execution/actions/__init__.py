@@ -1,5 +1,6 @@
 from services.execution.actions.audio_transcription import AudioTranscriptionAction
 from services.execution.actions.base import NodeAction
+from services.execution.actions.bitrix24 import Bitrix24Action
 from services.execution.actions.data_transform import DataTransformAction
 from services.execution.actions.delay import DelayAction
 from services.execution.actions.email import EmailAction
@@ -27,6 +28,7 @@ from services.execution.actions.yandex_disk import YandexDiskAction
 __all__ = [
     "NodeAction",
     "AudioTranscriptionAction",
+    "Bitrix24Action",
     "DataTransformAction",
     "DelayAction",
     "EmailAction",

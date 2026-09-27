@@ -28,6 +28,7 @@ export type NodeKind =
   | 'file'
   | 'spreadsheet'
   | 'linkedin'
+  | 'bitrix24'
 export type SearchPeriod = 'h' | 'd' | 'w' | 'm' | 'y'
 
 export interface ApiEnvelope<T> {
@@ -144,6 +145,10 @@ export interface WorkflowNode {
     author?: string
     text?: string
     visibility?: 'PUBLIC' | 'CONNECTIONS'
+    entity?: string
+    item_id?: string
+    fields_json?: string
+    filter_json?: string
     status?: RunStatus
     output?: string
   }

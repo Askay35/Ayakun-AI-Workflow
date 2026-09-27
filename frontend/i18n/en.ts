@@ -96,7 +96,7 @@ export const en: typeof ru = {
       { title: 'A clear price', text: 'The estimated cost is shown before the run, and only actual usage is charged.' }
     ],
     stats: [
-      { value: '24', label: 'ready-made blocks' },
+      { value: '25', label: 'ready-made blocks' },
       { value: '3', label: 'ways to run' },
       { value: '100', label: 'free tokens' },
       { value: '0', label: 'lines of code' }
@@ -133,7 +133,8 @@ export const en: typeof ru = {
       { number: '21', title: 'Excel', text: 'OneDrive workbooks: read ranges and append rows.' },
       { number: '22', title: 'File', text: 'Upload a file from your computer — a spreadsheet, document or picture.' },
       { number: '23', title: 'Spreadsheet', text: 'CSV and XLSX become rows, and rows become a file again.' },
-      { number: '24', title: 'LinkedIn', text: 'A post as you or as your company page.' }
+      { number: '24', title: 'LinkedIn', text: 'A post as you or as your company page.' },
+      { number: '25', title: 'Bitrix24', text: 'CRM leads, deals, contacts and companies — create, update, fetch or delete.' }
     ],
     howEyebrow: 'How it looks',
     howTitle: 'Three steps from idea to result',
@@ -164,7 +165,7 @@ export const en: typeof ru = {
       { q: 'Do I need my own AI subscriptions or API keys?', a: 'No. Neural networks and search are already connected to Ayakun — you only pay for usage inside the service.' },
       { q: 'How much does a run cost?', a: 'Before a run you see the estimated cost in tokens. After it finishes, the actual usage is charged and any unused reserve is returned.' },
       { q: 'How do chains start?', a: 'With a button, on a schedule, or on an event: a webhook starts the chain when a lead, a payment or a form arrives from your site.' },
-      { q: 'Where does the result go?', a: 'To your workspace, Telegram, Slack, email, Google Sheets or Excel, Yandex Disk, Trello, Jira or a LinkedIn post — wherever you prefer to receive it.' },
+      { q: 'Where does the result go?', a: 'To your workspace, Telegram, Slack, email, Google Sheets or Excel, Yandex Disk, Trello, Jira, Bitrix24 or a LinkedIn post — wherever you prefer to receive it.' },
       { q: 'What do I get when I sign up?', a: 'You get 100 free tokens and a 7-day trial to build and test your first chains. After that you need a subscription to keep working.' },
       { q: 'Is there a referral program?', a: 'Yes. Share the link from the “Referrals” section: when the invited person pays for any plan, you both get 200 tokens, and you get them again for every next payment.' }
     ],
@@ -228,7 +229,8 @@ export const en: typeof ru = {
     excel: { label: 'Excel', caption: 'OneDrive workbook' },
     file: { label: 'File', caption: 'Upload from computer' },
     spreadsheet: { label: 'Spreadsheet', caption: 'CSV and XLSX' },
-    linkedin: { label: 'LinkedIn', caption: 'Publish a post' }
+    linkedin: { label: 'LinkedIn', caption: 'Publish a post' },
+    bitrix24: { label: 'Bitrix24', caption: 'CRM: leads, deals, contacts' }
   },
   nodePreview: {
     queryEmpty: 'Query not set yet',
@@ -286,6 +288,19 @@ export const en: typeof ru = {
     create_issue: 'Create issue',
     search: 'Search issues (JQL)',
     add_comment: 'Comment on issue'
+  },
+  bitrix24Entities: {
+    lead: 'Lead',
+    deal: 'Deal',
+    contact: 'Contact',
+    company: 'Company'
+  },
+  bitrix24Ops: {
+    create: 'Create',
+    update: 'Update',
+    get: 'Get',
+    list: 'List',
+    delete: 'Delete'
   },
   excelOps: {
     read: 'Read range',
@@ -493,6 +508,12 @@ export const en: typeof ru = {
     jiraSummary: 'Summary',
     jiraIssueKey: 'Issue key',
     jiraHint: 'Jira Cloud: account email and an API token from id.atlassian.com. Search returns up to 50 issues.',
+    bitrix24Entity: 'CRM object',
+    bitrix24Webhook: 'Bitrix24 incoming webhook',
+    bitrix24ItemId: 'Item ID',
+    bitrix24Fields: 'Fields (JSON)',
+    bitrix24Filter: 'Filter (JSON)',
+    bitrix24Hint: 'Create an incoming webhook in Bitrix24: Developer resources → Other → Inbound webhook, with access to the CRM scope. The address looks like https://yourportal.bitrix24.com/rest/1/xxxxxxxxxxxxxxxx/. Fields are JSON with placeholders, e.g. { "TITLE": "Website lead", "NAME": "{{$body.name}}" }. The webhook is never written to logs.',
     excelToken: 'Microsoft token (Graph)',
     excelPath: 'Workbook path in OneDrive',
     excelSheet: 'Sheet',
@@ -1387,6 +1408,23 @@ export const en: typeof ru = {
         ],
         output: 'Create: { key, id, url }. Search: { issues: [{ key, summary, status, assignee, priority, url }], count }. Comment: { key, comment_id }.',
         notes: ['The token is stored as a secret and is not logged.']
+      },
+      bitrix24: {
+        what: 'Creates, updates, reads, lists and deletes leads, deals, contacts and companies in Bitrix24 CRM.',
+        how: [
+          'At most one incoming link. Placeholders work in every field.',
+          'Create an incoming webhook in Bitrix24 itself: Developer resources → Other → Inbound webhook, with access to the CRM scope.',
+          'The webhook address looks like https://yourportal.bitrix24.com/rest/1/xxxxxxxxxxxxxxxx/.'
+        ],
+        settings: [
+          { name: 'Object and operation', text: 'Lead, deal, contact or company; create, update, get, list or delete.' },
+          { name: 'Webhook', text: 'The Bitrix24 incoming webhook address.' },
+          { name: 'Item ID', text: 'For update, get and delete, can come from the previous block: {{$id}}.' },
+          { name: 'Fields (JSON)', text: 'For create and update, e.g. { "TITLE": "…", "NAME": "{{$body.name}}" }.' },
+          { name: 'Filter (JSON)', text: 'For list, e.g. { "STAGE_ID": "NEW" }.' }
+        ],
+        output: 'Create/update/get: { item }. List: { items: [...], count }. Delete: { id, deleted }.',
+        notes: ['The webhook is stored as a secret and is not logged.']
       },
       excel: {
         what: 'Reads and writes an Excel workbook in OneDrive / Microsoft 365 via Microsoft Graph.',

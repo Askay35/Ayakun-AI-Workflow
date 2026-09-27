@@ -5,6 +5,7 @@ import httpx
 
 from schemas.workflow import (
     AudioTranscriptionNode,
+    Bitrix24Node,
     DataTransformNode,
     DelayNode,
     EmailNode,
@@ -32,6 +33,7 @@ from schemas.workflow import (
 )
 from services.execution.actions import (
     AudioTranscriptionAction,
+    Bitrix24Action,
     DataTransformAction,
     DelayAction,
     EmailAction,
@@ -157,6 +159,9 @@ class DefaultExecutors:
     async def linkedin(self, node: LinkedInNode, context: dict) -> dict:
         return await LinkedInAction(self.client).execute(node, self.prepare(context))
 
+    async def bitrix24(self, node: Bitrix24Node, context: dict) -> dict:
+        return await Bitrix24Action(self.client).execute(node, self.prepare(context))
+
     def registry(self) -> NodeRegistry:
         registry = NodeRegistry()
         registry.register(NodeType.WEB_SEARCH, self.web_search)
@@ -183,4 +188,5 @@ class DefaultExecutors:
         registry.register(NodeType.FILE, self.file)
         registry.register(NodeType.SPREADSHEET, self.spreadsheet)
         registry.register(NodeType.LINKEDIN, self.linkedin)
+        registry.register(NodeType.BITRIX24, self.bitrix24)
         return registry

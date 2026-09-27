@@ -218,7 +218,8 @@ const blockMeta = [
   { icon: 'i-simple-icons-microsoftexcel', accent: '#107c41', cat: 'data' },
   { icon: 'i-lucide-file-up', accent: '#64748b', cat: 'data' },
   { icon: 'i-lucide-table-2', accent: '#0f9d58', cat: 'data' },
-  { icon: 'i-simple-icons-linkedin', accent: '#0a66c2', cat: 'delivery' }
+  { icon: 'i-simple-icons-linkedin', accent: '#0a66c2', cat: 'delivery' },
+  { icon: 'i-lucide-building-2', accent: '#0067ff', cat: 'delivery' }
 ]
 const blocks = computed(() => tm<Array<{ title: string; text: string }>>('landing.blocks').map((item, index) => ({
   ...item,
@@ -267,7 +268,8 @@ const railKinds = [
   { kind: 'linkedin', icon: 'i-simple-icons-linkedin', accent: '#0a66c2' },
   { kind: 'spreadsheet', icon: 'i-lucide-table-2', accent: '#0f9d58' },
   { kind: 'image_generation', icon: 'i-lucide-image-plus', accent: '#d6338a' },
-  { kind: 'audio_transcription', icon: 'i-lucide-audio-lines', accent: '#0d9488' }
+  { kind: 'audio_transcription', icon: 'i-lucide-audio-lines', accent: '#0d9488' },
+  { kind: 'bitrix24', icon: 'i-lucide-building-2', accent: '#0067ff' }
 ]
 const rail = computed(() => railKinds.map(item => ({ ...item, label: t(`nodes.${item.kind}.label`) })))
 

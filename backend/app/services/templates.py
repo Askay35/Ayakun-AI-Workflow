@@ -240,6 +240,21 @@ TEMPLATES: list[Template] = [
         links=[("hook", "card"), ("card", "slack")],
     ),
     Template(
+        slug="lead-to-bitrix24",
+        category="sales",
+        name="Заявка с сайта → лид в Битрикс24",
+        description="Каждая заявка с сайта создаёт лид в Битрикс24 CRM с именем, телефоном и комментарием.",
+        name_en="Website lead → Bitrix24 CRM",
+        description_en="Every website lead creates a CRM lead in Bitrix24 with name, phone and comment.",
+        nodes=[
+            node("hook", "webhook", "Заявка"),
+            node("lead", "bitrix24", "Лид в Битрикс24", entity="lead", operation="create", webhook_url="",
+                 fields_json='{\n  "TITLE": "Заявка с сайта: {{$body.name}}",\n  "NAME": "{{$body.name}}",\n'
+                 '  "PHONE": [{"VALUE": "{{$body.phone}}", "VALUE_TYPE": "WORK"}],\n  "COMMENTS": "{{$body.message}}"\n}'),
+        ],
+        links=[("hook", "lead")],
+    ),
+    Template(
         slug="crm-deals-to-excel",
         category="sales",
         name="Новые сделки из CRM в Excel",

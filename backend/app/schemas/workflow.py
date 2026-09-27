@@ -62,6 +62,7 @@ class NodeType(str, Enum):
     FILE = "file"
     SPREADSHEET = "spreadsheet"
     LINKEDIN = "linkedin"
+    BITRIX24 = "bitrix24"
 
     @staticmethod
     def with_output() -> frozenset["NodeType"]:
@@ -89,6 +90,7 @@ class NodeType(str, Enum):
             NodeType.FILE,
             NodeType.SPREADSHEET,
             NodeType.LINKEDIN,
+            NodeType.BITRIX24,
         })
 
     @staticmethod
@@ -115,6 +117,7 @@ class NodeType(str, Enum):
             NodeType.FILE,
             NodeType.SPREADSHEET,
             NodeType.LINKEDIN,
+            NodeType.BITRIX24,
         })
 
 
@@ -412,6 +415,25 @@ class LinkedInNode(Node):
     position: dict[str, float] | None = None
 
 
+class Bitrix24Node(Node):
+    """1С-Битрикс24: CRM через входящий вебхук (универсальные методы crm.item.*)."""
+
+    type: Literal[NodeType.BITRIX24] = NodeType.BITRIX24
+    entity: Literal["lead", "deal", "contact", "company"] = "lead"
+    operation: Literal["create", "update", "get", "list", "delete"] = "create"
+    webhook_url: str = Field(default="", max_length=500)
+    item_id: str = Field(default="", max_length=100)
+    fields_json: str = Field(default="", max_length=20000)
+    filter_json: str = Field(default="", max_length=8000)
+    assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
+    position: dict[str, float] | None = None
+
+    @field_validator("fields_json", "filter_json", mode="before")
+    @classmethod
+    def coerce_bitrix_json(cls, value: object) -> str:
+        return _coerce_json_text(value)
+
+
 WorkflowNode = Annotated[
     WebSearchNode
     | PromptNode
@@ -436,7 +458,8 @@ WorkflowNode = Annotated[
     | ExcelNode
     | FileNode
     | SpreadsheetNode
-    | LinkedInNode,
+    | LinkedInNode
+    | Bitrix24Node,
     Field(discriminator="type"),
 ]
 
