@@ -123,6 +123,7 @@ export function createWorkflowNode(type: NodeKind, label: string, position: { x:
       to: type === 'email' ? '' : undefined,
       subject: type === 'email' ? '' : undefined,
       body: type === 'email' ? '' : undefined,
+      attach_file: type === 'email' ? false : undefined,
       assignments: ASSIGNABLE_TYPES.has(type) ? [] : undefined,
       ...NEW_NODE_DEFAULTS[type]
     }

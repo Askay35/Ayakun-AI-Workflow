@@ -170,6 +170,8 @@ def _validate_node_config(node: WorkflowNode, errors: list[str]) -> None:
     elif isinstance(node, EmailNode):
         if not node.to.strip():
             errors.append(f"Узел {label}: укажите получателя письма")
+        if node.attach_file and not node.parents:
+            errors.append(f"Узел {label}: подключите узел с файлом для вложения")
     elif isinstance(node, DataTransformNode):
         if node.operation in {"select", "remove"} and not node.fields.strip():
             errors.append(f"Узел {label}: укажите поля")

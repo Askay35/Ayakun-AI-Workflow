@@ -231,6 +231,7 @@ class EmailNode(Node):
     to: str = Field(default="", max_length=2000)
     subject: str = Field(default="", max_length=500)
     body: str = Field(default="", max_length=20000)
+    attach_file: bool = False
     assignments: list[NodeVariableAssignment] = Field(default_factory=list, max_length=50)
     position: dict[str, float] | None = None
 

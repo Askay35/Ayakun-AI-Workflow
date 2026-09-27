@@ -111,7 +111,7 @@ class DefaultExecutors:
         return await GoogleSheetsAction(self.client).execute(node, self.prepare(context))
 
     async def email(self, node: EmailNode, context: dict) -> dict:
-        return await EmailAction().execute(node, self.prepare(context))
+        return await EmailAction(client=self.client).execute(node, self.prepare(context))
 
     async def data_transform(self, node: DataTransformNode, context: dict) -> dict | list:
         return await DataTransformAction().execute(node, self.prepare(context))

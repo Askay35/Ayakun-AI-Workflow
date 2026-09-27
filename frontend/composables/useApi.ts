@@ -156,6 +156,7 @@ export const useApi = () => {
         to: node.data.to || '',
         subject: node.data.subject || '',
         body: node.data.body || '',
+        attach_file: node.data.attach_file || false,
         assignments: assignmentsOf(node)
       }
     }

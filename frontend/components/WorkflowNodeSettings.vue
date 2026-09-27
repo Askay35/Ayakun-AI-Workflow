@@ -395,6 +395,11 @@ const rotateWebhookToken = () => emit('rotate-webhook')
         />
       </UFormField>
       <p class="editor-hint">{{ t('editor.emailHint', { root: ROOT_JSON_EXAMPLE, json: JSON_EXPRESSION_EXAMPLE, variable: VARIABLE_NAME_EXAMPLE, loop: TELEGRAM_LOOP_EXAMPLE }) }}</p>
+      <label class="flex items-center gap-2 text-[13px] font-semibold">
+        <UCheckbox v-model="selected.data.attach_file" />
+        {{ t('editor.emailAttachFile') }}
+      </label>
+      <p v-if="selected.data.attach_file" class="editor-hint">{{ t('editor.emailAttachFileHint') }}</p>
       <WorkflowVariableAssignments v-model:items="selectedAssignments" />
     </template>
     <template v-if="selected.type === 'data_transform'">

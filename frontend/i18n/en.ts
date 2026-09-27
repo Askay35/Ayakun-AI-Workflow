@@ -597,6 +597,8 @@ export const en: typeof ru = {
     emailSubjectPlaceholder: 'Email subject',
     emailBody: 'Message',
     emailHint: 'At most one incoming link. The email is sent through the service mail server. Address, subject and body support {root}, {json}, {variable} and loops {loop}.',
+    emailAttachFile: 'Attach a file from the previous node',
+    emailAttachFileHint: 'Connect a File, Image or Yandex Disk node — its file is sent as an email attachment.',
     operation: 'Operation',
     dataPath: 'Data path',
     dataPathPlaceholder: 'rows or body.items — empty = whole input',
@@ -1039,8 +1041,9 @@ export const en: typeof ru = {
     ],
     emailTitle: 'Email',
     emailItems: [
-      'The node only sends an email: address, subject and body. It cannot read the inbox.',
-      'All three fields support the same substitutions, JSON paths and loops as Telegram.',
+      'The node sends an email: address, subject, body and an optional attachment. It cannot read the inbox.',
+      'All three text fields support the same substitutions, JSON paths and loops as Telegram.',
+      'Enable "Attach a file from the previous node" and connect a File, Image or Yandex Disk node to send its file as an attachment.',
       'The email is sent through the service mail server — you do not connect Google Mail separately.'
     ],
     transformTitle: 'Data transform',

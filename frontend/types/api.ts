@@ -97,6 +97,7 @@ export interface WorkflowNode {
     to?: string
     subject?: string
     body?: string
+    attach_file?: boolean
     fields?: string
     mapping_json?: string
     sort_field?: string

@@ -75,15 +75,22 @@ class NotificationProvider(Protocol):
     async def send(self, destination: str, text: str, bot_token: str | None = None) -> None: ...
 
 
+EmailAttachment = tuple[bytes, str, str]  # (data, filename, mime)
+
+
 class EmailProvider(Protocol):
-    async def send(self, recipient: str, subject: str, text: str) -> None: ...
+    async def send(
+        self, recipient: str, subject: str, text: str, attachments: list[EmailAttachment] | None = None
+    ) -> None: ...
 
 
 class SMTPEmailProvider:
     def __init__(self, config: Settings = settings):
         self.config = config
 
-    async def send(self, recipient: str, subject: str, text: str) -> None:
+    async def send(
+        self, recipient: str, subject: str, text: str, attachments: list[EmailAttachment] | None = None
+    ) -> None:
         if not self.config.smtp_host or not self.config.smtp_from_email:
             raise HTTPException(503, "Email provider не настроен")
         message = EmailMessage()
@@ -91,6 +98,9 @@ class SMTPEmailProvider:
         message["To"] = recipient
         message["Subject"] = subject
         message.set_content(text)
+        for data, filename, mime in attachments or []:
+            maintype, _, subtype = (mime or "application/octet-stream").partition("/")
+            message.add_attachment(data, maintype=maintype or "application", subtype=subtype or "octet-stream", filename=filename or "file")
 
         def deliver() -> None:
             with smtplib.SMTP(self.config.smtp_host, self.config.smtp_port, timeout=30) as smtp:
