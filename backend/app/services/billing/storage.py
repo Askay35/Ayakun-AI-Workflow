@@ -65,6 +65,7 @@ def _blank_node(graph: object, node_id: str) -> tuple[bool, str | None]:
             node["file_base64"] = ""
             node["s3_key"] = None
             node["file_size"] = None
+            node["file_hash"] = None
             return True, key
     return False, None
 
