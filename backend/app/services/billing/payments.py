@@ -10,8 +10,9 @@ from yookassa.configuration import ConfigurationError
 from yookassa.payment import PaymentResponse
 
 from core.config import settings
-from models.billing import LedgerKind, Payment, PaymentStatus, Plan, Wallet, WalletLedger
+from models.billing import LedgerKind, Payment, PaymentStatus, Plan, PromoCodeRedemption, Wallet, WalletLedger
 from models.user import User
+from services.billing.promo_codes import PromoCodeService
 from services.billing.subscriptions import SubscriptionService
 from services.referrals import reward_referral_payment
 from services.providers import PaymentProvider
@@ -23,8 +24,15 @@ class PaymentService:
         self.payment_provider = payment_provider
 
     async def create_payment(
-        self, plan_id: int, idempotency_key: str, *, customer_email: str | None = None
-    ) -> PaymentResponse:
+        self,
+        plan_id: int,
+        idempotency_key: str,
+        *,
+        customer_email: str | None = None,
+        promo_code: str | None = None,
+        user_id: int | None = None,
+    ) -> tuple[PaymentResponse, int | None, int | None]:
+        """Возвращает (ответ ЮKassa, id применённого промокода, процент скидки)."""
         if not self.payment_provider:
             raise HTTPException(503, "Платежный провайдер не настроен")
         if settings.yookassa_account_id and settings.yookassa_secret_key:
@@ -35,9 +43,20 @@ class PaymentService:
         if not plan or not plan.price > 0:
             raise HTTPException(404, "Тариф не найден")
 
+        promo_code_id: int | None = None
+        discount_percent: int | None = None
+        amount = plan.price
+        if promo_code:
+            if user_id is None:
+                raise HTTPException(422, "Промокод недоступен")
+            promo = await PromoCodeService(self.db).resolve(promo_code, plan, user_id)
+            promo_code_id = promo.id
+            discount_percent = promo.discount_percent
+            amount = (plan.price * (100 - promo.discount_percent) / 100).quantize(Decimal("0.01"))
+
         try:
-            return await self.payment_provider.create_payment(
-                f"{plan.price:.2f}",
+            response = await self.payment_provider.create_payment(
+                f"{amount:.2f}",
                 plan.currency.upper(),
                 "Оплата тарифа " + plan.name,
                 idempotency_key=idempotency_key,
@@ -45,6 +64,7 @@ class PaymentService:
             )
         except ConfigurationError as exc:
             raise HTTPException(503, "Платежный провайдер не настроен") from exc
+        return response, promo_code_id, discount_percent
 
     async def create_plan_checkout(
         self,
@@ -53,6 +73,7 @@ class PaymentService:
         idempotency_key: str,
         *,
         customer_email: str | None = None,
+        promo_code: str | None = None,
     ) -> str:
         existing = await self.db.scalar(select(Payment).where(Payment.idempotency_key == idempotency_key))
         if existing:
@@ -65,10 +86,12 @@ class PaymentService:
 
         receipt_email = (customer_email or getattr(user, "email", None) or "").strip().lower() or None
         email_attached = await self._attach_profile_email(user, receipt_email)
-        payment = await self.create_payment(
+        payment, promo_code_id, discount_percent = await self.create_payment(
             plan_id,
             idempotency_key,
             customer_email=receipt_email,
+            promo_code=promo_code,
+            user_id=user.id,
         )
         if not payment.confirmation or not payment.confirmation.confirmation_url:
             reason = payment.cancellation_details.reason if payment.cancellation_details else "причина неизвестна"
@@ -84,6 +107,8 @@ class PaymentService:
                 amount=Decimal(payment.amount.value),
                 status=PaymentStatus(normalized_status),
                 idempotency_key=idempotency_key,
+                promo_code_id=promo_code_id,
+                discount_percent=discount_percent,
             ))
         if not existing or email_attached:
             try:
@@ -146,6 +171,13 @@ class PaymentService:
             subscription_kind = None
             if payment.plan is not None and payment.plan.price > 0:
                 subscription_kind = await SubscriptionService(self.db).activate(payment.user_id, payment.plan)
+            if payment.promo_code_id is not None:
+                self.db.add(PromoCodeRedemption(
+                    promo_code_id=payment.promo_code_id,
+                    user_id=payment.user_id,
+                    payment_id=payment.id,
+                    discount_percent=payment.discount_percent or 0,
+                ))
             credits = self._plan_credits(payment.plan)
             wallet = await self.db.scalar(
                 select(Wallet).where(Wallet.user_id == payment.user_id).with_for_update()

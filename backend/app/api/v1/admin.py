@@ -4,17 +4,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from deps.admin import AdminActor
 from deps.database import get_db
-from models.billing import BillingAudit, Plan, PricingRate, RuntimeSetting
+from models.billing import BillingAudit, Plan, PricingRate, PromoCode, RuntimeSetting
 from schemas.admin import AdminStatsResponse
 from schemas.billing import (
     AdminPlanUpdate,
     PlanResponse,
     PricingRateResponse,
     PricingRateUpdate,
+    PromoCodeCreate,
+    PromoCodeResponse,
+    PromoCodeUpdate,
     RuntimeSettingUpdate,
 )
 from schemas.common import ApiResponse
 from services.admin_stats import AdminStatsService, Granularity
+from services.billing.promo_codes import PromoCodeService
 from services.media_settings import normalize_runtime_value
 
 router = APIRouter()
@@ -160,3 +164,132 @@ async def update_setting(
     return ApiResponse(success=True, data={
         "key": setting.key, "value": setting.value, "description": setting.description
     })
+
+
+def _promo_response(promo: PromoCode, usage_count: int = 0) -> PromoCodeResponse:
+    return PromoCodeResponse(
+        id=promo.id,
+        code=promo.code,
+        discount_percent=promo.discount_percent,
+        plan_ids=promo.plan_ids,
+        expires_at=promo.expires_at,
+        active=promo.active,
+        usage_count=usage_count,
+        created_at=promo.created_at,
+    )
+
+
+@router.get("/promo-codes", response_model=ApiResponse[list[PromoCodeResponse]])
+async def list_promo_codes(actor: AdminActor, db: AsyncSession = Depends(get_db)):
+    promos = list(await db.scalars(select(PromoCode).order_by(PromoCode.created_at.desc())))
+    counts = await PromoCodeService(db).usage_counts([promo.id for promo in promos])
+    return ApiResponse(success=True, data=[_promo_response(promo, counts.get(promo.id, 0)) for promo in promos])
+
+
+@router.post("/promo-codes", response_model=ApiResponse[PromoCodeResponse], status_code=201)
+async def create_promo_code(
+    data: PromoCodeCreate,
+    actor: AdminActor,
+    db: AsyncSession = Depends(get_db),
+):
+    existing_audit = await db.scalar(select(BillingAudit).where(BillingAudit.request_id == data.request_id))
+    if existing_audit:
+        promo = await db.get(PromoCode, int(existing_audit.entity_id))
+        if not promo:
+            raise HTTPException(404, "Промокод не найден")
+        return ApiResponse(success=True, data=_promo_response(promo))
+
+    code = data.code.strip().upper()
+    if not code:
+        raise HTTPException(422, "Укажите код промокода")
+    if await db.scalar(select(PromoCode.id).where(PromoCode.code == code)):
+        raise HTTPException(409, "Такой промокод уже существует")
+
+    promo = PromoCode(
+        code=code,
+        discount_percent=data.discount_percent,
+        plan_ids=data.plan_ids or None,
+        expires_at=data.expires_at,
+        active=data.active,
+    )
+    db.add(promo)
+    await db.flush()
+    db.add(BillingAudit(
+        actor=actor,
+        action="create",
+        entity_type="promo_code",
+        entity_id=str(promo.id),
+        before={},
+        after=_promo_response(promo).model_dump(mode="json"),
+        request_id=data.request_id,
+    ))
+    await db.commit()
+    return ApiResponse(success=True, data=_promo_response(promo))
+
+
+@router.put("/promo-codes/{promo_id}", response_model=ApiResponse[PromoCodeResponse])
+async def update_promo_code(
+    promo_id: int,
+    data: PromoCodeUpdate,
+    actor: AdminActor,
+    db: AsyncSession = Depends(get_db),
+):
+    promo_service = PromoCodeService(db)
+    if await db.scalar(select(BillingAudit.id).where(BillingAudit.request_id == data.request_id)):
+        promo = await db.get(PromoCode, promo_id)
+        if not promo:
+            raise HTTPException(404, "Промокод не найден")
+        counts = await promo_service.usage_counts([promo.id])
+        return ApiResponse(success=True, data=_promo_response(promo, counts.get(promo.id, 0)))
+
+    promo = await db.get(PromoCode, promo_id, with_for_update=True)
+    if not promo:
+        raise HTTPException(404, "Промокод не найден")
+    before = _promo_response(promo).model_dump(mode="json")
+    promo.discount_percent = data.discount_percent
+    promo.plan_ids = data.plan_ids or None
+    promo.expires_at = data.expires_at
+    promo.active = data.active
+    after = _promo_response(promo).model_dump(mode="json")
+    db.add(BillingAudit(
+        actor=actor,
+        action="update",
+        entity_type="promo_code",
+        entity_id=str(promo.id),
+        before=before,
+        after=after,
+        request_id=data.request_id,
+    ))
+    await db.commit()
+    counts = await promo_service.usage_counts([promo.id])
+    return ApiResponse(success=True, data=_promo_response(promo, counts.get(promo.id, 0)))
+
+
+@router.delete("/promo-codes/{promo_id}", response_model=ApiResponse[dict])
+async def delete_promo_code(
+    promo_id: int,
+    actor: AdminActor,
+    request_id: str = Query(..., min_length=8, max_length=160),
+    db: AsyncSession = Depends(get_db),
+):
+    if await db.scalar(select(BillingAudit.id).where(BillingAudit.request_id == request_id)):
+        return ApiResponse(success=True, data={"ok": True})
+    promo = await db.get(PromoCode, promo_id, with_for_update=True)
+    if not promo:
+        raise HTTPException(404, "Промокод не найден")
+    counts = await PromoCodeService(db).usage_counts([promo.id])
+    if counts.get(promo.id, 0) > 0:
+        raise HTTPException(409, "Промокод уже использовался — деактивируйте его вместо удаления, чтобы сохранить статистику")
+    before = _promo_response(promo).model_dump(mode="json")
+    await db.delete(promo)
+    db.add(BillingAudit(
+        actor=actor,
+        action="delete",
+        entity_type="promo_code",
+        entity_id=str(promo_id),
+        before=before,
+        after={},
+        request_id=request_id,
+    ))
+    await db.commit()
+    return ApiResponse(success=True, data={"ok": True})

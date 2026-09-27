@@ -122,6 +122,44 @@ class PlanCheckout(BaseModel):
     plan_id: int
     idempotency_key: str = Field(min_length=8, max_length=160)
     customer_email: EmailStr | None = None
+    promo_code: str | None = Field(default=None, max_length=40)
+
+
+class PromoCodeResponse(BaseModel):
+    id: int
+    code: str
+    discount_percent: int
+    plan_ids: list[int] | None
+    expires_at: datetime.datetime | None
+    active: bool
+    usage_count: int = 0
+    created_at: datetime.datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PromoCodeCheckResponse(BaseModel):
+    valid: bool
+    code: str
+    discount_percent: int | None = None
+    plan_ids: list[int] | None = None
+    reason: str | None = None
+
+
+class PromoCodeCreate(BaseModel):
+    code: str = Field(min_length=3, max_length=40)
+    discount_percent: int = Field(ge=1, le=100)
+    plan_ids: list[int] | None = None
+    expires_at: datetime.datetime | None = None
+    active: bool = True
+    request_id: str = Field(min_length=8, max_length=160)
+
+
+class PromoCodeUpdate(BaseModel):
+    discount_percent: int = Field(ge=1, le=100)
+    plan_ids: list[int] | None = None
+    expires_at: datetime.datetime | None = None
+    active: bool = True
+    request_id: str = Field(min_length=8, max_length=160)
 
 class PricingRateResponse(BaseModel):
     id: int

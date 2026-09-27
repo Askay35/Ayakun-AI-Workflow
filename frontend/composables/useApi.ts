@@ -1,6 +1,6 @@
 import type {
   AdminConfig, AdminListQuery, AdminStats, AdminStatsGranularity, AdminPage, AdminPaymentRecord, AdminRunRecord,
-  AdminUserRecord, AdminWorkflowRecord, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate,
+  AdminUserRecord, AdminWorkflowRecord, ApiEnvelope, AuthTokens, BillingSummary, Plan, PricingRate, PromoCode, PromoCodeCheck,
   OnboardingPayload, ReferralSummary, SubscriptionInfo, User, ValidationResult, Workflow, WorkflowNode, WorkflowRun, WorkflowTemplate
 } from '~/types/api'
 import { visibleLedgerEntries } from '~/utils/ledger'
@@ -571,14 +571,17 @@ export const useApi = () => {
           })), t)
         }
       },
-      checkout: (planId: number, idempotencyKey: string, customerEmail?: string) => request<{ confirmation_url: string | null }>('/billing/checkout', {
+      checkout: (planId: number, idempotencyKey: string, customerEmail?: string, promoCode?: string) => request<{ confirmation_url: string | null }>('/billing/checkout', {
         method: 'POST',
         body: {
           plan_id: planId,
           idempotency_key: idempotencyKey,
-          ...(customerEmail ? { customer_email: customerEmail } : {})
+          ...(customerEmail ? { customer_email: customerEmail } : {}),
+          ...(promoCode ? { promo_code: promoCode } : {})
         }
-      })
+      }),
+      checkPromoCode: (code: string) =>
+        request<PromoCodeCheck>('/billing/promo-codes/check', { query: { code } })
     },
     users: {
       completeOnboarding: (body: OnboardingPayload) =>
@@ -676,6 +679,28 @@ export const useApi = () => {
         }),
       deleteRun: (credentials: string, id: string) =>
         adminRequest<{ ok: boolean }>(`/admin/runs/${id}`, credentials, {
+          method: 'DELETE',
+          query: { request_id: crypto.randomUUID() }
+        }),
+      listPromoCodes: (credentials: string) =>
+        adminRequest<PromoCode[]>('/admin/promo-codes', credentials),
+      createPromoCode: (
+        credentials: string,
+        body: { code: string; discount_percent: number; plan_ids: number[] | null; expires_at: string | null; active: boolean }
+      ) => adminRequest<PromoCode>('/admin/promo-codes', credentials, {
+        method: 'POST',
+        body: { ...body, request_id: crypto.randomUUID() }
+      }),
+      updatePromoCode: (
+        credentials: string,
+        id: number,
+        body: { discount_percent: number; plan_ids: number[] | null; expires_at: string | null; active: boolean }
+      ) => adminRequest<PromoCode>(`/admin/promo-codes/${id}`, credentials, {
+        method: 'PUT',
+        body: { ...body, request_id: crypto.randomUUID() }
+      }),
+      deletePromoCode: (credentials: string, id: number) =>
+        adminRequest<{ ok: boolean }>(`/admin/promo-codes/${id}`, credentials, {
           method: 'DELETE',
           query: { request_id: crypto.randomUUID() }
         })

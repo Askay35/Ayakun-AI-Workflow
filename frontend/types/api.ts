@@ -276,6 +276,25 @@ export interface AdminConfig {
   settings: Array<{ key: string; value: string | number | boolean; description: string }>
 }
 
+export interface PromoCode {
+  id: number
+  code: string
+  discount_percent: number
+  plan_ids: number[] | null
+  expires_at: string | null
+  active: boolean
+  usage_count: number
+  created_at: string
+}
+
+export interface PromoCodeCheck {
+  valid: boolean
+  code: string
+  discount_percent?: number | null
+  plan_ids?: number[] | null
+  reason?: string | null
+}
+
 export interface AdminPage<T> {
   items: T[]
   total: number

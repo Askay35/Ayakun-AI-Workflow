@@ -133,11 +133,41 @@ class Payment(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 6))
     status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus, name="payment_status"), default=PaymentStatus.pending)
     idempotency_key: Mapped[str] = mapped_column(String(160), unique=True)
+    promo_code_id: Mapped[int | None] = mapped_column(ForeignKey("promo_codes.id"), nullable=True)
+    discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     user: Mapped["User"] = relationship(back_populates="payments", lazy="selectin")
     plan: Mapped["Plan"] = relationship(back_populates="payments", lazy="selectin")
+    promo_code: Mapped["PromoCode | None"] = relationship(lazy="selectin")
+
+
+class PromoCode(Base):
+    """Промокод на скидку при подключении тарифа. plan_ids=null — действует на все платные тарифы."""
+
+    __tablename__ = "promo_codes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(String(40), unique=True)
+    discount_percent: Mapped[int] = mapped_column(Integer)
+    plan_ids: Mapped[list[int] | None] = mapped_column(JSONB, nullable=True)
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class PromoCodeRedemption(Base):
+    """Одно использование промокода одним пользователем — не более одного раза на пользователя."""
+
+    __tablename__ = "promo_code_redemptions"
+    __table_args__ = (UniqueConstraint("promo_code_id", "user_id", name="uq_promo_redemption_user"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    promo_code_id: Mapped[int] = mapped_column(ForeignKey("promo_codes.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    payment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("payments.id", ondelete="CASCADE"), unique=True)
+    discount_percent: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 

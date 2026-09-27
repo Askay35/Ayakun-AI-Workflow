@@ -49,6 +49,7 @@ const sections = [
   { value: 'dashboard', label: 'Дашборд', icon: 'i-lucide-layout-dashboard', lead: 'Регистрации, доход, рефералы и активность по периодам.' },
   { value: 'users', label: 'Пользователи', icon: 'i-lucide-users', lead: 'Поиск, правка баланса через ledger и вход под пользователем.' },
   { value: 'payments', label: 'Транзакции', icon: 'i-lucide-receipt', lead: 'Платежи ЮKassa и пакеты, выданные вручную.' },
+  { value: 'promo-codes', label: 'Промокоды', icon: 'i-lucide-badge-percent', lead: 'Скидки на тарифы: срок действия, применимые тарифы и число использований.' },
   { value: 'workflows', label: 'Цепочки', icon: 'i-lucide-workflow', lead: 'Цепочки пользователей, статусы и расписания.' },
   { value: 'runs', label: 'Запуски', icon: 'i-lucide-play', lead: 'История запусков, ошибки и стоимость.' },
   { value: 'settings', label: 'Настройки', icon: 'i-lucide-sliders-horizontal', lead: 'Параметры выполнения, цена поиска и тарифы.' }
@@ -763,6 +764,10 @@ watch(credentials, (value) => {
                 <template #created_at="{ row }">{{ formatDate(row.created_at) }}</template>
               </AdminRecordsTab>
             </div>
+          </section>
+
+          <section v-show="tab === 'promo-codes'">
+            <AdminPromoCodes :credentials="credentials" :plans="config?.plans || []" />
           </section>
 
           <section v-show="tab === 'workflows'">

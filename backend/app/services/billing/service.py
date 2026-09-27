@@ -109,10 +109,18 @@ class BillingService:
         return await self.credits.release(user, amount, key, reference)
 
     async def create_payment(
-        self, plan_id: int, idempotency_key: str, *, customer_email: str | None = None
-    ) -> PaymentResponse:
+        self,
+        plan_id: int,
+        idempotency_key: str,
+        *,
+        customer_email: str | None = None,
+        promo_code: str | None = None,
+        user_id: int | None = None,
+    ) -> tuple[PaymentResponse, int | None, int | None]:
         self.payments.payment_provider = self.payment_provider
-        return await self.payments.create_payment(plan_id, idempotency_key, customer_email=customer_email)
+        return await self.payments.create_payment(
+            plan_id, idempotency_key, customer_email=customer_email, promo_code=promo_code, user_id=user_id
+        )
 
     async def create_plan_checkout(
         self,
@@ -121,10 +129,11 @@ class BillingService:
         idempotency_key: str,
         *,
         customer_email: str | None = None,
+        promo_code: str | None = None,
     ) -> str:
         self.payments.payment_provider = self.payment_provider
         return await self.payments.create_plan_checkout(
-            user, plan_id, idempotency_key, customer_email=customer_email
+            user, plan_id, idempotency_key, customer_email=customer_email, promo_code=promo_code
         )
 
     async def process_payment_webhook(self, payload: dict) -> None:

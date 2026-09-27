@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from deps.auth import CurrentUser
 from deps.services import get_billing_service, get_workflow_service
@@ -7,6 +7,7 @@ from schemas.billing import (
     ApiPaymentResponse,
     PlanCheckout,
     PlanResponse,
+    PromoCodeCheckResponse,
     StorageUsage,
     SubscriptionResponse,
     UsageResponse,
@@ -15,6 +16,7 @@ from schemas.billing import (
 )
 from schemas.common import ApiResponse
 from services.billing import BillingService
+from services.billing.promo_codes import PromoCodeService
 from services.billing.subscriptions import SubscriptionService, is_active, storage_limits
 from services.workflow import WorkflowService
 
@@ -73,8 +75,30 @@ async def checkout(
         data.plan_id,
         data.idempotency_key,
         customer_email=data.customer_email,
+        promo_code=data.promo_code,
     )
     return ApiResponse[ApiPaymentResponse](success=True, data=ApiPaymentResponse(confirmation_url=confirmation_url))
+
+
+@router.get("/promo-codes/check", response_model=ApiResponse[PromoCodeCheckResponse])
+async def check_promo_code(
+    user: CurrentUser,
+    code: str = Query(..., min_length=1, max_length=40),
+    service: BillingService = Depends(get_billing_service),
+):
+    promo_service = PromoCodeService(service.db)
+    promo = await promo_service.find(code)
+    if promo is None or not promo.active:
+        reason = "Промокод не найден или недействителен"
+    elif promo_service.is_expired(promo):
+        reason = "Срок действия промокода истёк"
+    elif await promo_service.already_redeemed(promo.id, user.id):
+        reason = "Этот промокод уже был использован на вашем аккаунте"
+    else:
+        return ApiResponse(success=True, data=PromoCodeCheckResponse(
+            valid=True, code=promo.code, discount_percent=promo.discount_percent, plan_ids=promo.plan_ids
+        ))
+    return ApiResponse(success=True, data=PromoCodeCheckResponse(valid=False, code=code, reason=reason))
 
 
 @router.post("/webhooks/yookassa", response_model=ApiResponse[None])

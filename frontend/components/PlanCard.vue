@@ -8,10 +8,16 @@ const props = defineProps<{
   current?: boolean
   /** Самый дорогой тариф: переходить дальше некуда. */
   top?: boolean
+  /** Процент скидки по применённому промокоду, если он действует на этот тариф. */
+  discountPercent?: number | null
 }>()
 
 const { t, locale, formatMoney } = useI18n()
 const paid = computed(() => Number(props.plan.price) > 0)
+const discountedPrice = computed(() => {
+  if (!props.discountPercent) return null
+  return Number(props.plan.price) * (1 - props.discountPercent / 100)
+})
 const trialDays = computed(() => Number(props.plan.limits?.period_days) || 7)
 const features = computed(() => {
   const files = Number(props.plan.limits?.max_files || 0)
@@ -36,13 +42,19 @@ const features = computed(() => {
     :class="{ 'is-gift': !paid, 'is-featured': featured, 'is-current': current }"
   >
     <span v-if="current" class="credit-pack-badge">{{ t('billing.current') }}</span>
+    <span v-else-if="discountedPrice != null" class="credit-pack-badge plan-card-discount-badge">−{{ discountPercent }}%</span>
     <span v-else-if="featured" class="credit-pack-badge">{{ t('pricing.better') }}</span>
     <span class="credit-pack-icon">
       <UIcon :name="paid ? 'i-lucide-rocket' : 'i-lucide-gift'" class="size-5" />
     </span>
     <p class="plan-card-name">{{ plan.name }}</p>
     <p class="credit-pack-price">
-      <template v-if="paid">
+      <template v-if="paid && discountedPrice != null">
+        <strong>{{ formatMoney(discountedPrice) }} ₽</strong>
+        <span>{{ t('pricing.perMonth') }}</span>
+        <s class="plan-card-price-old">{{ formatMoney(Number(plan.price)) }} ₽</s>
+      </template>
+      <template v-else-if="paid">
         <strong>{{ formatMoney(Number(plan.price)) }} ₽</strong>
         <span>{{ t('pricing.perMonth') }}</span>
       </template>

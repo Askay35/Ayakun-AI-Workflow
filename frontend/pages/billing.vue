@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Plan } from '~/types/api'
+import type { Plan, PromoCodeCheck } from '~/types/api'
 import { formatCredits, formatStorage, sortCreditPacks } from '~/utils/credits'
 import { apiErrorMessage } from '~/composables/useApi'
 
@@ -52,13 +52,51 @@ const pendingPlanId = ref<number | null>(null)
 const receiptEmail = ref('')
 const profileEmail = computed(() => auth.user.value?.email?.trim() || '')
 
+const promoInput = ref('')
+const promoChecking = ref(false)
+const promoError = ref('')
+const appliedPromo = ref<PromoCodeCheck | null>(null)
+const discountFor = (plan: Plan): number | null => {
+  const promo = appliedPromo.value
+  if (!promo?.valid) return null
+  if (promo.plan_ids && promo.plan_ids.length && !promo.plan_ids.includes(plan.id)) return null
+  return promo.discount_percent ?? null
+}
+const applyPromo = async () => {
+  const code = promoInput.value.trim()
+  if (!code) return
+  promoChecking.value = true
+  promoError.value = ''
+  try {
+    const result = await api.billing.checkPromoCode(code)
+    if (result.valid) {
+      appliedPromo.value = result
+    } else {
+      appliedPromo.value = null
+      promoError.value = result.reason || t('billing.promoInvalid')
+    }
+  } catch (error: any) {
+    appliedPromo.value = null
+    promoError.value = apiErrorMessage(error)
+  } finally {
+    promoChecking.value = false
+  }
+}
+const clearPromo = () => {
+  appliedPromo.value = null
+  promoInput.value = ''
+  promoError.value = ''
+}
+
 const checkout = async (planId: number, customerEmail?: string) => {
   if (checkoutBusy.value === planId) return
   checkoutBusy.value = planId
   const key = checkoutKeys.get(planId) ?? crypto.randomUUID()
   checkoutKeys.set(planId, key)
+  const plan = orderedPlans.value.find(item => item.id === planId)
+  const promoCode = plan && discountFor(plan) != null ? appliedPromo.value?.code : undefined
   try {
-    const { confirmation_url } = await api.billing.checkout(planId, key, customerEmail)
+    const { confirmation_url } = await api.billing.checkout(planId, key, customerEmail, promoCode)
     if (auth.user.value && customerEmail && !auth.user.value.email) {
       auth.user.value = { ...auth.user.value, email: customerEmail.trim().toLowerCase() }
     }
@@ -173,10 +211,33 @@ const onEmailModalOpen = (open: boolean) => {
       </div>
     </div>
 
-    <div class="mb-4 mt-10">
-      <h2 class="mb-1 text-2xl font-extrabold tracking-tight">{{ t('billing.plansTitle') }}</h2>
-      <p class="mb-0 muted">{{ t('billing.plansLead') }}</p>
+    <div class="mb-4 mt-10 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h2 class="mb-1 text-2xl font-extrabold tracking-tight">{{ t('billing.plansTitle') }}</h2>
+        <p class="mb-0 muted">{{ t('billing.plansLead') }}</p>
+      </div>
+      <div class="promo-box">
+        <template v-if="appliedPromo?.valid">
+          <UIcon name="i-lucide-badge-percent" class="size-5 shrink-0 text-[#15803d]" />
+          <p class="mb-0 text-sm font-semibold">
+            {{ t('billing.promoApplied', { code: appliedPromo.code, percent: appliedPromo.discount_percent ?? 0 }) }}
+          </p>
+          <UButton icon="i-lucide-x" size="xs" color="neutral" variant="ghost" :aria-label="t('billing.promoRemove')" @click="clearPromo" />
+        </template>
+        <template v-else>
+          <UInput
+            v-model="promoInput"
+            :placeholder="t('billing.promoPlaceholder')"
+            size="sm"
+            class="w-40 font-mono uppercase"
+            :disabled="promoChecking"
+            @keyup.enter="applyPromo"
+          />
+          <UButton :label="t('billing.promoApply')" size="sm" variant="soft" :loading="promoChecking" :disabled="!promoInput.trim()" @click="applyPromo" />
+        </template>
+      </div>
     </div>
+    <p v-if="promoError" class="mb-4 mt-[-12px] text-right text-xs font-semibold text-[#c2410c]">{{ promoError }}</p>
     <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
       <PlanCard
         v-for="(plan, index) in orderedPlans"
@@ -185,6 +246,7 @@ const onEmailModalOpen = (open: boolean) => {
         :featured="plan.code === featuredCode"
         :top="index === orderedPlans.length - 1"
         :current="currentPlan ? plan.id === currentPlan.id : false"
+        :discount-percent="discountFor(plan)"
       >
         <UButton
           :label="planAction(plan).label"
