@@ -8,18 +8,26 @@ import os
 import uuid
 
 import boto3
+from botocore.config import Config
 
 from core.config import settings
 
 
 @functools.lru_cache(maxsize=1)
 def _client():
+    # boto3 с 1.36 шлёт x-amz-checksum на каждый PutObject.
+    # Object Storage Яндекса этот заголовок не понимает и отвечает AccessDenied.
     return boto3.client(
         "s3",
         endpoint_url=settings.aws_endpoint_url,
         aws_access_key_id=settings.aws_access_key_id,
         aws_secret_access_key=settings.aws_secret_access_key,
         region_name=settings.aws_default_region,
+        config=Config(
+            signature_version="s3v4",
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
+        ),
     )
 
 
